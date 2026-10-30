@@ -220,6 +220,10 @@ linters:
       - path: _test\.go
         linters: [revive]
         text: "^(function-length|file-length-limit)"
+      # Processes start from the I/O edges: a module's infra, or the platform.
+      - path: (^|/)internal/([^/]+/internal/infra|platform)/
+        linters: [gosec]
+        text: "^G204"
       # Clock and environment are banned in the domain only.
       - path-except: /internal/[^/]+/internal/domain/
         linters: [forbidigo]

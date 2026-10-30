@@ -50,10 +50,12 @@ type trialCase struct {
 	wants    []want
 	isolated bool
 	deletes  []string
+	quiet    []string
 }
 
 func (c trialCase) uses(toolPrefix string) bool {
-	return slices.ContainsFunc(c.wants, func(w want) bool { return strings.HasPrefix(w.tool, toolPrefix) })
+	return slices.Contains(c.quiet, toolPrefix) ||
+		slices.ContainsFunc(c.wants, func(w want) bool { return strings.HasPrefix(w.tool, toolPrefix) })
 }
 
 func loadCases(t *testing.T) []trialCase {
@@ -86,6 +88,8 @@ func loadCase(t *testing.T, name string) trialCase {
 			c.isolated = true
 		case strings.HasPrefix(line, "!delete "):
 			c.deletes = append(c.deletes, strings.TrimPrefix(line, "!delete "))
+		case strings.HasPrefix(line, "!expect-none "):
+			c.quiet = append(c.quiet, strings.TrimPrefix(line, "!expect-none ")+"/")
 		default:
 			c.wants = append(c.wants, parseWant(t, name, i+1, line))
 		}
@@ -118,14 +122,19 @@ func overlay(t *testing.T, cases ...trialCase) string {
 		t.Fatal(err)
 	}
 	for _, c := range cases {
-		for _, d := range c.deletes {
-			if err := os.Remove(filepath.Join(dir, filepath.FromSlash(d))); err != nil {
-				t.Fatalf("case %s: %v", c.name, err)
-			}
-		}
-		copyCase(t, c, dir)
+		apply(t, c, dir)
 	}
 	return dir
+}
+
+func apply(t *testing.T, c trialCase, dir string) {
+	t.Helper()
+	for _, d := range c.deletes {
+		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(d))); err != nil {
+			t.Fatalf("case %s: %v", c.name, err)
+		}
+	}
+	copyCase(t, c, dir)
 }
 
 func copyCase(t *testing.T, c trialCase, dst string) {
