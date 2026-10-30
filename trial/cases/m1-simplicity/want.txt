@@ -1,0 +1,5 @@
+# M1: a function too complex to read at once (gocognit), with five parameters, over 30 lines, and a file over 300 code lines (revive).
+golangci/gocognit internal/notes/internal/m1case/m1.go:3 cognitive complexity 11 of func `Grade` is high \(> 10\)
+golangci/revive internal/notes/internal/m1case/long_file.go:306 file\-length\-limit: file length is 305 lines, which exceeds the limit o
+golangci/revive internal/notes/internal/m1case/m1.go:37 argument\-limit: maximum number of arguments per function exceeded; max
+golangci/revive internal/notes/internal/m1case/m1.go:41 function\-length: maximum number of lines per function exceeded; max 30

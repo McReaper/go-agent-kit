@@ -1,0 +1,6 @@
+# M10: package state set by init, and a domain that reads the clock and the environment (allowed at the edges, not here).
+golangci/depguard internal/notes/internal/domain/clock.go:4 import 'os' is not allowed from list 'pure\-domain': M10/E1: the domain
+golangci/forbidigo internal/notes/internal/domain/clock.go:9 use of `os\.Getenv` forbidden because "M10: the domain takes configurat
+golangci/forbidigo internal/notes/internal/domain/clock.go:9 use of `time\.Now` forbidden because "M10: the domain takes the time as
+golangci/gochecknoglobals internal/notes/internal/m10case/m10.go:3 Counter is a global variable
+golangci/gochecknoinits internal/notes/internal/m10case/m10.go:5 don't use `init` function

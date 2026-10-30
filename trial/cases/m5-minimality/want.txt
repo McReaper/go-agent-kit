@@ -1,0 +1,10 @@
+# M5: dead code, an unused parameter, wasted assignments, a no-op conversion and an interface too wide to have one meaning.
+golangci/interfacebloat internal/notes/internal/m5case/m5.go:5 the interface has more than 5 methods: 6
+golangci/staticcheck internal/notes/internal/m5case/m5.go:27 SA4006: this value of n is never used
+golangci/staticcheck internal/notes/internal/m5case/m5.go:42 SA4006: this value of v is never used
+golangci/unconvert internal/notes/internal/m5case/m5.go:36 unnecessary conversion
+golangci/unparam internal/notes/internal/m5case/m5.go:18 scale \- factor is unused
+golangci/unused internal/notes/internal/m5case/m5.go:14 func helper is unused
+golangci/wastedassign internal/notes/internal/m5case/m5.go:27 assigned to n, but reassigned without using the value
+golangci/wastedassign internal/notes/internal/m5case/m5.go:40 assigned to v, but reassigned without using the value
+golangci/wastedassign internal/notes/internal/m5case/m5.go:42 assigned to v, but reassigned without using the value
