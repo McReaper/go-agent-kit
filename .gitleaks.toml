@@ -1,0 +1,8 @@
+# The kit's own secret scan: the default rules, minus the trial's deliberate
+# fake key, which proves that gitleaks catches one.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "trial case s1-secrets: a fake key that must be caught in the proof"
+paths = ['''^trial/cases/s1-secrets/''']
