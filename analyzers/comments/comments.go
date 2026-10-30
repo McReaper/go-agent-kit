@@ -6,7 +6,9 @@
 //     package (anything not inside a module's internal directory);
 //   - documents a command (a main package's package doc, its manual);
 //   - is a directive (//go:build, //go:generate, //line …) or a generated
-//     file's header.
+//     file's header;
+//   - is a license header: a "Copyright" or "SPDX-License-Identifier:"
+//     comment above the package clause, apart from the package doc.
 package comments
 
 import (
@@ -45,10 +47,20 @@ func checkFile(pass *analysis.Pass, f *ast.File) {
 		collectDocs(f, docs)
 	}
 	for _, cg := range f.Comments {
-		if !docs[cg] && !allowed(cg) {
+		if !docs[cg] && !allowed(cg) && !isLicense(f, cg) {
 			pass.Reportf(cg.Pos(), message)
 		}
 	}
+}
+
+// WHY: legal may require a copyright or SPDX header on every file; it sits
+// before the package clause and its package doc, and says nothing about code.
+func isLicense(f *ast.File, cg *ast.CommentGroup) bool {
+	if cg == f.Doc || cg.End() >= f.Package {
+		return false
+	}
+	text := bareText(cg.List[0].Text)
+	return strings.HasPrefix(text, "Copyright ") || strings.HasPrefix(text, "SPDX-License-Identifier:")
 }
 
 func allowed(cg *ast.CommentGroup) bool {
