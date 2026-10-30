@@ -107,7 +107,9 @@ func encode(n domain.Note) ([]byte, error) {
 	return data, nil
 }
 
-func (s *FileStore) Newest(_ context.Context, limit int) ([]domain.Note, error) {
+// WHY: All sorts the notes, so Newest and search both get newest first from
+// the one order.
+func (s *FileStore) All(_ context.Context) ([]domain.Note, error) {
 	names, err := fs.Glob(s.root.FS(), "*"+ext)
 	if err != nil {
 		return nil, fmt.Errorf("list the notes: %w", err)
@@ -126,6 +128,14 @@ func (s *FileStore) Newest(_ context.Context, limit int) ([]domain.Note, error) 
 		}
 		return strings.Compare(string(a.ID), string(b.ID))
 	})
+	return notes, nil
+}
+
+func (s *FileStore) Newest(ctx context.Context, limit int) ([]domain.Note, error) {
+	notes, err := s.All(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return notes[:min(limit, len(notes))], nil
 }
 
