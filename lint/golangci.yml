@@ -6,6 +6,9 @@ version: "2"
 run:
   tests: true
   modules-download-mode: readonly
+  # Paths relative to the module, wherever the config file sits: an agent
+  # reads them to find the file.
+  relative-path-mode: gomod
 
 issues:
   max-issues-per-linter: 0
@@ -225,7 +228,7 @@ linters:
         linters: [gosec]
         text: "^G204"
       # Clock and environment are banned in the domain only.
-      - path-except: /internal/[^/]+/internal/domain/
+      - path-except: (^|/)internal/[^/]+/internal/domain/
         linters: [forbidigo]
         text: "^use of `(time\\.(Now|Since|Until)|os\\.(Getenv|LookupEnv|Environ))`"
       # Only main exits.
