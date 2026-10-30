@@ -2,6 +2,6 @@ package domain
 
 import "time"
 
-func (n Note) Age() time.Duration {
-	return time.Since(n.Created)
+func (n Note) Age(now time.Time) time.Duration {
+	return now.Sub(n.Created)
 }
