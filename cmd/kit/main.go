@@ -29,34 +29,45 @@ func root(out io.Writer) *cobra.Command {
 	return r
 }
 
+type guardOptions struct {
+	base     string
+	approved bool
+	asJSON   bool
+}
+
 func guardCommand(out io.Writer) *cobra.Command {
-	var (
-		base             string
-		approved, asJSON bool
-	)
+	var o guardOptions
 	cmd := &cobra.Command{
 		Use:   "guard",
 		Short: "Check a change for bypasses, protected files and size",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			d, err := guard.Read(cmd.Context(), ".", base)
-			if err != nil {
-				return err
-			}
-			findings := guard.Check(d, approved)
-			if err := report(out, findings, asJSON); err != nil {
-				return err
-			}
-			if len(findings) > 0 {
-				return errFindings
-			}
-			return nil
+			return runGuard(cmd.Context(), out, o)
 		},
 	}
-	cmd.Flags().StringVar(&base, "base", "origin/main", "the branch the change goes into")
-	cmd.Flags().BoolVar(&approved, "approved", false, "a code owner approved the change's latest commit: protected files may change")
-	cmd.Flags().BoolVar(&asJSON, "json", false, "print the findings as JSON")
+	cmd.Flags().StringVar(&o.base, "base", "origin/main", "the branch the change goes into")
+	cmd.Flags().BoolVar(&o.approved, "approved", false, "a code owner approved the change's latest commit: protected files may change")
+	cmd.Flags().BoolVar(&o.asJSON, "json", false, "print the findings as JSON")
 	return cmd
+}
+
+func runGuard(ctx context.Context, out io.Writer, o guardOptions) error {
+	d, err := guard.Read(ctx, ".", o.base)
+	if err != nil {
+		return err
+	}
+	findings := guard.Check(d, o.approved)
+	if err := report(out, findings, o.asJSON); err != nil {
+		return err
+	}
+	switch {
+	case len(findings) > 0:
+		return errFindings
+	case o.asJSON:
+		return nil
+	}
+	_, err = fmt.Fprintf(out, "kit guard: %d files changed since %s (commits, edits and new files), nothing to report\n", len(d.Files), o.base)
+	return err
 }
 
 func report(out io.Writer, findings []guard.Finding, asJSON bool) error {

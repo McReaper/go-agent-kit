@@ -26,8 +26,10 @@ func changeOf(t *testing.T, c trialCase) string {
 	gitIn(t, dir, "commit", "-q", "-m", "clean trial")
 	gitIn(t, dir, "branch", "base")
 	apply(t, c, dir)
-	gitIn(t, dir, "add", "-A")
-	gitIn(t, dir, "commit", "-q", "--allow-empty", "-m", c.name)
+	if !c.uncommitted {
+		gitIn(t, dir, "add", "-A")
+		gitIn(t, dir, "commit", "-q", "--allow-empty", "-m", c.name)
+	}
 	return dir
 }
 

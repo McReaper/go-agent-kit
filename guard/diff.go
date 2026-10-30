@@ -6,7 +6,9 @@ package guard
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -33,26 +35,77 @@ type Diff struct {
 	Files []File
 }
 
-// Read returns the change from base's merge base to HEAD in the git
-// repository at dir.
+// Read returns the change from base's merge base to the working tree of
+// the git repository at dir: commits, staged and unstaged edits, and new
+// files git doesn't track yet.
+//
+// WHY: an agent runs the checks before it commits; a guard that read
+// commits only passed work it never saw.
 func Read(ctx context.Context, dir, base string) (Diff, error) {
 	if err := git.CheckRef(base); err != nil {
 		return Diff{}, fmt.Errorf("base: %w", err)
 	}
-	rng := base + "...HEAD"
-	status, err := git.Run(ctx, dir, "diff", "--name-status", "-M", rng)
+	mb, err := git.Run(ctx, dir, "merge-base", base, "HEAD")
 	if err != nil {
 		return Diff{}, err
 	}
-	numstat, err := git.Run(ctx, dir, "diff", "--numstat", "-M", rng)
+	d, err := readTracked(ctx, dir, strings.TrimSpace(mb))
 	if err != nil {
 		return Diff{}, err
 	}
-	patch, err := git.Run(ctx, dir, "diff", "-U0", "--no-color", "--no-prefix", "-M", rng)
+	untracked, err := readUntracked(ctx, dir)
+	if err != nil {
+		return Diff{}, err
+	}
+	d.Files = append(d.Files, untracked...)
+	return d, nil
+}
+
+func readTracked(ctx context.Context, dir, from string) (Diff, error) {
+	status, err := git.Run(ctx, dir, "diff", "--name-status", "-M", from)
+	if err != nil {
+		return Diff{}, err
+	}
+	numstat, err := git.Run(ctx, dir, "diff", "--numstat", "-M", from)
+	if err != nil {
+		return Diff{}, err
+	}
+	patch, err := git.Run(ctx, dir, "diff", "-U0", "--no-color", "--no-prefix", "-M", from)
 	if err != nil {
 		return Diff{}, err
 	}
 	return Parse(status, numstat, patch)
+}
+
+func readUntracked(ctx context.Context, dir string) (files []File, err error) {
+	out, err := git.Run(ctx, dir, "ls-files", "-z", "--others", "--exclude-standard")
+	if err != nil {
+		return nil, err
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", dir, err)
+	}
+	defer func() { err = errors.Join(err, root.Close()) }()
+	for p := range strings.SplitSeq(strings.TrimSuffix(out, "\x00"), "\x00") {
+		if p == "" {
+			continue
+		}
+		data, err := root.ReadFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", p, err)
+		}
+		files = append(files, File{Path: p, Status: 'A', Added: linesOf(string(data))})
+	}
+	return files, nil
+}
+
+func linesOf(text string) []Line {
+	var out []Line
+	for l := range strings.Lines(text) {
+		out = append(out, Line{N: len(out) + 1, Text: strings.TrimRight(l, "\r\n")})
+	}
+	return out
 }
 
 // Parse builds a Diff from the output of git diff --name-status, --numstat

@@ -208,7 +208,6 @@ linters:
 
   exclusions:
     generated: disable
-    warn-unused: true
     rules:
       # Tests: table-driven tests are long, and a test may read the clock.
       - path: _test\.go
