@@ -43,6 +43,10 @@ jobs:
           done
       - name: Prove every rule on the trial
         run: go test -race -count=1 ./...
+      - name: Show that the race detector's proof ran
+        run: |
+          go test -race -count=1 -run '^TestRaceDetectorReportsEveryCase$' -v ./proof/ | grep -- '--- PASS: TestRaceDetectorReportsEveryCase'
+
       - name: Check the kit's own workflows and history
         run: |
           actionlint

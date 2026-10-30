@@ -4,7 +4,16 @@ An anti-drift kit for Go code written by AI agents: the rules that keep a codeba
 
 Target: Go CLIs, MCP servers and libraries.
 
-- [`docs/kit.md`](docs/kit.md) — the kit: the constraints, the criteria, the solution for each, and the coverage check.
-- Every rule the kit names is proven on [`trial/`](trial), a small project with one deliberate violation per rule; [`proof/`](proof) runs each tool on it and fails if a rule stops firing.
+- [`docs/kit.md`](docs/kit.md) — the kit: the constraints, the criteria, the solution for each, the coverage check and what stays uncovered.
+- [`docs/adr/`](docs/adr) — its decisions: supported Go only, one library per need, the lint runner, mutation on a copy.
+- Every rule is proven on [`trial/`](trial): `trial/clean` passes every tool, and each case under `trial/cases` holds one deliberate violation with the exact findings it must produce. [`proof/`](proof) reruns them all; `go test ./...` fails if a rule stops firing.
 
-Status: milestone 1 (the doc and its proofs) in progress.
+What it ships today:
+
+- `lint/golangci.yml` — the curated golangci-lint config.
+- `cmd/kitvet` — nine analyzers for rules no linter has (comments, nesting, test assertions, typed ids, goroutines, root contexts, package names, logged-and-returned errors, SQL built at run time).
+- `cmd/kit guard` — the diff checks: bypasses, protected tests and go line, size.
+- `archtest` — the layout rules the compiler can't see.
+- `tools.txt` — every tool at the version the proofs ran with.
+
+Status: milestone 1 (the doc and its proofs). Milestone 2 assembles the platform rules, the template and reference slice, and the skills.
