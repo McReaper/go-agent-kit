@@ -177,7 +177,7 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | Criterion | Rules and tools | What they block | Proof |
 | --- | --- | --- | --- |
 | M1 | gocognit ≤ 10; revive function-length ≤ 30 lines, argument-limit ≤ 4, file-length-limit ≤ 300; `kitvet nesting` ≤ 2 (every control statement counts: revive's rule counts only `if`) | Long, deep or tangled functions | `m1-simplicity` |
-| M2 | `kitvet comments` (`// WHY:` only; doc comments on a contract's exported API and a command's package doc), staticcheck ST*, misspell, predeclared, `kitvet pkgname` (stutter), gofumpt and goimports | Paraphrasing comments, mixed naming | `m2-readability`, `e7-names`, `fmt-formatting` |
+| M2 | `kitvet comments` (`// WHY:` only; doc comments on a contract's exported API and a command's package doc; a `Copyright` or `SPDX-License-Identifier:` header above the package clause), staticcheck ST*, misspell, predeclared, `kitvet pkgname` (stutter), gofumpt and goimports | Paraphrasing comments, mixed naming | `m2-readability`, `e7-names`, `fmt-formatting` |
 | M3 | depguard one-library-per-need (slog, stdlib errors, go-cmp, go-sdk, cobra), forbidigo `fmt.Print*`, modernize, tagliatelle (snake_case json) | Two ways to do one thing | `m3-consistency` |
 | M5 | unused, unparam, wastedassign, unconvert, interfacebloat ≤ 5 | Dead code, unused parameters | `m5-minimality` |
 | M10 | depguard `pure-domain` (no `os`, `io/fs`, `net`, `os/exec`, `database/sql`, `log/slog`, `reflect`, randomness), forbidigo `time.Now/Since/Until` and `os.Getenv` in the domain, gochecknoglobals, gochecknoinits | Hidden clock, environment, I/O, state | `m10-testability` |
@@ -263,6 +263,7 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 - A subprocess whose program name comes from input (S2): gosec G204 reports variable arguments, not a variable program (pinned in `s-security`).
 - Low-entropy secrets (S1): gitleaks misses `"correct horse"`.
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
+- Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). AGENTS.md says to stop and ask; review catches the rest.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
 - Two log lines with the same message (M7, .NET's unique `EventId`), and an exported name used only inside its own package (M5): no analyzer yet.
 - A foreign JSON format decoded in production code: tagliatelle wants snake_case; tests are exempt, production would need an override.
