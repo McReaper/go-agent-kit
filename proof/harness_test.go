@@ -1,7 +1,6 @@
-package proof
+package proof_test
 
 import (
-	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
@@ -75,14 +74,12 @@ func loadCases(t *testing.T) []trialCase {
 func loadCase(t *testing.T, name string) trialCase {
 	t.Helper()
 	c := trialCase{name: name, dir: filepath.Join(casesDir, name)}
-	f, err := os.Open(filepath.Join(c.dir, "want.txt"))
+	data, err := os.ReadFile(filepath.Join(c.dir, "want.txt"))
 	if err != nil {
 		t.Fatalf("case %s: %v", name, err)
 	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	for n := 1; sc.Scan(); n++ {
-		line := strings.TrimSpace(sc.Text())
+	for i, raw := range strings.Split(string(data), "\n") {
+		line := strings.TrimSpace(raw)
 		switch {
 		case line == "" || strings.HasPrefix(line, "#"):
 		case line == "!isolated":
@@ -90,11 +87,8 @@ func loadCase(t *testing.T, name string) trialCase {
 		case strings.HasPrefix(line, "!delete "):
 			c.deletes = append(c.deletes, strings.TrimPrefix(line, "!delete "))
 		default:
-			c.wants = append(c.wants, parseWant(t, name, n, line))
+			c.wants = append(c.wants, parseWant(t, name, i+1, line))
 		}
-	}
-	if err := sc.Err(); err != nil {
-		t.Fatalf("case %s: %v", name, err)
 	}
 	return c
 }
@@ -117,8 +111,6 @@ func parseWant(t *testing.T, caseName string, n int, line string) want {
 	return want{caseName: caseName, tool: fields[0], file: file, line: lineNo, re: re}
 }
 
-// overlay copies trial/clean into a new directory and applies the cases to
-// it: each case's files (except want.txt) are added or replace clean ones.
 func overlay(t *testing.T, cases ...trialCase) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -161,8 +153,6 @@ func copyCase(t *testing.T, c trialCase, dst string) {
 	}
 }
 
-// check fails unless every finding matches exactly one want of the cases,
-// and every want is matched.
 func check(t *testing.T, cases []trialCase, toolPrefix string, findings []finding) {
 	t.Helper()
 	var wants []want
@@ -195,4 +185,36 @@ func check(t *testing.T, cases []trialCase, toolPrefix string, findings []findin
 			t.Errorf("case %s: missing finding: %s", w.caseName, w)
 		}
 	}
+}
+
+// WHY: an isolated case replaces a file the others build on (go.mod), so
+// it runs alone; all others share one copy of the trial, for speed.
+func proveCases(t *testing.T, tool string, run func(*testing.T, string) []finding) {
+	t.Helper()
+	var together []trialCase
+	for _, c := range loadCases(t) {
+		switch {
+		case !c.uses(tool):
+		case c.isolated:
+			t.Run(c.name, func(t *testing.T) {
+				check(t, []trialCase{c}, tool, run(t, overlay(t, c)))
+			})
+		default:
+			together = append(together, c)
+		}
+	}
+	check(t, together, tool, run(t, overlay(t, together...)))
+}
+
+func relTo(t *testing.T, dir, path string) string {
+	t.Helper()
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(abs, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.ToSlash(rel)
 }

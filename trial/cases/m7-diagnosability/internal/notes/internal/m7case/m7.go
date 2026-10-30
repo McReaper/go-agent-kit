@@ -1,6 +1,7 @@
 package m7case
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -36,5 +37,13 @@ func Guard(f func()) (err error) {
 		}
 	}()
 	f()
+	return nil
+}
+
+func Twice(ctx context.Context, log *slog.Logger, r io.Reader) error {
+	if err := Read(r); err != nil {
+		log.ErrorContext(ctx, "read failed", slog.Any("err", err))
+		return fmt.Errorf("twice: %w", err)
+	}
 	return nil
 }

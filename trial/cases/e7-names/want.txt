@@ -1,0 +1,3 @@
+# E7/M2: a package named for nothing (utils), and a name that repeats its package (add.AddDefaults).
+kitvet/pkgname internal/notes/internal/utils/utils.go:1 E7: package utils says nothing about what it holds
+kitvet/pkgname internal/notes/internal/add/stutter.go:3 M2: add\.AddDefaults repeats the package name: call it add\.Defaults

@@ -1,4 +1,4 @@
-package proof
+package proof_test
 
 import (
 	"encoding/json"
@@ -13,25 +13,27 @@ import (
 
 const golangciTool = "golangci/"
 
-// targetGOOS are the systems the trial builds for; lint runs once per
-// system, since a file built for one only is invisible to the others.
+// WHY: lint runs once per system: a file built for one system only is
+// invisible to a run for any other.
 var targetGOOS = []string{"linux", "windows"}
 
 type golangciReport struct {
-	Issues []struct {
-		FromLinter string
-		Text       string
-		Pos        struct {
-			Filename string
-			Line     int
-		}
-	}
+	Issues []golangciIssue `json:"Issues"`
 	Report struct {
 		Linters []struct {
-			Name    string
-			Enabled bool
-		}
-	}
+			Name    string `json:"Name"`
+			Enabled bool   `json:"Enabled"`
+		} `json:"Linters"`
+	} `json:"Report"`
+}
+
+type golangciIssue struct {
+	FromLinter string `json:"FromLinter"`
+	Text       string `json:"Text"`
+	Pos        struct {
+		Filename string `json:"Filename"`
+		Line     int    `json:"Line"`
+	} `json:"Pos"`
 }
 
 func runGolangci(t *testing.T, dir, goos string) golangciReport {
@@ -40,7 +42,7 @@ func runGolangci(t *testing.T, dir, goos string) golangciReport {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("golangci-lint", "run", "--config", config, "--path-mode", "abs",
+	cmd := exec.CommandContext(t.Context(), "golangci-lint", "run", "--config", config, "--path-mode", "abs",
 		"--output.json.path", "stdout", "--output.text.path", "stderr", "--show-stats=false", "./...")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOFLAGS=-mod=readonly")
@@ -64,8 +66,6 @@ func stderrOf(err error) string {
 	return ""
 }
 
-// golangciFindings lints dir for every target system and returns the union
-// of what it reports.
 func golangciFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	abs, err := filepath.Abs(dir)
@@ -93,19 +93,7 @@ func TestGolangciFindsNothingInTheCleanTrial(t *testing.T) {
 }
 
 func TestGolangciReportsEveryCase(t *testing.T) {
-	var together []trialCase
-	for _, c := range loadCases(t) {
-		switch {
-		case !c.uses(golangciTool):
-		case c.isolated:
-			t.Run(c.name, func(t *testing.T) {
-				check(t, []trialCase{c}, golangciTool, golangciFindings(t, overlay(t, c)))
-			})
-		default:
-			together = append(together, c)
-		}
-	}
-	check(t, together, golangciTool, golangciFindings(t, overlay(t, together...)))
+	proveCases(t, golangciTool, golangciFindings)
 }
 
 func TestEveryEnabledLinterHasACase(t *testing.T) {

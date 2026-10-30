@@ -9,22 +9,20 @@ import (
 )
 
 // Make returns s in lowercase ASCII, with every run of other characters
-// replaced by a single hyphen and no hyphen at either end.
+// replaced by a single hyphen and no hyphen at either end. Accents are
+// dropped from the letters they sit on.
 func Make(s string) string {
-	var b strings.Builder
-	pending := false
-	for _, r := range norm.NFKD.String(s) {
-		switch {
-		case r < unicode.MaxASCII && (unicode.IsLetter(r) || unicode.IsDigit(r)):
-			if pending && b.Len() > 0 {
-				b.WriteByte('-')
-			}
-			pending = false
-			b.WriteRune(unicode.ToLower(r))
-		case unicode.Is(unicode.Mn, r):
-		default:
-			pending = true
-		}
+	bare := strings.Map(dropMarks, norm.NFKD.String(s))
+	return strings.ToLower(strings.Join(strings.FieldsFunc(bare, isSeparator), "-"))
+}
+
+func dropMarks(r rune) rune {
+	if unicode.Is(unicode.Mn, r) {
+		return -1
 	}
-	return b.String()
+	return r
+}
+
+func isSeparator(r rune) bool {
+	return r >= unicode.MaxASCII || !unicode.IsLetter(r) && !unicode.IsDigit(r)
 }

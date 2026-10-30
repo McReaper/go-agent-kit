@@ -2,3 +2,4 @@
 golangci/testpackage internal/notes/internal/add/whitebox_test.go:1 package should be `add_test` instead of `add`
 golangci/thelper internal/notes/internal/add/whitebox_test.go:8 test helper function should start from t\.Helper\(\)
 golangci/usetesting internal/notes/internal/add/whitebox_test.go:9 os\.MkdirTemp\(\) could be replaced by t\.TempDir\(\) in scratch
+kitvet/testassert internal/notes/internal/add/trivial_test.go:16 M6: TestAddRuns only fails on an error or a nil

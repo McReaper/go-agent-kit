@@ -177,3 +177,11 @@ func Hijack() {
 func Encode(p Payload) ([]byte, error) {
 	return json.Marshal(p)
 }
+
+func Background(f func()) {
+	go f()
+}
+
+func Fresh() context.Context {
+	return context.Background()
+}
