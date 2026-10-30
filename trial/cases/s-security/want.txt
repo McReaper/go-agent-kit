@@ -1,4 +1,5 @@
 # S2/S5/S7: weak hash and random, TLS verification off, pprof exposed, a variable command argument and file path, a Trojan Source string, a non-ASCII name.
+# inputs.go: SQL built from input (gosec misses both: kitvet sqlconst catches them), a gzip stream copied unbounded, a zip entry joined to a path.
 # Known gap, pinned: sec.go:26 runs a program whose name is a variable and gosec reports nothing. If it ever does, this case fails and the doc must change.
 golangci/asciicheck internal/notes/internal/seccase/sec.go:39 identifier "Cafè" contain non\-ASCII character: U\+00E8 'è'
 golangci/bidichk internal/notes/internal/seccase/sec.go:37 found dangerous unicode character sequence RIGHT\-TO\-LEFT\-OVERRIDE
@@ -12,3 +13,7 @@ golangci/gosec internal/notes/internal/seccase/sec.go:34 G304: Potential file in
 golangci/gosec internal/notes/internal/seccase/sec.go:5 G501: Blocklisted import crypto/md5: weak cryptographic primitive
 golangci/gosec internal/notes/internal/seccase/sec.go:8 G108: Profiling endpoint is automatically exposed on /debug/pprof
 golangci/staticcheck internal/notes/internal/seccase/sec.go:37 ST1018: string literal contains the Unicode format character U\+202E, c
+golangci/gosec internal/notes/internal/seccase/inputs.go:27 G110: Potential DoS vulnerability via decompression bomb
+golangci/gosec internal/notes/internal/seccase/inputs.go:33 G305: File traversal when extracting zip/tar archive
+kitvet/sqlconst internal/notes/internal/seccase/inputs.go:15 S2: this SQL query is built at run time
+kitvet/sqlconst internal/notes/internal/seccase/inputs.go:19 S2: this SQL query is built at run time
