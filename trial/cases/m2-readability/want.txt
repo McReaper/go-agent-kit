@@ -4,3 +4,5 @@ golangci/predeclared internal/notes/internal/m2case/m2.go:11 param len has same 
 golangci/staticcheck internal/notes/internal/m2case/m2.go:16 ST1005: error strings should not be capitalized
 golangci/staticcheck internal/notes/internal/m2case/m2.go:16 ST1005: error strings should not end with punctuation or newlines
 golangci/staticcheck internal/notes/internal/m2case/m2.go:7 ST1003: should not use underscores in Go names; func Get_note should b
+kitvet/comments internal/notes/internal/m2case/comments.go:3 M2: a comment says why, not what
+kitvet/comments internal/notes/internal/m2case/comments.go:7 M2: a comment says why, not what

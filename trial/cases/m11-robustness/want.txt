@@ -27,3 +27,5 @@ golangci/reassign internal/notes/internal/m11case/m11.go:174 reassigning variabl
 golangci/rowserrcheck internal/notes/internal/m11case/m11.go:137 rows\.Err must be checked
 golangci/sqlclosecheck internal/notes/internal/m11case/m11.go:121 Rows/Stmt/NamedStmt was not closed
 golangci/staticcheck internal/notes/internal/m11case/m11.go:49 SA5009: Printf format %d has arg \#1 of wrong type string
+kitvet/goroutine internal/notes/internal/m11case/m11.go:182 M11: a goroutine started here has no owner
+kitvet/ctxroot internal/notes/internal/m11case/m11.go:186 M11: context\.Background starts a new root

@@ -3,3 +3,4 @@ golangci/gocognit internal/notes/internal/m1case/m1.go:3 cognitive complexity 11
 golangci/revive internal/notes/internal/m1case/long_file.go:306 file\-length\-limit: file length is 305 lines, which exceeds the limit o
 golangci/revive internal/notes/internal/m1case/m1.go:37 argument\-limit: maximum number of arguments per function exceeded; max
 golangci/revive internal/notes/internal/m1case/m1.go:41 function\-length: maximum number of lines per function exceeded; max 30
+kitvet/nesting internal/notes/internal/m1case/m1.go:29 M1: control flow nested 3 deep, the limit is 2

@@ -210,9 +210,13 @@ linters:
       # Tests: table-driven tests are long, and a test may read the clock.
       - path: _test\.go
         linters: [gocognit, dupl, gochecknoglobals]
+      # Tests decode the output of other tools, in those tools' own casing.
+      - path: _test\.go
+        linters: [tagliatelle]
+      # Tests start tools and copy fixtures by computed paths, by design.
       - path: _test\.go
         linters: [gosec]
-        text: "^G304"
+        text: "^G(122|204|304|703)"
       - path: _test\.go
         linters: [revive]
         text: "^(function-length|file-length-limit)"
