@@ -1,0 +1,2 @@
+# M11: a nil returned on an empty list, then dereferenced by the caller: no compiler or linter sees it.
+nilaway/nil-panic internal/notes/internal/nilcase/first.go:15 Potential nil panic detected
