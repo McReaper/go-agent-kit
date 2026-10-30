@@ -8,11 +8,6 @@ import (
 	"example.com/notes/internal/platform/op"
 )
 
-const (
-	DefaultLimit = 20
-	MaxLimit     = 100
-)
-
 type Args struct {
 	Limit int `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 20 by default, 100 at most"`
 }
@@ -48,12 +43,9 @@ func (l *List) Op() op.Op[Args, Out] {
 }
 
 func (l *List) Run(ctx context.Context, args Args) (Out, error) {
-	limit := args.Limit
-	switch {
-	case limit == 0:
-		limit = DefaultLimit
-	case limit < 0 || limit > MaxLimit:
-		return Out{}, fmt.Errorf("limit %d is out of range: give 1 to %d", limit, MaxLimit)
+	limit, err := domain.ParseLimit(args.Limit)
+	if err != nil {
+		return Out{}, err
 	}
 	notes, err := l.store.Newest(ctx, limit)
 	if err != nil {
