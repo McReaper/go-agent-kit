@@ -9,6 +9,7 @@ import (
 	"example.com/notes/internal/platform/op"
 	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/spf13/pflag"
 )
 
 type args struct {
@@ -27,9 +28,14 @@ func echo(effect op.Effect) op.Op[args, args] {
 }
 
 func TestCommandFlagsAreTheJSONNamesWithHyphens(t *testing.T) {
-	want := []string{"name", "max-size", "dry-run"}
-	if diff := cmp.Diff(want, op.FlagNames[args]()); diff != "" {
-		t.Errorf("FlagNames (-want +got):\n%s", diff)
+	cmd, err := op.Command(echo(op.ReadOnly), &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	cmd.Flags().VisitAll(func(f *pflag.Flag) { got = append(got, f.Name) })
+	if diff := cmp.Diff([]string{"dry-run", "max-size", "name"}, got); diff != "" {
+		t.Errorf("flags (-want +got):\n%s", diff)
 	}
 }
 
