@@ -22,6 +22,8 @@ jobs:
           go-version-file: go.mod
           cache: false
       - name: Install the tools the proofs ran with
+        env:
+          GOTOOLCHAIN: auto # a tool may need a newer Go than the module; it builds a separate binary
         run: |
           grep -v '^#' tools.txt | grep @ | xargs -n1 go install
           python3 -m pip install --user "zizmor==$(awk '$1 == "zizmor" {print $2}' tools.txt)"

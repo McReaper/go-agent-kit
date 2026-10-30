@@ -9,6 +9,7 @@ import (
 	"github.com/McReaper/go-agent-kit/analyzers/logreturn"
 	"github.com/McReaper/go-agent-kit/analyzers/nesting"
 	"github.com/McReaper/go-agent-kit/analyzers/pkgname"
+	"github.com/McReaper/go-agent-kit/analyzers/sqlconst"
 	"github.com/McReaper/go-agent-kit/analyzers/testassert"
 	"github.com/McReaper/go-agent-kit/analyzers/typedid"
 	"golang.org/x/tools/go/analysis/multichecker"
@@ -22,6 +23,7 @@ func main() {
 		logreturn.New(),
 		nesting.New(),
 		pkgname.New(),
+		sqlconst.New(),
 		testassert.New(),
 		typedid.New(),
 	)
