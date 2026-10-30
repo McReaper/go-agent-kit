@@ -1,0 +1,2 @@
+# E5: a library function gains a parameter: every caller breaks. apidiff compares the API with the base.
+apidiff/incompatible pkg/slug:0 Make: changed from func\(string\) string to func\(string, string\) string

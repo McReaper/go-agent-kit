@@ -24,6 +24,7 @@ var standalone = []tool{
 	{"gitleaks/", gitleaksFindings},
 	{"gomod/", tidyFindings},
 	{"govulncheck/", govulnFindings},
+	{"nilaway/", nilawayFindings},
 	{"shellcheck/", shellcheckFindings},
 	{"zizmor/", zizmorFindings},
 }
@@ -75,7 +76,7 @@ func lineDiagnostics(t *testing.T, dir string, out []byte, tl diagTool) []findin
 	var findings []finding
 	for line := range strings.Lines(string(out)) {
 		m := diagLine.FindStringSubmatch(strings.TrimRight(line, "\r\n"))
-		if m == nil {
+		if m == nil || strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
 			continue
 		}
 		file := m[1]
@@ -139,6 +140,19 @@ func deadcodeFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	out := runIn(t, dir, nil, "deadcode", "./cmd/...")
 	return lineDiagnostics(t, dir, out, diagTool{"deadcode/", func(string) string { return "unreachable" }})
+}
+
+// WHY: nilaway prints its diagnostics to standard error, like go vet.
+func nilawayFindings(t *testing.T, dir string) []finding {
+	t.Helper()
+	cmd := exec.CommandContext(t.Context(), "nilaway", "-pretty-print=false", "./...")
+	cmd.Dir = dir
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil && exitCode(err) != 3 {
+		t.Fatalf("nilaway: %v\n%s", err, stderr.String())
+	}
+	return lineDiagnostics(t, dir, stderr.Bytes(), diagTool{"nilaway/", func(string) string { return "nil-panic" }})
 }
 
 func tidyFindings(t *testing.T, dir string) []finding {
