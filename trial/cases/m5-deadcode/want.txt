@@ -1,0 +1,2 @@
+# M5: an exported function nothing calls. unused can't see it (exported); deadcode follows calls from main.
+deadcode/unreachable internal/notes/internal/list/unreached.go:3 unreachable func: Oldest

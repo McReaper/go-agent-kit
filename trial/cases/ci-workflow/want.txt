@@ -1,0 +1,7 @@
+# S10: a workflow that runs untrusted PR code with write credentials, unpinned, with a PR title pasted into a shell.
+actionlint/expression .github/workflows/ci.yml:13 "github\.event\.pull_request\.title" is potentially untrusted
+zizmor/dangerous-triggers .github/workflows/ci.yml:4 insecure workflow trigger
+zizmor/excessive-permissions .github/workflows/ci.yml:7 overly broad permissions
+zizmor/artipacked .github/workflows/ci.yml:10 credential persistence
+zizmor/unpinned-uses .github/workflows/ci.yml:10 unpinned action reference
+zizmor/template-injection .github/workflows/ci.yml:13 code injection via template expansion

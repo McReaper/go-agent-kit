@@ -1,0 +1,4 @@
+# M6: a test that checks one total far from the boundary: every mutant of `total >= 100` survives.
+mutesting/lived internal/notes/internal/m6case/discount.go:4 if total > 100 \{
+mutesting/lived internal/notes/internal/m6case/discount.go:4 if total >= 99 \{
+mutesting/lived internal/notes/internal/m6case/discount.go:4 if total >= 101 \{
