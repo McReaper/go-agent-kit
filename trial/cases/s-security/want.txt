@@ -1,0 +1,14 @@
+# S2/S5/S7: weak hash and random, TLS verification off, pprof exposed, a variable command argument and file path, a Trojan Source string, a non-ASCII name.
+# Known gap, pinned: sec.go:26 runs a program whose name is a variable and gosec reports nothing. If it ever does, this case fails and the doc must change.
+golangci/asciicheck internal/notes/internal/seccase/sec.go:39 identifier "Cafè" contain non\-ASCII character: U\+00E8 'è'
+golangci/bidichk internal/notes/internal/seccase/sec.go:37 found dangerous unicode character sequence RIGHT\-TO\-LEFT\-OVERRIDE
+golangci/forbidigo internal/notes/internal/seccase/sec.go:22 use of `InsecureSkipVerify` forbidden because "S5: TLS verification is
+golangci/gosec internal/notes/internal/seccase/sec.go:1 G116: Potential Trojan Source vulnerability via use of bidirectional t
+golangci/gosec internal/notes/internal/seccase/sec.go:14 G401: Use of weak cryptographic primitive
+golangci/gosec internal/notes/internal/seccase/sec.go:18 G404: Use of weak random number generator \(math/rand or math/rand/v2 i
+golangci/gosec internal/notes/internal/seccase/sec.go:22 G402: TLS InsecureSkipVerify set to true\.
+golangci/gosec internal/notes/internal/seccase/sec.go:30 G204: Subprocess launched with variable
+golangci/gosec internal/notes/internal/seccase/sec.go:34 G304: Potential file inclusion via variable
+golangci/gosec internal/notes/internal/seccase/sec.go:5 G501: Blocklisted import crypto/md5: weak cryptographic primitive
+golangci/gosec internal/notes/internal/seccase/sec.go:8 G108: Profiling endpoint is automatically exposed on /debug/pprof
+golangci/staticcheck internal/notes/internal/seccase/sec.go:37 ST1018: string literal contains the Unicode format character U\+202E, c

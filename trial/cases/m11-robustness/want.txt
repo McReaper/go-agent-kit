@@ -1,0 +1,29 @@
+# M11: errors and assertions unchecked, nil returned with a live error, contexts stored or nested, bodies and rows left open, and more.
+# clean_windows.go is built for Windows only: its errcheck finding appears only when lint runs with GOOS=windows.
+golangci/bodyclose internal/notes/internal/m11case/m11.go:100 response body must be closed
+golangci/containedctx internal/notes/internal/m11case/m11.go:25 found a struct that contains a context\.Context field
+golangci/durationcheck internal/notes/internal/m11case/m11.go:170 Multiplication of durations: `d \* time\.Second`
+golangci/errcheck internal/notes/internal/m11case/clean_windows.go:6 Error return value of `os\.Remove` is not checked
+golangci/errcheck internal/notes/internal/m11case/m11.go:116 Error return value of `resp\.Body\.Close` is not checked
+golangci/errcheck internal/notes/internal/m11case/m11.go:141 Error return value of `rows\.Close` is not checked
+golangci/errcheck internal/notes/internal/m11case/m11.go:40 Error return value of `os\.Remove` is not checked
+golangci/errcheck internal/notes/internal/m11case/m11.go:41 Error return value of `os\.Remove` is not checked
+golangci/errcheck internal/notes/internal/m11case/m11.go:45 Error return value is not checked
+golangci/exhaustive internal/notes/internal/m11case/m11.go:154 missing cases in switch of type m11case\.Color: m11case\.Blue
+golangci/fatcontext internal/notes/internal/m11case/m11.go:90 nested context in loop
+golangci/forbidigo internal/notes/internal/m11case/m11.go:112 use of `http\.Get` forbidden because "S8/M11: build an http\.Client with
+golangci/forcetypeassert internal/notes/internal/m11case/m11.go:45 type assertion must be checked
+golangci/gosec internal/notes/internal/m11case/m11.go:112 G107: Potential HTTP request made with variable url
+golangci/govet internal/notes/internal/m11case/m11.go:49 printf: fmt\.Sprintf format %d has arg "n" of wrong type string
+golangci/govet internal/notes/internal/m11case/m11.go:52 copylocks: Copy passes lock by value: example\.com/notes/internal/notes
+golangci/makezero internal/notes/internal/m11case/m11.go:165 append to slice `xs` with non\-zero initialized length
+golangci/musttag internal/notes/internal/m11case/m11.go:178 the given struct should be annotated with the `json` tag
+golangci/nilerr internal/notes/internal/m11case/m11.go:64 error is not nil \(line 63\) but it returns nil
+golangci/nilnesserr internal/notes/internal/m11case/m11.go:79 return a nil value error after check error
+golangci/nilnil internal/notes/internal/m11case/m11.go:70 return both a `nil` error and an invalid value: use a sentinel error i
+golangci/noctx internal/notes/internal/m11case/m11.go:108 net/http\.NewRequest must not be called\. use net/http\.NewRequestWithCon
+golangci/noctx internal/notes/internal/m11case/m11.go:112 net/http\.Get must not be called\. use net/http\.NewRequestWithContext an
+golangci/reassign internal/notes/internal/m11case/m11.go:174 reassigning variable EOF in other package io
+golangci/rowserrcheck internal/notes/internal/m11case/m11.go:137 rows\.Err must be checked
+golangci/sqlclosecheck internal/notes/internal/m11case/m11.go:121 Rows/Stmt/NamedStmt was not closed
+golangci/staticcheck internal/notes/internal/m11case/m11.go:49 SA5009: Printf format %d has arg \#1 of wrong type string

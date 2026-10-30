@@ -1,0 +1,5 @@
+# A go.mod that re-enables an insecure default (godebug) and points a module
+# at a local folder (replace): both change what is built without touching Go code.
+!isolated
+golangci/gomoddirectives go.mod:27 godebug directive is not allowed
+golangci/gomoddirectives go.mod:29 local replacement are not allowed: example\.com/nowhere

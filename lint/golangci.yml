@@ -1,0 +1,230 @@
+# The kit's golangci-lint config. Apps run this file through `kit lint`, never
+# a config of their own. Each linter is here for a criterion of docs/kit.md,
+# and each has a proof case under trial/cases.
+version: "2"
+
+run:
+  tests: true
+  modules-download-mode: readonly
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  # Every finding on a line, not the first: an agent that fixes one finding
+  # must not then meet the next.
+  uniq-by-line: false
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
+linters:
+  default: none
+  enable:
+    # M1 local simplicity
+    - gocognit
+    - revive
+    # M2 readability
+    - staticcheck
+    - misspell
+    - predeclared
+    # M3 consistency
+    - depguard
+    - forbidigo
+    - modernize
+    - tagliatelle
+    # M4 no copied rules
+    - dupl
+    # M5 minimality
+    - unused
+    - unparam
+    - wastedassign
+    - unconvert
+    - interfacebloat
+    # M7 diagnosability
+    - sloglint
+    - errorlint
+    # M10 testability
+    - gochecknoglobals
+    - gochecknoinits
+    # M11 technical robustness
+    - errcheck
+    - govet
+    - forcetypeassert
+    - nilerr
+    - nilnil
+    - nilnesserr
+    - containedctx
+    - fatcontext
+    - bodyclose
+    - noctx
+    - sqlclosecheck
+    - rowserrcheck
+    - exhaustive
+    - makezero
+    - durationcheck
+    - reassign
+    - musttag
+    # M6 / E6 tests that check behaviour
+    - testpackage
+    - thelper
+    - usetesting
+    # S2 S5 S7 security
+    - gosec
+    - bidichk
+    - asciicheck
+    # T2 nothing hidden from the rules
+    - gocheckcompilerdirectives
+    - gomoddirectives
+
+  settings:
+    gocognit:
+      min-complexity: 10
+    revive:
+      rules:
+        - name: function-length
+          arguments: [0, 30]
+        - name: argument-limit
+          arguments: [4]
+        - name: file-length-limit
+          arguments:
+            - max: 300
+              skipComments: true
+              skipBlankLines: true
+    staticcheck:
+      checks: ["all", "-ST1000", "-ST1020", "-ST1021", "-ST1022", "-QF*"]
+    depguard:
+      rules:
+        one-library-per-need:
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: "M3: use the standard errors package and fmt.Errorf with %w"
+            - pkg: io/ioutil
+              desc: "M3: deprecated; use io and os"
+            - pkg: log$
+              desc: "M3/M7: log through log/slog, the one logger"
+            - pkg: github.com/sirupsen/logrus
+              desc: "M3/M7: log through log/slog, the one logger"
+            - pkg: go.uber.org/zap
+              desc: "M3/M7: log through log/slog, the one logger"
+            - pkg: github.com/rs/zerolog
+              desc: "M3/M7: log through log/slog, the one logger"
+            - pkg: math/rand$
+              desc: "M3: use math/rand/v2 (or crypto/rand for anything secret)"
+            - pkg: github.com/stretchr/testify
+              desc: "M3/M6: compare with github.com/google/go-cmp/cmp and fail with t.Errorf/t.Fatalf"
+            - pkg: github.com/golang/mock
+              desc: "M6/E6: no mocks; write a small fake that implements the interface"
+            - pkg: go.uber.org/mock
+              desc: "M6/E6: no mocks; write a small fake that implements the interface"
+            - pkg: github.com/mark3labs/mcp-go
+              desc: "M3: the MCP library is github.com/modelcontextprotocol/go-sdk"
+            - pkg: github.com/urfave/cli
+              desc: "M3: the CLI library is github.com/spf13/cobra"
+            - pkg: plugin
+              desc: "T2: no code loaded at run time; it hides dependencies from every check"
+            - pkg: unsafe
+              desc: "T2/M11: no unsafe; it defeats the type system the checks rely on"
+        pure-domain:
+          files:
+            - "**/internal/*/internal/domain/**"
+            - "!$test"
+          deny:
+            - pkg: os
+              desc: "M10/E1: the domain does no I/O; take the data as arguments"
+            - pkg: io/fs
+              desc: "M10/E1: the domain does no I/O; take the data as arguments"
+            - pkg: net
+              desc: "M10/E1: the domain does no I/O; take the data as arguments"
+            - pkg: os/exec
+              desc: "M10/E1: the domain does no I/O; take the data as arguments"
+            - pkg: database/sql
+              desc: "M10/E1: the domain does no I/O; take the data as arguments"
+            - pkg: log/slog
+              desc: "M7: the domain doesn't log; return an error and let the caller decide"
+            - pkg: reflect
+              desc: "T2: no reflection in the domain; it hides dependencies from the architecture tests"
+            - pkg: crypto/rand
+              desc: "M10: randomness comes in as an argument"
+            - pkg: math/rand/v2
+              desc: "M10: randomness comes in as an argument"
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: "M3: print to an io.Writer the caller passes in"
+        - pattern: ^(os\.Exit|log\.Fatal.*)$
+          msg: "M7: return the error; only main exits"
+        - pattern: ^http\.(DefaultClient|Get|Post|PostForm|Head)$
+          msg: "S8/M11: build an http.Client with a timeout and pass it in"
+        - pattern: ^time\.(Now|Since|Until)$
+          msg: "M10: the domain takes the time as an argument; inject a clock (func() time.Time)"
+        - pattern: ^os\.(Getenv|LookupEnv|Environ)$
+          msg: "M10: the domain takes configuration as arguments"
+        - pattern: ^panic$
+          msg: "M7/M11: return an error; a panic is for a broken invariant only, in platform code"
+        - pattern: ^recover$
+          msg: "M7: recover only at the process boundary, in platform code"
+        - pattern: InsecureSkipVerify
+          msg: "S5: TLS verification is never turned off"
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+    dupl:
+      threshold: 100
+    interfacebloat:
+      max: 5
+    sloglint:
+      no-mixed-args: true
+      attr-only: true
+      no-global: all
+      context: all
+      static-msg: true
+      key-naming-case: snake
+      forbidden-keys: [time, level, msg, source]
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+    exhaustive:
+      default-signifies-exhaustive: false
+    gosec:
+      excludes:
+        - G104 # errcheck reports unchecked errors
+    gomoddirectives:
+      replace-local: false
+      retract-allow-no-explanation: false
+      exclude-forbidden: true
+      go-debug-forbidden: true
+
+  exclusions:
+    generated: disable
+    warn-unused: true
+    rules:
+      # Tests: table-driven tests are long, and a test may read the clock.
+      - path: _test\.go
+        linters: [gocognit, dupl, gochecknoglobals]
+      - path: _test\.go
+        linters: [gosec]
+        text: "^G304"
+      - path: _test\.go
+        linters: [revive]
+        text: "^(function-length|file-length-limit)"
+      # Clock and environment are banned in the domain only.
+      - path-except: /internal/[^/]+/internal/domain/
+        linters: [forbidigo]
+        text: "^use of `(time\\.(Now|Since|Until)|os\\.(Getenv|LookupEnv|Environ))`"
+      # Only main exits.
+      - path: (^|/)cmd/[^/]+/main\.go$
+        linters: [forbidigo]
+        text: "^use of `os\\.Exit`"
+      # panic and recover belong to platform code.
+      - path: (^|/)internal/platform/
+        linters: [forbidigo]
+        text: "^use of `(panic|recover)`"

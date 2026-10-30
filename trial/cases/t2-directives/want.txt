@@ -1,0 +1,5 @@
+# T2: unsafe imported (twice), a directive disabled by a space. Nothing here reports the //go:linkname on line 10: kit guard must.
+golangci/depguard internal/notes/internal/t2case/t2.go:4 import 'unsafe' is not allowed from list 'one\-library\-per\-need': T2/M1
+golangci/depguard internal/notes/internal/t2case/t2.go:5 import 'unsafe' is not allowed from list 'one\-library\-per\-need': T2/M1
+golangci/gocheckcompilerdirectives internal/notes/internal/t2case/t2.go:8 compiler directive contains space: // go:generate
+golangci/staticcheck internal/notes/internal/t2case/t2.go:8 SA9009: ineffectual compiler directive due to extraneous space: "// go

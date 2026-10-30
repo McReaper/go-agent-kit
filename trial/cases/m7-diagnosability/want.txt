@@ -1,0 +1,9 @@
+# M7: errors compared and formatted so the chain is lost, the global logger with loose pairs, and panic/exit/recover outside their place.
+golangci/errorlint internal/notes/internal/m7case/m7.go:15 comparing with == will fail on wrapped errors\. Use errors\.Is to check 
+golangci/errorlint internal/notes/internal/m7case/m7.go:19 non\-wrapping format verb for fmt\.Errorf\. Use `%w` to format errors
+golangci/forbidigo internal/notes/internal/m7case/m7.go:24 use of `panic` forbidden because "M7/M11: return an error; a panic is 
+golangci/forbidigo internal/notes/internal/m7case/m7.go:29 use of `os\.Exit` forbidden because "M7: return the error; only main ex
+golangci/forbidigo internal/notes/internal/m7case/m7.go:34 use of `recover` forbidden because "M7: recover only at the process bo
+golangci/sloglint internal/notes/internal/m7case/m7.go:18 InfoContext should be used instead
+golangci/sloglint internal/notes/internal/m7case/m7.go:18 default logger should not be used
+golangci/sloglint internal/notes/internal/m7case/m7.go:18 key\-value pairs should not be used

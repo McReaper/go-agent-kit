@@ -1,0 +1,3 @@
+# M2: a file gofumpt and goimports would rewrite.
+golangci/gofumpt internal/notes/internal/fmtcase/fmt.go:4 File is not properly formatted
+golangci/goimports internal/notes/internal/fmtcase/fmt.go:4 File is not properly formatted

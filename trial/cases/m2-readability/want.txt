@@ -1,0 +1,6 @@
+# M2: a misspelling, a builtin shadowed, an underscore name and a punctuated error string.
+golangci/misspell internal/notes/internal/m2case/m2.go:5 `recieve` is a misspelling of `receive`
+golangci/predeclared internal/notes/internal/m2case/m2.go:11 param len has same name as predeclared identifier
+golangci/staticcheck internal/notes/internal/m2case/m2.go:16 ST1005: error strings should not be capitalized
+golangci/staticcheck internal/notes/internal/m2case/m2.go:16 ST1005: error strings should not end with punctuation or newlines
+golangci/staticcheck internal/notes/internal/m2case/m2.go:7 ST1003: should not use underscores in Go names; func Get_note should b

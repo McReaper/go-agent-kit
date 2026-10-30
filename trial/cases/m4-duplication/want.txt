@@ -1,0 +1,3 @@
+# Two functions with the same body: dupl reports each against the other.
+golangci/dupl internal/notes/internal/m4case/m4.go:25 25-43 lines are duplicate of `.*m4\.go:5-23`
+golangci/dupl internal/notes/internal/m4case/m4.go:5 5-23 lines are duplicate of `.*m4\.go:25-43`
