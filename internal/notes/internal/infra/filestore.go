@@ -17,10 +17,11 @@ import (
 const ext = ".json"
 
 type record struct {
-	ID      string    `json:"id"`
-	Title   string    `json:"title"`
-	Body    string    `json:"body"`
-	Created time.Time `json:"created"`
+	ID      string       `json:"id"`
+	Title   string       `json:"title"`
+	Body    string       `json:"body"`
+	Tags    []domain.Tag `json:"tags,omitempty"`
+	Created time.Time    `json:"created"`
 }
 
 type FileStore struct {
@@ -43,7 +44,7 @@ func (s *FileStore) Close() error {
 }
 
 func (s *FileStore) Save(_ context.Context, n domain.Note) error {
-	data, err := json.Marshal(record{ID: string(n.ID), Title: string(n.Title), Body: n.Body, Created: n.Created})
+	data, err := json.Marshal(record{ID: string(n.ID), Title: string(n.Title), Body: n.Body, Tags: n.Tags, Created: n.Created})
 	if err != nil {
 		return fmt.Errorf("encode note %s: %w", n.ID, err)
 	}
@@ -93,5 +94,5 @@ func (s *FileStore) read(name string) (domain.Note, error) {
 	if err := json.Unmarshal(data, &r); err != nil {
 		return domain.Note{}, fmt.Errorf("decode %s: %w", name, err)
 	}
-	return domain.Note{ID: domain.NoteID(r.ID), Title: domain.Title(r.Title), Body: r.Body, Created: r.Created}, nil
+	return domain.Note{ID: domain.NoteID(r.ID), Title: domain.Title(r.Title), Body: r.Body, Tags: r.Tags, Created: r.Created}, nil
 }
