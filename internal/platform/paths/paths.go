@@ -1,3 +1,5 @@
+// Copyright 2026 Notes Inc. All rights reserved.
+
 // Package paths says where the app keeps its data on each system.
 package paths
 

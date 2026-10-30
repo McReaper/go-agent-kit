@@ -1,3 +1,5 @@
+// Copyright 2026 Notes Inc. All rights reserved.
+
 // Package notes keeps short notes on disk and serves them as MCP tools and
 // CLI commands. It is the module's contract: nothing else in it is visible
 // outside.

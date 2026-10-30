@@ -1,3 +1,5 @@
+// Copyright 2026 Notes Inc. All rights reserved.
+
 // Package slug turns free text into lowercase ASCII identifiers.
 package slug
 

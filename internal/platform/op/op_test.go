@@ -1,3 +1,5 @@
+// Copyright 2026 Notes Inc. All rights reserved.
+
 package op_test
 
 import (

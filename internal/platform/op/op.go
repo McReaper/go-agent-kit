@@ -1,3 +1,5 @@
+// Copyright 2026 Notes Inc. All rights reserved.
+
 // Package op binds one operation to both surfaces, an MCP tool and a CLI
 // command, from a single arguments struct.
 package op
