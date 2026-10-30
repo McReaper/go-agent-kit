@@ -15,7 +15,7 @@ import (
 func apidiffFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	var findings []finding
-	for _, pkg := range strings.Fields(string(runIn(t, cleanDir, nil, "go", "list", "./pkg/..."))) {
+	for pkg := range strings.FieldsSeq(string(runIn(t, cleanDir, nil, "go", "list", "./pkg/..."))) {
 		base := filepath.Join(t.TempDir(), "base.export")
 		runIn(t, cleanDir, nil, "apidiff", "-w", base, pkg)
 		out := runIn(t, dir, nil, "apidiff", "-incompatible", base, pkg)
