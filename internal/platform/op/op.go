@@ -103,6 +103,8 @@ func bindFlags(cmd *cobra.Command, v reflect.Value) error {
 			cmd.Flags().IntVar(p, flag, *p, usage)
 		case *bool:
 			cmd.Flags().BoolVar(p, flag, *p, usage)
+		case *[]string:
+			cmd.Flags().StringSliceVar(p, flag, *p, usage)
 		default:
 			return fmt.Errorf("field %s has type %s, which has no flag", f.Name, f.Type)
 		}
