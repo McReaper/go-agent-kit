@@ -40,6 +40,57 @@
   },
   {
     "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "description": "Changes the title and/or the text of a note, found by its id. The id and the note's date stay the same.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "description": "the new text; leave it out to keep the text",
+          "type": "string"
+        },
+        "clear_body": {
+          "description": "empty the text; use it instead of body to remove the text",
+          "type": "boolean"
+        },
+        "id": {
+          "description": "the note's id, as add_note and list_notes return it",
+          "type": "string"
+        },
+        "title": {
+          "description": "the new title, at most 80 characters; leave it out to keep the title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "edit_note",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": true
