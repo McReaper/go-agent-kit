@@ -1,6 +1,7 @@
 package notes_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -23,12 +24,23 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
 }
 
-func session(t *testing.T) *mcp.ClientSession {
+func openModule(t *testing.T) *notes.Module {
 	t.Helper()
 	m, err := notes.Open(t.TempDir(), func() time.Time { return time.Date(2026, 10, 30, 22, 5, 9, 0, time.UTC) })
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := m.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return m
+}
+
+func session(t *testing.T) *mcp.ClientSession {
+	t.Helper()
+	m := openModule(t)
 	s := mcp.NewServer(&mcp.Implementation{Name: "notes", Version: "test"}, nil)
 	if err := m.Register(s); err != nil {
 		t.Fatal(err)
@@ -44,7 +56,7 @@ func session(t *testing.T) *mcp.ClientSession {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := errors.Join(cs.Close(), ss.Wait(), m.Close()); err != nil {
+		if err := errors.Join(cs.Close(), ss.Wait()); err != nil {
 			t.Error(err)
 		}
 	})
@@ -89,6 +101,82 @@ func TestAnAddedNoteIsListed(t *testing.T) {
 	want := map[string]any{"notes": []any{map[string]any{"id": "buy-milk-20261030t220509", "title": "Buy milk"}}}
 	if diff := cmp.Diff(want, listed.StructuredContent); diff != "" {
 		t.Errorf("list_notes (-want +got):\n%s", diff)
+	}
+}
+
+func TestADeletedNoteIsGone(t *testing.T) {
+	cs := session(t)
+	ctx := context.Background()
+	added, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "add_note", Arguments: map[string]any{"title": "Buy milk"}})
+	if err != nil || added.IsError {
+		t.Fatalf("add_note = %+v, %v", added, err)
+	}
+	addedOut, ok := added.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("add_note content = %#v", added.StructuredContent)
+	}
+	deleted, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "delete_note", Arguments: map[string]any{"id": addedOut["id"]}})
+	if err != nil || deleted.IsError {
+		t.Fatalf("delete_note = %+v, %v", deleted, err)
+	}
+	listed, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_notes", Arguments: map[string]any{}})
+	if err != nil || listed.IsError {
+		t.Fatalf("list_notes = %+v, %v", listed, err)
+	}
+	want := map[string]any{"notes": []any{}}
+	if diff := cmp.Diff(want, listed.StructuredContent); diff != "" {
+		t.Errorf("list_notes after delete_note (-want +got):\n%s", diff)
+	}
+}
+
+func TestDeleteNoteRefusesAnIDWithNoNoteAsAToolError(t *testing.T) {
+	res, err := session(t).CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "delete_note",
+		Arguments: map[string]any{"id": "no-such-note-20261030t220509"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatalf("delete_note accepted an id with no note: %+v", res)
+	}
+}
+
+func TestTheCommandsAddAndDeleteANote(t *testing.T) {
+	var out bytes.Buffer
+	cmds, err := openModule(t).Commands(&out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := func(name string, args ...string) error {
+		t.Helper()
+		for _, c := range cmds {
+			if c.Name() == name {
+				c.SetArgs(args)
+				return c.ExecuteContext(context.Background())
+			}
+		}
+		t.Fatalf("no command %s", name)
+		return nil
+	}
+	if err := run("add-note", "--title", "Buy milk"); err != nil {
+		t.Fatal(err)
+	}
+	var added struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &added); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if err := run("delete-note", "--id", added.ID); err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"id":"` + added.ID + `"}` + "\n"; out.String() != want {
+		t.Errorf("delete-note printed %q, want %q", out.String(), want)
+	}
+	if err := run("delete-note", "--id", added.ID); err == nil {
+		t.Error("deleting the same note twice succeeded")
 	}
 }
 

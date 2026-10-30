@@ -62,6 +62,19 @@ func (s *FileStore) Save(_ context.Context, n domain.Note) error {
 	return nil
 }
 
+// WHY: a note that isn't there is an error, not a quiet success, so an agent
+// that deletes with a wrong id hears about it.
+func (s *FileStore) Delete(_ context.Context, id domain.NoteID) error {
+	err := s.root.Remove(string(id) + ext)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("note %s does not exist: %w", id, err)
+	}
+	if err != nil {
+		return fmt.Errorf("delete note %s: %w", id, err)
+	}
+	return nil
+}
+
 func (s *FileStore) Newest(_ context.Context, limit int) ([]domain.Note, error) {
 	names, err := fs.Glob(s.root.FS(), "*"+ext)
 	if err != nil {

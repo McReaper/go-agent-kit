@@ -61,6 +61,41 @@ func TestNewNamesTheNoteByItsTitleAndUTCTime(t *testing.T) {
 	}
 }
 
+func TestParseIDRefusesAnIDThatIsNotAFileName(t *testing.T) {
+	cases := []struct {
+		name string
+		id   string
+		want error
+	}{
+		{"empty", "", domain.ErrEmptyID},
+		{"a path", "../notes", domain.ErrBadID},
+		{"an upper-case letter", "Buy-milk-20261030t220509", domain.ErrBadID},
+		{"a space", "buy milk", domain.ErrBadID},
+		{"an extension", "buy-milk.json", domain.ErrBadID},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if _, err := domain.ParseID(c.id); !errors.Is(err, c.want) {
+				t.Fatalf("ParseID(%q) err = %v, want %v", c.id, err, c.want)
+			}
+		})
+	}
+}
+
+func TestParseIDAcceptsEveryIDNewMakes(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		s := rapid.StringMatching(`[a-zA-Z0-9][a-zA-Z0-9 ]{0,78}[a-zA-Z0-9]`).Draw(t, "title")
+		title, err := domain.ParseTitle(s)
+		if err != nil {
+			t.Fatalf("ParseTitle(%q) = %v", s, err)
+		}
+		id := domain.New(title, "", time.Date(2026, 10, 30, 22, 5, 9, 0, time.UTC)).ID
+		if _, err := domain.ParseID(string(id)); err != nil {
+			t.Fatalf("ParseID(%q) = %v", id, err)
+		}
+	})
+}
+
 func FuzzParseTitle(f *testing.F) {
 	for _, seed := range []string{"Groceries", "", "  x  ", "?!", strings.Repeat("a", 81)} {
 		f.Add(seed)

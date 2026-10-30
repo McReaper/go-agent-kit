@@ -12,6 +12,7 @@ import (
 	"example.com/notes/internal/notes/internal/add"
 	"example.com/notes/internal/notes/internal/infra"
 	"example.com/notes/internal/notes/internal/list"
+	"example.com/notes/internal/notes/internal/remove"
 	"example.com/notes/internal/platform/op"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ type Module struct {
 	store *infra.FileStore
 	add   *add.Add
 	list  *list.List
+	del   *remove.Remove
 }
 
 // Open opens the notes kept in dir, creating it if needed. now is the clock
@@ -31,7 +33,7 @@ func Open(dir string, now func() time.Time) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Module{store: store, add: add.New(store, now), list: list.New(store)}, nil
+	return &Module{store: store, add: add.New(store, now), list: list.New(store), del: remove.New(store)}, nil
 }
 
 // Close releases the notes directory.
@@ -41,15 +43,16 @@ func (m *Module) Close() error {
 
 // Register adds the module's tools to s.
 func (m *Module) Register(s *mcp.Server) error {
-	return errors.Join(op.Register(s, m.add.Op()), op.Register(s, m.list.Op()))
+	return errors.Join(op.Register(s, m.add.Op()), op.Register(s, m.list.Op()), op.Register(s, m.del.Op()))
 }
 
 // Commands returns the module's CLI commands, which print their results to out.
 func (m *Module) Commands(out io.Writer) ([]*cobra.Command, error) {
 	addCmd, aerr := op.Command(m.add.Op(), out)
 	listCmd, lerr := op.Command(m.list.Op(), out)
-	if err := errors.Join(aerr, lerr); err != nil {
+	delCmd, derr := op.Command(m.del.Op(), out)
+	if err := errors.Join(aerr, lerr, derr); err != nil {
 		return nil, fmt.Errorf("notes commands: %w", err)
 	}
-	return []*cobra.Command{addCmd, listCmd}, nil
+	return []*cobra.Command{addCmd, listCmd, delCmd}, nil
 }

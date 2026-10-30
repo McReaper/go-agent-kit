@@ -2,6 +2,8 @@ package infra_test
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"testing"
 	"time"
 
@@ -43,6 +45,38 @@ func TestFileStoreReturnsTheNewestFirstUpToTheLimit(t *testing.T) {
 	want := []domain.Note{note("newest", 3), note("middle", 2)}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Newest (-want +got):\n%s", diff)
+	}
+}
+
+func TestFileStoreDeletesOnlyTheNamedNote(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	for _, minute := range []int{1, 2} {
+		if err := s.Save(ctx, note("note", minute)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Save(ctx, note("other", 3)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(ctx, note("note", 2).ID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Newest(ctx, 10)
+	want := []domain.Note{note("other", 3), note("note", 1)}
+	if err != nil || len(got) != len(want) {
+		t.Fatalf("Newest = %+v, %v", got, err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Newest after Delete (-want +got):\n%s", diff)
+	}
+}
+
+func TestFileStoreRefusesToDeleteAMissingNote(t *testing.T) {
+	s := open(t)
+	err := s.Delete(context.Background(), note("ghost", 1).ID)
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("err = %v, want fs.ErrNotExist", err)
 	}
 }
 
