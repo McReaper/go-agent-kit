@@ -263,6 +263,7 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 - Low-entropy secrets (S1): gitleaks misses `"correct horse"`.
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
+- Two log lines with the same message (M7, .NET's unique `EventId`), and an exported name used only inside its own package (M5): no analyzer yet.
 - A foreign JSON format decoded in production code: tagliatelle wants snake_case; tests are exempt, production would need an override.
 - Renovate's configuration: not yet proven (milestone 2).
 
