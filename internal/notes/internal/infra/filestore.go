@@ -17,10 +17,11 @@ import (
 const ext = ".json"
 
 type record struct {
-	ID      string    `json:"id"`
-	Title   string    `json:"title"`
-	Body    string    `json:"body"`
-	Created time.Time `json:"created"`
+	ID       string    `json:"id"`
+	Title    string    `json:"title"`
+	Body     string    `json:"body"`
+	Created  time.Time `json:"created"`
+	Archived bool      `json:"archived,omitempty"`
 }
 
 type FileStore struct {
@@ -100,7 +101,7 @@ func (s *FileStore) Replace(_ context.Context, n domain.Note) error {
 }
 
 func encode(n domain.Note) ([]byte, error) {
-	data, err := json.Marshal(record{ID: string(n.ID), Title: string(n.Title), Body: n.Body, Created: n.Created})
+	data, err := json.Marshal(record{ID: string(n.ID), Title: string(n.Title), Body: n.Body, Created: n.Created, Archived: n.Archived})
 	if err != nil {
 		return nil, fmt.Errorf("encode note %s: %w", n.ID, err)
 	}
@@ -132,11 +133,26 @@ func (s *FileStore) All(_ context.Context) ([]domain.Note, error) {
 }
 
 func (s *FileStore) Newest(ctx context.Context, limit int) ([]domain.Note, error) {
+	return s.Recent(ctx, limit, true)
+}
+
+// WHY: the limit counts only the notes returned, so hiding archived notes
+// never leaves a listing short of its limit while notes remain.
+func (s *FileStore) Recent(ctx context.Context, limit int, includeArchived bool) ([]domain.Note, error) {
 	notes, err := s.All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return notes[:min(limit, len(notes))], nil
+	out := make([]domain.Note, 0, min(limit, len(notes)))
+	for _, n := range notes {
+		if len(out) == limit {
+			break
+		}
+		if n.Visible(includeArchived) {
+			out = append(out, n)
+		}
+	}
+	return out, nil
 }
 
 func (s *FileStore) read(name string) (domain.Note, error) {
@@ -148,5 +164,5 @@ func (s *FileStore) read(name string) (domain.Note, error) {
 	if err := json.Unmarshal(data, &r); err != nil {
 		return domain.Note{}, fmt.Errorf("decode %s: %w", name, err)
 	}
-	return domain.Note{ID: domain.NoteID(r.ID), Title: domain.Title(r.Title), Body: r.Body, Created: r.Created}, nil
+	return domain.Note{ID: domain.NoteID(r.ID), Title: domain.Title(r.Title), Body: r.Body, Created: r.Created, Archived: r.Archived}, nil
 }

@@ -16,7 +16,7 @@ type memStore struct {
 	err   error
 }
 
-func (s *memStore) Newest(_ context.Context, limit int) ([]domain.Note, error) {
+func (s *memStore) Recent(_ context.Context, limit int, _ bool) ([]domain.Note, error) {
 	s.asked = limit
 	return s.notes[:min(limit, len(s.notes))], s.err
 }

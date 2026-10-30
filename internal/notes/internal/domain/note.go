@@ -23,10 +23,11 @@ type NoteID string
 type Title string
 
 type Note struct {
-	ID      NoteID
-	Title   Title
-	Body    string
-	Created time.Time
+	ID       NoteID
+	Title    Title
+	Body     string
+	Created  time.Time
+	Archived bool
 }
 
 func ParseTitle(s string) (Title, error) {

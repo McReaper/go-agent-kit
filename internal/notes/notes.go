@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"example.com/notes/internal/notes/internal/add"
+	"example.com/notes/internal/notes/internal/archive"
 	"example.com/notes/internal/notes/internal/edit"
 	"example.com/notes/internal/notes/internal/infra"
 	"example.com/notes/internal/notes/internal/list"
@@ -21,11 +22,12 @@ import (
 
 // Module is the notes module, ready to be registered on both surfaces.
 type Module struct {
-	store  *infra.FileStore
-	add    *add.Add
-	list   *list.List
-	edit   *edit.Edit
-	search *search.Search
+	store   *infra.FileStore
+	add     *add.Add
+	list    *list.List
+	edit    *edit.Edit
+	search  *search.Search
+	archive *archive.Archive
 }
 
 // Open opens the notes kept in dir, creating it if needed. now is the clock
@@ -35,7 +37,7 @@ func Open(dir string, now func() time.Time) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Module{store: store, add: add.New(store, now), list: list.New(store), edit: edit.New(store), search: search.New(store)}, nil
+	return &Module{store: store, add: add.New(store, now), list: list.New(store), edit: edit.New(store), search: search.New(store), archive: archive.New(store)}, nil
 }
 
 // Close releases the notes directory.
@@ -50,6 +52,8 @@ func (m *Module) Register(s *mcp.Server) error {
 		op.Register(s, m.list.Op()),
 		op.Register(s, m.edit.Op()),
 		op.Register(s, m.search.Op()),
+		op.Register(s, m.archive.ArchiveOp()),
+		op.Register(s, m.archive.UnarchiveOp()),
 	)
 }
 
@@ -59,8 +63,10 @@ func (m *Module) Commands(out io.Writer) ([]*cobra.Command, error) {
 	listCmd, lerr := op.Command(m.list.Op(), out)
 	editCmd, eerr := op.Command(m.edit.Op(), out)
 	searchCmd, serr := op.Command(m.search.Op(), out)
-	if err := errors.Join(aerr, lerr, eerr, serr); err != nil {
+	archiveCmd, arerr := op.Command(m.archive.ArchiveOp(), out)
+	unarchiveCmd, uerr := op.Command(m.archive.UnarchiveOp(), out)
+	if err := errors.Join(aerr, lerr, eerr, serr, arerr, uerr); err != nil {
 		return nil, fmt.Errorf("notes commands: %w", err)
 	}
-	return []*cobra.Command{addCmd, listCmd, editCmd, searchCmd}, nil
+	return []*cobra.Command{addCmd, listCmd, editCmd, searchCmd, archiveCmd, unarchiveCmd}, nil
 }

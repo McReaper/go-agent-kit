@@ -28,3 +28,9 @@ func (n Note) Contains(text string) bool {
 	return strings.Contains(strings.ToLower(string(n.Title)), needle) ||
 		strings.Contains(strings.ToLower(n.Body), needle)
 }
+
+// WHY: an archived note is kept but hidden from listings and searches, which
+// show it only when the caller asks for archived notes too.
+func (n Note) Visible(includeArchived bool) bool {
+	return includeArchived || !n.Archived
+}

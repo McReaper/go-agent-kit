@@ -45,6 +45,45 @@
       "openWorldHint": false,
       "readOnlyHint": false
     },
+    "description": "Archives a note, found by its id: it no longer appears in list_notes or search_notes unless they include archived notes. Nothing is deleted; unarchive_note shows it again.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "the note's id, as add_note and list_notes return it",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "archive_note",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
     "description": "Changes the title and/or the text of a note, found by its id. The id and the note's date stay the same.",
     "inputSchema": {
       "additionalProperties": false,
@@ -95,10 +134,14 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Lists the newest notes, their ids and titles.",
+    "description": "Lists the newest notes, their ids and titles. Archived notes are left out unless include_archived is set.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "include_archived": {
+          "description": "also list the archived notes, which are left out by default",
+          "type": "boolean"
+        },
         "limit": {
           "description": "how many notes to return, newest first: 20 by default, 100 at most",
           "type": "integer"
@@ -145,10 +188,14 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Finds the notes whose title or text contains the given text, ignoring case. Returns their ids and titles, newest first.",
+    "description": "Finds the notes whose title or text contains the given text, ignoring case. Returns their ids and titles, newest first. Archived notes are left out unless include_archived is set.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "include_archived": {
+          "description": "also search the archived notes, which are left out by default",
+          "type": "boolean"
+        },
         "limit": {
           "description": "how many notes to return, newest first: 20 by default, 100 at most",
           "type": "integer"
@@ -192,6 +239,45 @@
       },
       "required": [
         "notes"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "description": "Unarchives a note, found by its id, so list_notes and search_notes show it again.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "the note's id, as add_note and list_notes return it",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "unarchive_note",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
       ],
       "type": "object"
     }

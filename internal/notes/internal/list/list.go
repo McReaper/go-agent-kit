@@ -9,7 +9,8 @@ import (
 )
 
 type Args struct {
-	Limit int `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 20 by default, 100 at most"`
+	Limit           int  `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 20 by default, 100 at most"`
+	IncludeArchived bool `json:"include_archived,omitempty" jsonschema:"also list the archived notes, which are left out by default"`
 }
 
 type Item struct {
@@ -22,7 +23,7 @@ type Out struct {
 }
 
 type Reader interface {
-	Newest(ctx context.Context, limit int) ([]domain.Note, error)
+	Recent(ctx context.Context, limit int, includeArchived bool) ([]domain.Note, error)
 }
 
 type List struct {
@@ -36,7 +37,7 @@ func New(store Reader) *List {
 func (l *List) Op() op.Op[Args, Out] {
 	return op.Op[Args, Out]{
 		Name:        "list_notes",
-		Description: "Lists the newest notes, their ids and titles.",
+		Description: "Lists the newest notes, their ids and titles. Archived notes are left out unless include_archived is set.",
 		Effect:      op.ReadOnly,
 		Run:         l.Run,
 	}
@@ -47,7 +48,7 @@ func (l *List) Run(ctx context.Context, args Args) (Out, error) {
 	if err != nil {
 		return Out{}, err
 	}
-	notes, err := l.store.Newest(ctx, limit)
+	notes, err := l.store.Recent(ctx, limit, args.IncludeArchived)
 	if err != nil {
 		return Out{}, fmt.Errorf("list the notes: %w", err)
 	}

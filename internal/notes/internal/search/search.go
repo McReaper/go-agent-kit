@@ -11,8 +11,9 @@ import (
 )
 
 type Args struct {
-	Text  string `json:"text" jsonschema:"the text to find in each note's title or text, ignoring case"`
-	Limit int    `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 20 by default, 100 at most"`
+	Text            string `json:"text" jsonschema:"the text to find in each note's title or text, ignoring case"`
+	Limit           int    `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 20 by default, 100 at most"`
+	IncludeArchived bool   `json:"include_archived,omitempty" jsonschema:"also search the archived notes, which are left out by default"`
 }
 
 type Item struct {
@@ -39,7 +40,7 @@ func New(store Reader) *Search {
 func (s *Search) Op() op.Op[Args, Out] {
 	return op.Op[Args, Out]{
 		Name:        "search_notes",
-		Description: "Finds the notes whose title or text contains the given text, ignoring case. Returns their ids and titles, newest first.",
+		Description: "Finds the notes whose title or text contains the given text, ignoring case. Returns their ids and titles, newest first. Archived notes are left out unless include_archived is set.",
 		Effect:      op.ReadOnly,
 		Run:         s.Run,
 	}
@@ -66,7 +67,7 @@ func (s *Search) Run(ctx context.Context, args Args) (Out, error) {
 		if len(out.Notes) == limit {
 			break
 		}
-		if n.Contains(text) {
+		if n.Visible(args.IncludeArchived) && n.Contains(text) {
 			out.Notes = append(out.Notes, Item{ID: string(n.ID), Title: string(n.Title)})
 		}
 	}
