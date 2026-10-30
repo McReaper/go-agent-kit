@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  kit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install the tools the proofs ran with
+        run: |
+          grep -v '^#' tools.txt | grep @ | xargs -n1 go install
+          python3 -m pip install --user "zizmor==$(awk '$1 == "zizmor" {print $2}' tools.txt)"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          v=$(awk '$1 == "shellcheck" {print $2}' tools.txt)
+          curl -fsSL -o shellcheck.tar.xz "https://github.com/koalaman/shellcheck/releases/download/v$v/shellcheck-v$v.linux.x86_64.tar.xz"
+          echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  shellcheck.tar.xz" | sha256sum -c -
+          tar -xJf shellcheck.tar.xz
+          sudo mv "shellcheck-v$v/shellcheck" /usr/local/bin/
+      - run: go vet ./...
+      - name: Lint the kit with its own rules, for every target system
+        run: |
+          go build -o "$RUNNER_TEMP/kitvet" ./cmd/kitvet
+          for goos in linux windows; do
+            GOOS=$goos golangci-lint run --config lint/golangci.yml ./...
+            GOOS=$goos "$RUNNER_TEMP/kitvet" ./...
+          done
+      - name: Prove every rule on the trial
+        run: go test -race -count=1 ./...
+      - name: Check the kit's own workflows and history
+        run: |
+          actionlint
+          zizmor --offline .github/workflows
+          gitleaks git --no-banner --redact --config .gitleaks.toml .

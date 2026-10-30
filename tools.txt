@@ -1,0 +1,13 @@
+# The tools the proofs ran with, one per line: the Go ones as module@version for
+# `go install`, the others as name version. CI installs exactly these.
+github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+golang.org/x/vuln/cmd/govulncheck@v1.9.0
+golang.org/x/tools/cmd/deadcode@v0.52.0
+golang.org/x/exp/cmd/apidiff@v0.0.0-20261014143641-f0251eb4aa3e
+go.uber.org/nilaway/cmd/nilaway@v0.0.0-20260918162853-acb8859b9031
+github.com/zricethezav/gitleaks/v8@v8.30.1
+github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0
+github.com/avito-tech/go-mutesting/cmd/go-mutesting@v0.0.0-20261002081621-9ce5f731e321
+zizmor 1.31.1
+shellcheck 0.11.0
