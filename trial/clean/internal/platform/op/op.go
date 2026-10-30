@@ -109,14 +109,3 @@ func bindFlags(cmd *cobra.Command, v reflect.Value) error {
 	}
 	return nil
 }
-
-// FlagNames returns the flag each of A's fields becomes, for parity tests.
-func FlagNames[A any]() []string {
-	t := reflect.TypeFor[A]()
-	names := make([]string, 0, t.NumField())
-	for i := range t.NumField() {
-		name, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
-		names = append(names, strings.ReplaceAll(name, "_", "-"))
-	}
-	return names
-}
