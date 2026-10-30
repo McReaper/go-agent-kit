@@ -3,7 +3,6 @@ package proof_test
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"slices"
@@ -31,8 +30,7 @@ func runKitvet(t *testing.T, dir, goos string) map[string]map[string]json.RawMes
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOFLAGS=-mod=readonly")
 	out, err := cmd.Output()
-	var exit *exec.ExitError
-	if err != nil && !errors.As(err, &exit) {
+	if err != nil && exitCode(err) < 0 {
 		t.Fatalf("kitvet (GOOS=%s): %v", goos, err)
 	}
 	report := map[string]map[string]json.RawMessage{}

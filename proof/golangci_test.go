@@ -47,8 +47,7 @@ func runGolangci(t *testing.T, dir, goos string) golangciReport {
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOFLAGS=-mod=readonly")
 	out, err := cmd.Output()
-	var exit *exec.ExitError
-	if err != nil && !(errors.As(err, &exit) && exit.ExitCode() == 1) {
+	if err != nil && exitCode(err) != 1 {
 		t.Fatalf("golangci-lint (GOOS=%s): %v\n%s", goos, err, stderrOf(err))
 	}
 	var r golangciReport
@@ -59,11 +58,17 @@ func runGolangci(t *testing.T, dir, goos string) golangciReport {
 }
 
 func stderrOf(err error) string {
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		return string(exit.Stderr)
 	}
 	return ""
+}
+
+func exitCode(err error) int {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+		return exit.ExitCode()
+	}
+	return -1
 }
 
 func golangciFindings(t *testing.T, dir string) []finding {

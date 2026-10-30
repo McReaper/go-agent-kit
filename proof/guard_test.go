@@ -2,7 +2,6 @@ package proof_test
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"testing"
@@ -50,8 +49,7 @@ func guardFindings(t *testing.T, dir string) []finding {
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	out, err := cmd.Output()
-	var exit *exec.ExitError
-	if err != nil && !(errors.As(err, &exit) && exit.ExitCode() == 1) {
+	if err != nil && exitCode(err) != 1 {
 		t.Fatalf("kit guard: %v\n%s", err, stderrOf(err))
 	}
 	var rows []guardRow
