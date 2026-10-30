@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "kit-proof-bin")
 	bin, buildErr = dir, err
 	if err == nil {
-		buildErr = build("kitvet")
+		buildErr = build("kitvet", "kit")
 	}
 	m.Run()
 	if err := os.RemoveAll(dir); err != nil {

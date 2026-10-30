@@ -1,0 +1,11 @@
+# T2: one change that hides code from the checks every way Go allows. Not flagged, on purpose:
+# windows_only.go (a real target tag) and gen/real.go (the header where generated code lives).
+!isolated
+guard/bypass-hidden-dir internal/notes/internal/list/_hidden/hidden.go:0 never builds, vets or tests a directory starting with _ or \.
+guard/bypass-generated internal/notes/internal/list/fake_generated.go:1 the generated-code header turns linters off
+guard/bypass-skip internal/notes/internal/list/skip_test.go:6 a skipped test proves nothing
+guard/bypass-skip internal/notes/internal/list/skip_test.go:9 a skipped test proves nothing
+guard/bypass-directive internal/notes/internal/list/suppress.go:5 //go:linkname, //go:debug and cgo
+guard/bypass-suppression internal/notes/internal/list/suppress.go:8 a finding is fixed, not silenced
+guard/bypass-suppression internal/notes/internal/list/suppress.go:9 a finding is fixed, not silenced
+guard/bypass-buildtag internal/notes/internal/list/tagged.go:1 build tag kitskip is set by no target

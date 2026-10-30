@@ -1,0 +1,3 @@
+# M8: the go line moved, as `go get <dep>@latest` does silently when the dependency needs a newer Go.
+!isolated
+guard/protected-gomod go.mod:3 the go and toolchain lines choose the compiler and the language

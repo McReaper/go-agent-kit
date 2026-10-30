@@ -1,0 +1,4 @@
+# T3/E2: over 400 production lines, across two modules (notes and archive).
+!isolated
+guard/size-lines :0 this change touches 408 production lines, the limit is 400
+guard/size-modules :0 this change touches 2 modules \(archive, notes\)

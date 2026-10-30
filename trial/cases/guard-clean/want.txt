@@ -1,0 +1,3 @@
+# A normal change: a new function in one slice and a new test for it. The guard must say nothing.
+!isolated
+!expect-none guard
