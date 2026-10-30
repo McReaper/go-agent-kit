@@ -51,6 +51,9 @@ type trialCase struct {
 	isolated bool
 	deletes  []string
 	quiet    []string
+	// WHY: a guard case left uncommitted shows the guard reads the working
+	// tree, where an agent's checks run before it commits.
+	uncommitted bool
 }
 
 func (c trialCase) uses(toolPrefix string) bool {
@@ -86,6 +89,8 @@ func loadCase(t *testing.T, name string) trialCase {
 		case line == "" || strings.HasPrefix(line, "#"):
 		case line == "!isolated":
 			c.isolated = true
+		case line == "!uncommitted":
+			c.uncommitted = true
 		case strings.HasPrefix(line, "!delete "):
 			c.deletes = append(c.deletes, strings.TrimPrefix(line, "!delete "))
 		case strings.HasPrefix(line, "!expect-none "):
