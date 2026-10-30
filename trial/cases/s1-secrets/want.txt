@@ -1,0 +1,2 @@
+# S1: an API key in source. gitleaks misses low-entropy passwords ("correct horse"): see the doc's uncovered list.
+gitleaks/generic-api-key internal/notes/internal/add/config.go:3 Generic API Key

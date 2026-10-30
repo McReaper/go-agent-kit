@@ -1,0 +1,6 @@
+# M8: x/text pinned back to v0.33.0, whose known vulnerabilities the code calls: two through the new precis call,
+# one through slug.Make's normalization, already in the clean trial.
+!isolated
+govulncheck/GO-2026-5970 internal/notes/internal/add/username.go:6 called; fixed in v0\.39\.0
+govulncheck/GO-2026-6629 internal/notes/internal/add/username.go:6 called; fixed in v0\.41\.0
+govulncheck/GO-2026-5970 pkg/slug/slug.go:15 called; fixed in v0\.39\.0

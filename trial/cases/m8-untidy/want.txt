@@ -1,0 +1,3 @@
+# M8: github.com/google/jsonschema-go marked as a direct requirement, which go mod tidy would undo.
+!isolated
+gomod/tidy go.mod:0 go\.mod or go\.sum is not tidy

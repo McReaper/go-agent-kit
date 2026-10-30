@@ -1,0 +1,14 @@
+name: ci
+
+on:
+  pull_request_target:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: echo "testing ${{ github.event.pull_request.title }}"
+      - run: go test ./...

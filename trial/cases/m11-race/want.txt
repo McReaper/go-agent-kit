@@ -1,0 +1,2 @@
+# M11: two goroutines increment a counter without a lock. Proven on Linux only (the race detector needs cgo).
+race/data-race internal/notes/internal/racecase/counter.go:8 WARNING: DATA RACE
