@@ -21,14 +21,18 @@ import (
 var errFindings = errors.New("the change breaks the kit's rules")
 
 func main() {
-	if err := root(os.Stdout).ExecuteContext(context.Background()); err != nil {
+	err := root(os.Stdout).ExecuteContext(context.Background())
+	if code, ok := errors.AsType[exitCode](err); ok {
+		os.Exit(int(code))
+	}
+	if err != nil {
 		os.Exit(1)
 	}
 }
 
 func root(out io.Writer) *cobra.Command {
-	r := &cobra.Command{Use: "kit", Short: "The anti-drift kit's checks", SilenceUsage: true}
-	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), appCommand(out))
+	r := &cobra.Command{Use: "kit", Short: "The anti-drift kit's checks", SilenceUsage: true, SilenceErrors: true}
+	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), appCommand(out), hookCommand())
 	return r
 }
 
