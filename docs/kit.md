@@ -143,7 +143,8 @@ The workstation gives fast feedback but can be bypassed; the Git platform is the
 
 | Solution | Tool | What it blocks | Proof |
 | --- | --- | --- | --- |
-| A separate identity for the agent: push to its branches, no merge, no admin | Bot account, fine-grained token | The agent merging alone or editing protection rules | milestone 2 |
+| A separate identity for the agent: push to its branches, no merge, no admin | A GitHub App with contents and pull requests only, no workflows or administration permission; `kit app exec -- <command>` mints its hour-long installation token into the command's environment, never printed, and commits as `<app>[bot]` | The agent merging alone, editing protection rules, or changing a workflow | `internal/platform/ghapp` tests; the live round is milestone 2 |
+| One command, the same on the agent's machine and in CI | `kit check`: golangci-lint with the kit's embedded config and the kit's analyzers per GOOS, archtest, sweep, deadcode, nilaway, govulncheck, the tests (with `-race` on Linux) and the guard; an app's own lint config is never read (crash tests ran a local check that missed a gate CI ran) | A local pass that CI then fails; a config weakened in the app | `TestKitCheckRunsEveryGateAndFailsOnAny` |
 | Protected paths need the owner's approval | CODEOWNERS + ruleset (code-owner review, stale approvals dismissed, last push approved, no bypass) | Changes to config, thresholds, CI, hooks, `.claude/`, `go.mod`, existing tests | milestone 2 |
 | Rules shipped by the kit, pinned by version | `lint/golangci.yml`, `cmd/kitvet`, `tools.txt`; an app's own `.golangci.yml` is never read | A rule weakened in the app repository | all cases |
 | Lint and vet per target system | CI runs golangci-lint and kitvet with `GOOS=linux` and `GOOS=windows` | A file built for one system escaping the checks | `m11-robustness` (`clean_windows.go`) |
