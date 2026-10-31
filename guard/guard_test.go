@@ -39,23 +39,48 @@ func rules(fs []guard.Finding) []string {
 	return out
 }
 
-func TestAnApprovedChangeMayTouchTestsButNeverBypass(t *testing.T) {
+func TestProtectedChangesBlockOnlyAtMergeUntilApprovedAndBypassesAlways(t *testing.T) {
 	d := guard.Diff{Files: []guard.File{
 		{Path: "x_test.go", Status: 'M', Added: []guard.Line{{N: 4, Text: "\tt.Skip()"}}},
 		{Path: "go.mod", Status: 'M', Added: []guard.Line{{N: 3, Text: "go 1.26.0"}}},
 	}}
-	if diff := cmp.Diff([]string{"bypass-skip", "protected-test", "protected-gomod"}, rules(guard.Check(d, false))); diff != "" {
-		t.Errorf("unapproved (-want +got):\n%s", diff)
+	all := guard.Check(d)
+	if diff := cmp.Diff([]string{"bypass-skip", "protected-test", "protected-gomod"}, rules(all)); diff != "" {
+		t.Errorf("Check (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]string{"bypass-skip"}, rules(guard.Check(d, true))); diff != "" {
-		t.Errorf("approved (-want +got):\n%s", diff)
+	cases := []struct {
+		name         string
+		ci, approved bool
+		want         []string
+	}{
+		{"locally, only the bypass", false, false, []string{"bypass-skip"}},
+		{"in CI, unapproved, all of them", true, false, []string{"bypass-skip", "protected-test", "protected-gomod"}},
+		{"in CI, approved, still the bypass", true, true, []string{"bypass-skip"}},
+	}
+	for _, c := range cases {
+		if diff := cmp.Diff(c.want, rules(guard.Blocking(all, c.ci, c.approved))); diff != "" {
+			t.Errorf("%s (-want +got):\n%s", c.name, diff)
+		}
+	}
+}
+
+func TestSensitiveFilesAreRefusedButNotTheirExamplesOrPublicHalves(t *testing.T) {
+	for name, want := range map[string]bool{
+		".env": true, "deploy/.env.production": true, ".env.example": false,
+		"certs/server.pem": true, "a/tls.KEY": true, "store.p12": true,
+		"home/.ssh/id_ed25519": true, "home/.ssh/id_ed25519.pub": false, "key.go": false,
+	} {
+		d := guard.Diff{Files: []guard.File{{Path: name, Status: 'A'}}}
+		if got := len(guard.Check(d)) == 1; got != want {
+			t.Errorf("%s refused = %v, want %v", name, got, want)
+		}
 	}
 }
 
 func TestBuildTagsOfRealTargetsPass(t *testing.T) {
 	for _, tag := range []string{"//go:build windows", "//go:build !windows && (amd64 || arm64)", "//go:build go1.25 && unix", "// +build linux"} {
 		d := guard.Diff{Files: []guard.File{{Path: "a.go", Status: 'A', Added: []guard.Line{{N: 1, Text: tag}}}}}
-		if fs := guard.Check(d, false); len(fs) != 0 {
+		if fs := guard.Check(d); len(fs) != 0 {
 			t.Errorf("%s: %v", tag, rules(fs))
 		}
 	}
@@ -63,7 +88,7 @@ func TestBuildTagsOfRealTargetsPass(t *testing.T) {
 
 func TestADeletedFileIsNeverABypass(t *testing.T) {
 	d := guard.Diff{Files: []guard.File{{Path: "_old/a.go", Status: 'D', Removed: 3}}}
-	if fs := guard.Check(d, true); len(fs) != 0 {
+	if fs := guard.Check(d); len(fs) != 0 {
 		t.Errorf("Check = %v", rules(fs))
 	}
 }
@@ -74,7 +99,7 @@ func TestTheModuleIsTheFirstInternalSegment(t *testing.T) {
 		{Path: "internal/notes/internal/big/a.go", Status: 'A', Added: added},
 		{Path: "internal/notes/b.go", Status: 'A', Added: added},
 	}}
-	if fs := guard.Check(d, false); len(fs) != 0 {
+	if fs := guard.Check(d); len(fs) != 0 {
 		t.Errorf("one module counted as several: %v", fs)
 	}
 }
