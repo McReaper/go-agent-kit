@@ -4,15 +4,36 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// WHY: the proof builds kit as kit.exe on every system; the hook calls
+// kit, which only Windows resolves to kit.exe. The PATH gets a copy under
+// the system's own name.
+func kitOnPath(t *testing.T) {
+	t.Helper()
+	data, err := os.ReadFile(kitCommand(t, "kit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := "kit"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, name), data, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
 
 // WHY: the hook is the fastest gate: it stops a secret before it enters
 // the history, where only a rewrite removes it.
 func TestThePreCommitHookStopsAStagedSecret(t *testing.T) {
 	dir := changeOf(t, trialCase{name: "no change"})
-	t.Setenv("PATH", filepath.Dir(kitCommand(t, "kit"))+string(os.PathListSeparator)+os.Getenv("PATH"))
+	kitOnPath(t)
 	t.Setenv("KIT_BASE", "base")
 	hook := func() (string, int) {
 		cmd := exec.CommandContext(t.Context(), "sh", ".githooks/pre-commit")
