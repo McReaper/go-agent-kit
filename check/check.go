@@ -43,8 +43,19 @@ type gate struct {
 
 // Run runs every gate in turn and returns their results.
 func Run(ctx context.Context, o Options) []Result {
+	return runGates(ctx, o, gates(o))
+}
+
+// Package runs the gates that judge one package on its own, the linters
+// and the kit's analyzers per GOOS: what an agent hears after each edit.
+// pattern is a package path relative to o.Dir, like ./internal/notes.
+func Package(ctx context.Context, o Options, pattern string) []Result {
+	return runGates(ctx, o, perSystem(o, pattern))
+}
+
+func runGates(ctx context.Context, o Options, gs []gate) []Result {
 	var out []Result
-	for _, g := range gates(o) {
+	for _, g := range gs {
 		r := g.run(ctx, o)
 		r.Gate = g.name
 		out = append(out, r)
@@ -52,11 +63,16 @@ func Run(ctx context.Context, o Options) []Result {
 	return out
 }
 
-func gates(o Options) []gate {
+func perSystem(o Options, pattern string) []gate {
 	var gs []gate
 	for _, goos := range o.GOOS {
-		gs = append(gs, gate{"golangci-lint (" + goos + ")", lintFor(goos)}, gate{"kitvet (" + goos + ")", vetFor(goos)})
+		gs = append(gs, gate{"golangci-lint (" + goos + ")", lintFor(goos, pattern)}, gate{"kitvet (" + goos + ")", vetFor(goos, pattern)})
 	}
+	return gs
+}
+
+func gates(o Options) []gate {
+	gs := perSystem(o, "./...")
 	return append(gs,
 		gate{"archtest", archGate}, gate{"sweep", sweepGate}, gate{"deadcode", deadcodeGate},
 		gate{"nilaway", nilawayGate}, gate{"govulncheck", vulnGate}, gate{"go test", testGate}, gate{"guard", guardGate})

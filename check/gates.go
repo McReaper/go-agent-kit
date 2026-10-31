@@ -20,7 +20,7 @@ import (
 
 // WHY: the config is the kit's, embedded, written for each run: an app's
 // own copy, which an agent could weaken, is never read.
-func lintFor(goos string) func(context.Context, Options) Result {
+func lintFor(goos, pattern string) func(context.Context, Options) Result {
 	return func(ctx context.Context, o Options) (r Result) {
 		config, err := writeConfig()
 		if err != nil {
@@ -32,7 +32,7 @@ func lintFor(goos string) func(context.Context, Options) Result {
 			}
 		}()
 		out, err := run.Command(ctx, o.Dir, []string{"GOOS=" + goos}, "golangci-lint", "run", "--config", config,
-			"--output.text.print-issued-lines=false", "--show-stats=false", "./...")
+			"--output.text.print-issued-lines=false", "--show-stats=false", pattern)
 		return fromLines(out, err, 1, out.Stdout)
 	}
 }
@@ -49,10 +49,10 @@ func writeConfig() (string, error) {
 	return f.Name(), nil
 }
 
-func vetFor(goos string) func(context.Context, Options) Result {
+func vetFor(goos, pattern string) func(context.Context, Options) Result {
 	return func(_ context.Context, o Options) Result {
 		cfg := &packages.Config{Mode: packages.LoadAllSyntax, Dir: o.Dir, Tests: true, Env: append(os.Environ(), "GOOS="+goos)}
-		pkgs, err := packages.Load(cfg, "./...")
+		pkgs, err := packages.Load(cfg, pattern)
 		if err != nil {
 			return failed(fmt.Errorf("load packages: %w", err))
 		}
