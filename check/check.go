@@ -1,7 +1,7 @@
 // Package check runs every gate of the kit on a module, the same way on an
 // agent's machine and in CI: lint and the kit's analyzers per target
 // system, archtest, sweep, dead code, nil flows, known vulnerabilities,
-// the tests and the guard.
+// the tests, the guard, and the workflows, scripts and secrets.
 package check
 
 import (
@@ -73,9 +73,10 @@ func perSystem(o Options, pattern string) []gate {
 
 func gates(o Options) []gate {
 	gs := perSystem(o, "./...")
-	return append(gs,
+	gs = append(gs,
 		gate{"archtest", archGate}, gate{"sweep", sweepGate}, gate{"deadcode", deadcodeGate},
 		gate{"nilaway", nilawayGate}, gate{"govulncheck", vulnGate}, gate{"go test", testGate}, gate{"guard", guardGate})
+	return append(gs, fileGates()...)
 }
 
 func failed(err error) Result {

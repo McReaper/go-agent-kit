@@ -24,9 +24,11 @@ func kitRun(t *testing.T, dir string, args ...string) (string, int) {
 // check is the one command for both, so it must run every gate and fail on
 // any of them.
 func TestKitCheckRunsEveryGateAndFailsOnAny(t *testing.T) {
+	withZizmor(t)
 	gates := []string{
 		"golangci-lint (linux)", "kitvet (linux)", "golangci-lint (windows)", "kitvet (windows)",
 		"archtest", "sweep", "deadcode", "nilaway", "govulncheck", "go test", "guard",
+		"actionlint", "zizmor", "shellcheck", "gitleaks",
 	}
 	out, code := kitRun(t, changeOf(t, trialCase{name: "no change"}), "check", "--base", "base", "--race=false")
 	if code != 0 || !strings.Contains(out, "kit check: every gate passes") {
