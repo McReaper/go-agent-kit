@@ -119,3 +119,49 @@ func TestATitleOverTheLimitIsAToolError(t *testing.T) {
 		t.Fatalf("add_note accepted a title over the limit: %+v", res)
 	}
 }
+
+func TestADeletedNoteIsGoneAndJournaled(t *testing.T) {
+	dir := t.TempDir()
+	cs := session(t, dir)
+	ctx := context.Background()
+	if res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "add_note", Arguments: map[string]any{"title": "Buy milk"}}); err != nil || res.IsError {
+		t.Fatalf("add_note = %+v, %v", res, err)
+	}
+	deleted, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "delete_note", Arguments: map[string]any{"id": "buy-milk-20261030t220509"}})
+	if err != nil || deleted.IsError {
+		t.Fatalf("delete_note = %+v, %v", deleted, err)
+	}
+	listed, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_notes", Arguments: map[string]any{}})
+	if err != nil || listed.IsError {
+		t.Fatalf("list_notes = %+v, %v", listed, err)
+	}
+	if diff := cmp.Diff(map[string]any{"notes": []any{}}, listed.StructuredContent); diff != "" {
+		t.Errorf("list_notes after delete_note (-want +got):\n%s", diff)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, journal.File))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"time":"2026-10-30T22:05:09Z","op":"add_note","args":{"title":"Buy milk"}}` + "\n" +
+		`{"time":"2026-10-30T22:05:09Z","op":"delete_note","args":{"id":"buy-milk-20261030t220509"}}` + "\n"
+	if got := string(data); got != want {
+		t.Errorf("journal = %q, want %q", got, want)
+	}
+}
+
+func TestDeletingAnUnknownIDIsAToolErrorThatSaysSo(t *testing.T) {
+	res, err := session(t, t.TempDir()).CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "delete_note",
+		Arguments: map[string]any{"id": "buy-milk-20261030t220509"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError {
+		t.Fatalf("delete_note of an id no note has succeeded: %+v", res)
+	}
+	text, ok := res.Content[0].(*mcp.TextContent)
+	if !ok || !strings.Contains(text.Text, "no note has that id") {
+		t.Errorf("delete_note error = %+v, want it to say no note has that id", res.Content)
+	}
+}

@@ -67,6 +67,17 @@ func (s *FileStore) Save(_ context.Context, n domain.Note) error {
 	return nil
 }
 
+func (s *FileStore) Delete(_ context.Context, id domain.NoteID) error {
+	err := s.root.Remove(string(id) + ext)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("no note has the id %s: %w", id, domain.ErrNoNote)
+	}
+	if err != nil {
+		return fmt.Errorf("delete note %s: %w", id, err)
+	}
+	return nil
+}
+
 func (s *FileStore) Newest(_ context.Context, limit int) ([]domain.Note, error) {
 	names, err := fs.Glob(s.root.FS(), "*"+ext)
 	if err != nil {

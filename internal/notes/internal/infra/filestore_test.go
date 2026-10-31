@@ -84,3 +84,40 @@ func TestFileStoreNeverOverwritesANote(t *testing.T) {
 		t.Fatalf("Newest = %+v, %v", got, err)
 	}
 }
+
+func TestFileStoreDeletesTheNoteWithTheID(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	keep, gone := note("keep", 1), note("gone", 2)
+	for _, n := range []domain.Note{keep, gone} {
+		if err := s.Save(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Delete(ctx, gone.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Newest(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]domain.Note{keep}, got); diff != "" {
+		t.Errorf("Newest after Delete (-want +got):\n%s", diff)
+	}
+}
+
+func TestFileStoreSaysSoWhenNoNoteHasTheID(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	n := note("once", 1)
+	if err := s.Save(ctx, n); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(ctx, n.ID); err != nil {
+		t.Fatal(err)
+	}
+	err := s.Delete(ctx, n.ID)
+	if err == nil || !errors.Is(err, domain.ErrNoNote) || !strings.Contains(err.Error(), string(n.ID)) {
+		t.Fatalf("deleting the same id twice: err = %v, want ErrNoNote naming %s", err, n.ID)
+	}
+}
