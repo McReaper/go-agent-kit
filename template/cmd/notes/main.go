@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"time"
 
-	"example.com/notes/internal/notes"
-	"example.com/notes/internal/platform/paths"
+	"github.com/McReaper/go-agent-kit/template/internal/notes"
+	"github.com/McReaper/go-agent-kit/template/internal/platform/paths"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 )

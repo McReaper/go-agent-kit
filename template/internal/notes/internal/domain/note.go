@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"example.com/notes/pkg/slug"
+	"github.com/McReaper/go-agent-kit/template/pkg/slug"
 )
 
 const MaxTitleRunes = 80

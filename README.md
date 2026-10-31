@@ -6,7 +6,7 @@ Target: Go CLIs, MCP servers and libraries.
 
 - [`docs/kit.md`](docs/kit.md) — the kit: the constraints, the criteria, the solution for each, the coverage check and what stays uncovered.
 - [`docs/adr/`](docs/adr) — its decisions: supported Go only, one library per need, the lint runner, mutation on a copy.
-- Every rule is proven on [`trial/`](trial): `trial/clean` passes every tool, and each case under `trial/cases` holds one deliberate violation with the exact findings it must produce. [`proof/`](proof) reruns them all; `go test ./...` fails if a rule stops firing.
+- Every rule is proven on the [template](template), the app apps start from: it passes every tool, and each case under `trial/cases` holds one deliberate violation with the exact findings it must produce. [`proof/`](proof) reruns them all; `go test ./...` fails if a rule stops firing.
 
 What it ships today:
 

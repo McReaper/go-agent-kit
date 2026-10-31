@@ -15,7 +15,7 @@ golangci/forbidigo internal/notes/internal/m11case/m11.go:112 use of `http\.Get`
 golangci/forcetypeassert internal/notes/internal/m11case/m11.go:45 type assertion must be checked
 golangci/gosec internal/notes/internal/m11case/m11.go:112 G107: Potential HTTP request made with variable url
 golangci/govet internal/notes/internal/m11case/m11.go:49 printf: fmt\.Sprintf format %d has arg "n" of wrong type string
-golangci/govet internal/notes/internal/m11case/m11.go:52 copylocks: Copy passes lock by value: example\.com/notes/internal/notes
+golangci/govet internal/notes/internal/m11case/m11.go:52 copylocks: Copy passes lock by value: github.com/McReaper/go-agent-kit/template/internal/notes
 golangci/makezero internal/notes/internal/m11case/m11.go:165 append to slice `xs` with non\-zero initialized length
 golangci/musttag internal/notes/internal/m11case/m11.go:178 the given struct should be annotated with the `json` tag
 golangci/nilerr internal/notes/internal/m11case/m11.go:64 error is not nil \(line 63\) but it returns nil

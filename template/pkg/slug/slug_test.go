@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"example.com/notes/pkg/slug"
+	"github.com/McReaper/go-agent-kit/template/pkg/slug"
 	"pgregory.net/rapid"
 )
 

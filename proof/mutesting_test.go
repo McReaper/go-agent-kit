@@ -13,7 +13,7 @@ var (
 )
 
 // WHY: go-mutesting writes each mutant over the original file while the
-// tests run; it only ever runs on an overlay copy, never on trial/clean.
+// tests run; it only ever runs on an overlay copy, never on template.
 func mutestingFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	var findings []finding

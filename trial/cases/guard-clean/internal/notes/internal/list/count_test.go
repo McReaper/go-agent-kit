@@ -3,7 +3,7 @@ package list_test
 import (
 	"testing"
 
-	"example.com/notes/internal/notes/internal/list"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/list"
 )
 
 func TestCountCountsTheNotes(t *testing.T) {

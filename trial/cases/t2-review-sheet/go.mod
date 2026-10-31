@@ -1,4 +1,4 @@
-module example.com/notes
+module github.com/McReaper/go-agent-kit/template
 
 go 1.26.0
 

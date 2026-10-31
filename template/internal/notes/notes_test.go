@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"example.com/notes/internal/notes"
+	"github.com/McReaper/go-agent-kit/template/internal/notes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.uber.org/goleak"

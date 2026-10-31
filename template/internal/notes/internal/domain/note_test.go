@@ -7,7 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"example.com/notes/internal/notes/internal/domain"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
 	"pgregory.net/rapid"
 )
 
