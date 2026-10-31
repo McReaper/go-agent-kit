@@ -179,7 +179,7 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | --- | --- | --- | --- |
 | M1 | gocognit ≤ 10; revive function-length ≤ 30 lines, argument-limit ≤ 4, file-length-limit ≤ 300; `kitvet nesting` ≤ 2 (every control statement counts: revive's rule counts only `if`) | Long, deep or tangled functions | `m1-simplicity` |
 | M2 | `kitvet comments` (`// WHY:` only; doc comments on a contract's exported API and a command's package doc; a `Copyright` or `SPDX-License-Identifier:` header above the package clause), staticcheck ST*, misspell, predeclared, `kitvet pkgname` (stutter), gofumpt and goimports | Paraphrasing comments, mixed naming | `m2-readability`, `e7-names`, `fmt-formatting` |
-| M3 | depguard one-library-per-need (slog, stdlib errors, go-cmp, go-sdk, cobra), forbidigo `fmt.Print*`, modernize, tagliatelle (snake_case json) | Two ways to do one thing | `m3-consistency` |
+| M3 | depguard one-library-per-need (slog, stdlib errors, go-cmp, go-sdk, cobra), forbidigo `fmt.Print*`, modernize, tagliatelle (snake_case json; another program's format is decoded in its own casing, in infra or the platform) | Two ways to do one thing | `m3-consistency` |
 | M5 | unused, unparam, wastedassign, unconvert, interfacebloat ≤ 5 | Dead code, unused parameters | `m5-minimality` |
 | M5 | `kit sweep`, over the whole module: code only tests reach, methods included (deadcode never reports a method, which let a crash test leave one alive), and names a module's inside exports though only their package uses them | Code kept alive by its tests; a package's inside leaking out | `m5-only-tests` |
 | M10 | depguard `pure-domain` (no `os`, `io/fs`, `net`, `os/exec`, `database/sql`, `log/slog`, `reflect`, randomness), forbidigo `time.Now/Since/Until` and `os.Getenv` in the domain, gochecknoglobals, gochecknoinits | Hidden clock, environment, I/O, state | `m10-testability` |
@@ -202,7 +202,7 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | E1 | Platform imports no module | Shared code coupled to one module | `e1-boundaries` |
 | E7 | Every package sits in the layout | A package invented outside it | `e1-boundaries` |
 | E4 | `kitvet typedid`: no id of a bare string or integer in the domain; `kitvet domainconv`: a domain type is built by its Parse function, never by conversion outside the domain (a crash test validated ids in one session and converted them in the next) | Ids of different things swapped; unchecked values in the model | `e4-typed-ids` |
-| E6 | testpackage (black-box `_test` packages), no mocks | Tests tied to internals | `e6-tests` |
+| E6 | testpackage (black-box `_test` packages, `export_test.go` and `internal_test.go` included, which it skips by default), no mocks | Tests tied to internals | `e6-tests` |
 | S3 | An operation's effect (`ReadOnly`, `Additive`, `Destructive`) has no default: registering one without it fails; it becomes the MCP tool's annotations | A side-effecting tool advertised as harmless | `trial/clean` (`op_test`, `tools.golden.json`) |
 
 ### Pass 3 — CI checks
@@ -269,7 +269,6 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
 - Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). AGENTS.md says to stop and ask; review catches the rest.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
-- A foreign JSON format decoded in production code: tagliatelle wants snake_case; tests are exempt, production would need an override.
 - Renovate's configuration: not yet proven (milestone 2).
 
 ## Step 3 — Assembly (milestone 2)
