@@ -30,9 +30,10 @@ type File struct {
 	Removed int
 }
 
-// Diff is a change: every file it touches.
+// Diff is a change: every file it touches, and the commit it starts from.
 type Diff struct {
 	Files []File
+	Base  string // base's merge base with HEAD, set by Read
 }
 
 // Read returns the change from base's merge base to the working tree of
@@ -58,6 +59,7 @@ func Read(ctx context.Context, dir, base string) (Diff, error) {
 		return Diff{}, err
 	}
 	d.Files = append(d.Files, untracked...)
+	d.Base = strings.TrimSpace(mb)
 	return d, nil
 }
 
