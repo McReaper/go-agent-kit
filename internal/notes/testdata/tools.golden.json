@@ -151,5 +151,77 @@
       ],
       "type": "object"
     }
+  },
+  {
+    "annotations": {
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Lists the notes whose title or body contains the text given, ignoring case, newest first. Refuses an empty text.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "description": "how many matching notes to return, newest first: 1 to 100, 20 if not given",
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "text": {
+          "description": "the text to find: a note matches when its title or its body contains it, ignoring case",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "name": "search_notes",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "notes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "notes"
+      ],
+      "type": "object"
+    }
   }
 ]
