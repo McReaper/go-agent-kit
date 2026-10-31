@@ -60,3 +60,18 @@ func TestListRefusesAnEmptyTagFilter(t *testing.T) {
 		t.Error("an empty tag filter was accepted")
 	}
 }
+
+func TestListStopsAtTheLimitAmongTheMatches(t *testing.T) {
+	store := &memStore{notes: []domain.Note{
+		{ID: "a-1", Title: "A", Tags: []domain.Tag{"go"}},
+		{ID: "b-2", Title: "B", Tags: []domain.Tag{"go"}},
+		{ID: "c-3", Title: "C", Tags: []domain.Tag{"go"}},
+	}}
+	out, err := list.New(store).Run(context.Background(), list.Args{Tag: new("go"), Limit: new(2)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Notes) != 2 || out.Notes[0].ID != "a-1" || out.Notes[1].ID != "b-2" {
+		t.Errorf("Run = %+v, want the two newest matches a-1 and b-2", out.Notes)
+	}
+}

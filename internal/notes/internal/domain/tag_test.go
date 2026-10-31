@@ -59,3 +59,12 @@ func TestANoteHasTheTagsItWasFiledUnder(t *testing.T) {
 		t.Errorf("HasTag: go = %v, rust = %v; want true, false", n.HasTag("go"), n.HasTag("rust"))
 	}
 }
+
+func TestParseTagAcceptsThirtyTwoCharactersAndRefusesThirtyThree(t *testing.T) {
+	if _, err := domain.ParseTag(strings.Repeat("x", 32)); err != nil {
+		t.Errorf("a 32-character tag was refused: %v", err)
+	}
+	if _, err := domain.ParseTag(strings.Repeat("x", 33)); err == nil {
+		t.Error("a 33-character tag was accepted")
+	}
+}

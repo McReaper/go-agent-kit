@@ -97,10 +97,7 @@ func tagOf(p *string) (domain.Tag, bool, error) {
 func pick(notes []domain.Note, limit int, tag domain.Tag, filter bool) []Item {
 	items := make([]Item, 0, min(limit, len(notes)))
 	for _, n := range notes {
-		if len(items) == limit {
-			break
-		}
-		if !filter || n.HasTag(tag) {
+		if len(items) < limit && (!filter || n.HasTag(tag)) {
 			items = append(items, item(n))
 		}
 	}
