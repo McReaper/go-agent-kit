@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/McReaper/go-agent-kit/analyzers/all"
 )
 
 const kitvetTool = "kitvet/"
@@ -106,19 +108,15 @@ func TestKitvetReportsEveryCase(t *testing.T) {
 }
 
 func TestEveryAnalyzerHasACase(t *testing.T) {
-	entries, err := os.ReadDir("../analyzers")
-	if err != nil {
-		t.Fatal(err)
-	}
 	proven := map[string]bool{}
 	for _, c := range loadCases(t) {
 		for _, w := range c.wants {
 			proven[strings.TrimPrefix(w.tool, kitvetTool)] = true
 		}
 	}
-	for _, e := range entries {
-		if e.IsDir() && e.Name() != "internal" && !proven[e.Name()] {
-			t.Errorf("analyzer %s has no case under trial/cases proving it fires on the trial", e.Name())
+	for _, a := range all.Analyzers() {
+		if !proven[a.Name] {
+			t.Errorf("analyzer %s has no case under trial/cases proving it fires on the trial", a.Name)
 		}
 	}
 }
