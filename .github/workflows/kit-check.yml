@@ -1,0 +1,63 @@
+name: kit-check
+
+# The merge check apps run, through a caller pinned by SHA:
+#
+#   jobs:
+#     kit:
+#       uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@<sha>
+#       with:
+#         kit-version: <sha>
+#
+# The caller runs on pull_request, pull_request_review (submitted) and push
+# to the default branch, so a review re-runs the check.
+
+on:
+  workflow_call:
+    inputs:
+      kit-version:
+        description: The kit's version or commit, the same as the caller's uses@ pin.
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  kit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install the kit and the tools its proofs ran with
+        env:
+          GOTOOLCHAIN: auto # a tool may need a newer Go than the app; it builds a separate binary
+          KIT_VERSION: ${{ inputs.kit-version }}
+        run: |
+          go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
+          dir=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION" | jq -r .Dir)
+          grep -v '^#' "$dir/tools.txt" | grep @ | xargs -n1 go install
+      - name: Has a code owner approved the last commit?
+        id: approval
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          n=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+            --jq "[.[] | select(.state == \"APPROVED\" and .commit_id == \"$HEAD\" and (.author_association == \"OWNER\" or .author_association == \"MEMBER\"))] | length")
+          if [ "${n:-0}" -gt 0 ]; then echo "approved=true" >> "$GITHUB_OUTPUT"; else echo "approved=false" >> "$GITHUB_OUTPUT"; fi
+      - name: kit check
+        env:
+          BASE: ${{ github.base_ref || github.event.repository.default_branch }}
+          APPROVED: ${{ steps.approval.outputs.approved || 'false' }}
+        run: kit check --base "origin/$BASE" --ci --approved="$APPROVED"
