@@ -14,6 +14,16 @@
           "description": "the note's text",
           "type": "string"
         },
+        "tags": {
+          "description": "the note's tags, at most 32 characters each; case-insensitive, so Go and go are one tag",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "title": {
           "description": "the note's title, at most 80 characters",
           "type": "string"
@@ -44,7 +54,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Lists the newest notes, their ids and titles.",
+    "description": "Lists the newest notes, their ids, titles and tags, or only those carrying a given tag.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -53,6 +63,13 @@
           "type": [
             "null",
             "integer"
+          ]
+        },
+        "tag": {
+          "description": "only the notes carrying this tag, case-insensitive; every note if not given",
+          "type": [
+            "null",
+            "string"
           ]
         }
       },
@@ -68,6 +85,15 @@
             "properties": {
               "id": {
                 "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
               },
               "title": {
                 "type": "string"

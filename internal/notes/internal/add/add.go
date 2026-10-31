@@ -10,8 +10,9 @@ import (
 )
 
 type Args struct {
-	Title string `json:"title" jsonschema:"the note's title, at most 80 characters"`
-	Body  string `json:"body,omitempty" jsonschema:"the note's text"`
+	Title string   `json:"title" jsonschema:"the note's title, at most 80 characters"`
+	Body  string   `json:"body,omitempty" jsonschema:"the note's text"`
+	Tags  []string `json:"tags,omitempty" jsonschema:"the note's tags, at most 32 characters each; case-insensitive, so Go and go are one tag"`
 }
 
 type Out struct {
@@ -45,7 +46,12 @@ func (a *Add) Run(ctx context.Context, args Args) (Out, error) {
 	if err != nil {
 		return Out{}, fmt.Errorf("add a note: %w", err)
 	}
+	tags, err := domain.ParseTags(args.Tags)
+	if err != nil {
+		return Out{}, fmt.Errorf("add a note: %w", err)
+	}
 	n := domain.New(title, args.Body, a.now())
+	n.Tags = tags
 	if err := a.store.Save(ctx, n); err != nil {
 		return Out{}, fmt.Errorf("add a note: %w", err)
 	}
