@@ -1,4 +1,4 @@
-# T2/C2: one change for the owner to review: two tests changed and a subtest removed, a golden rewritten, a library function added, a new module with its test and a decision, a dependency made direct, and AGENTS.md added.
+# T2/C2: one change for the owner to review: two tests changed and a subtest removed, a golden rewritten, a library function added, a new module with its test and a decision, a dependency made direct, and a rule added to AGENTS.md.
 !isolated
 review/approval internal/notes/internal/add/add_test.go:0 a test changed
 review/approval internal/notes/internal/domain/note_test.go:0 a test changed
@@ -14,5 +14,5 @@ review/module internal/tags:0 new module
 review/dependency go.mod:13 ^golang\.org/x/sync v0\.22\.0$
 review/shared internal/tags/tags.go:0 the tags module's contract, added
 review/shared pkg/slug/slug.go:0 library, changed
-review/rules AGENTS.md:0 the agent's instructions, added
+review/rules AGENTS.md:0 the agent's instructions, changed
 review/why internal/tags/tags.go:8 ^tags come from people typing; "Go" and "go" are one tag, and the order they gave is the order they read back\.$

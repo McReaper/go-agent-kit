@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/McReaper/go-agent-kit/template/internal/notes"
+	"github.com/McReaper/go-agent-kit/template/internal/platform/journal"
 	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"go.uber.org/goleak"
@@ -23,14 +24,20 @@ func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m)
 }
 
-func session(t *testing.T) *mcp.ClientSession {
+func clock() time.Time { return time.Date(2026, 10, 30, 22, 5, 9, 0, time.UTC) }
+
+func session(t *testing.T, dir string) *mcp.ClientSession {
 	t.Helper()
-	m, err := notes.Open(t.TempDir(), func() time.Time { return time.Date(2026, 10, 30, 22, 5, 9, 0, time.UTC) })
+	m, err := notes.Open(filepath.Join(dir, "notes"), clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, err := journal.Open(dir, clock)
 	if err != nil {
 		t.Fatal(err)
 	}
 	s := mcp.NewServer(&mcp.Implementation{Name: "notes", Version: "test"}, nil)
-	if err := m.Register(s); err != nil {
+	if err := m.Register(s, j); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
@@ -44,7 +51,7 @@ func session(t *testing.T) *mcp.ClientSession {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := errors.Join(cs.Close(), ss.Wait(), m.Close()); err != nil {
+		if err := errors.Join(cs.Close(), ss.Wait(), m.Close(), j.Close()); err != nil {
 			t.Error(err)
 		}
 	})
@@ -52,7 +59,7 @@ func session(t *testing.T) *mcp.ClientSession {
 }
 
 func TestToolsMatchTheGoldenContract(t *testing.T) {
-	res, err := session(t).ListTools(context.Background(), nil)
+	res, err := session(t, t.TempDir()).ListTools(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,8 +82,9 @@ func TestToolsMatchTheGoldenContract(t *testing.T) {
 	}
 }
 
-func TestAnAddedNoteIsListed(t *testing.T) {
-	cs := session(t)
+func TestAnAddedNoteIsListedAndJournaled(t *testing.T) {
+	dir := t.TempDir()
+	cs := session(t, dir)
 	ctx := context.Background()
 	added, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "add_note", Arguments: map[string]any{"title": "Buy milk"}})
 	if err != nil || added.IsError {
@@ -90,10 +98,17 @@ func TestAnAddedNoteIsListed(t *testing.T) {
 	if diff := cmp.Diff(want, listed.StructuredContent); diff != "" {
 		t.Errorf("list_notes (-want +got):\n%s", diff)
 	}
+	data, err := os.ReadFile(filepath.Join(dir, journal.File))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(data); got != `{"time":"2026-10-30T22:05:09Z","op":"add_note","args":{"title":"Buy milk"}}`+"\n" {
+		t.Errorf("journal = %q, want add_note alone: list_notes only reads", got)
+	}
 }
 
 func TestATitleOverTheLimitIsAToolError(t *testing.T) {
-	res, err := session(t).CallTool(context.Background(), &mcp.CallToolParams{
+	res, err := session(t, t.TempDir()).CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "add_note",
 		Arguments: map[string]any{"title": strings.Repeat("a", 81)},
 	})

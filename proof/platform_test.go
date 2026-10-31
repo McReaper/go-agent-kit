@@ -85,11 +85,11 @@ func TestTheAgentSettingsDenyBypassesAndRunTheKitHooks(t *testing.T) {
 }
 
 func TestTheAppCodeOwnersProtectWhatJudgesTheAgent(t *testing.T) {
-	data, err := os.ReadFile("../platform/CODEOWNERS")
+	data, err := os.ReadFile("../template/.github/CODEOWNERS")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/.kit/", "/.github/", "/.claude/", "/go.mod", "*_test.go", "**/testdata/", "/AGENTS.md"} {
+	for _, path := range []string{"/.kit/", "/.github/", "/.claude/", "/go.mod", "*_test.go", "**/testdata/", "/AGENTS.md", "**/GLOSSARY.md"} {
 		if !strings.Contains(string(data), "\n"+path+" @OWNER") {
 			t.Errorf("CODEOWNERS leaves %s to the agent", path)
 		}

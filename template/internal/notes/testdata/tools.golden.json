@@ -49,8 +49,11 @@
       "additionalProperties": false,
       "properties": {
         "limit": {
-          "description": "how many notes to return, newest first: 20 by default, 100 at most",
-          "type": "integer"
+          "description": "how many notes to return, newest first: 1 to 100, 20 if not given",
+          "type": [
+            "null",
+            "integer"
+          ]
         }
       },
       "type": "object"

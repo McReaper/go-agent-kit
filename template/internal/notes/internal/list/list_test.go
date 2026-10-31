@@ -24,13 +24,13 @@ func (s *memStore) Newest(_ context.Context, limit int) ([]domain.Note, error) {
 func TestListAsksTheStoreForTheLimit(t *testing.T) {
 	cases := []struct {
 		name  string
-		limit int
+		limit *int
 		asked int
 	}{
-		{"20 when none is given", 0, 20},
-		{"the one given", 3, 3},
-		{"the smallest", 1, 1},
-		{"100 at most", 100, 100},
+		{"20 when none is given", nil, 20},
+		{"the one given", new(3), 3},
+		{"the smallest", new(1), 1},
+		{"100 at most", new(100), 100},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -46,9 +46,9 @@ func TestListAsksTheStoreForTheLimit(t *testing.T) {
 }
 
 func TestListRefusesALimitOutOfRange(t *testing.T) {
-	for _, limit := range []int{-1, 101} {
-		if _, err := list.New(&memStore{}).Run(context.Background(), list.Args{Limit: limit}); err == nil {
-			t.Errorf("limit %d accepted", limit)
+	for _, n := range []int{0, -1, 101} {
+		if _, err := list.New(&memStore{}).Run(context.Background(), list.Args{Limit: new(n)}); err == nil {
+			t.Errorf("limit %d accepted", n)
 		}
 	}
 }

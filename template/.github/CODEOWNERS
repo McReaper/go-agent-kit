@@ -1,5 +1,4 @@
-# CODEOWNERS for an app that uses the kit. Replace @OWNER with the owner's
-# login. With the ruleset's "code owner review", a change to any of these
+# Replace @OWNER with the owner's login. With the ruleset's "code owner review", a change to any of these
 # paths can't merge without the owner's approval of its last commit.
 
 # The kit's settings and the CI that runs it.
@@ -7,10 +6,11 @@
 /.github/ @OWNER
 /.claude/ @OWNER
 
-# What the agent reads as rules and decisions.
+# What the agent reads as rules, words and decisions.
 /AGENTS.md @OWNER
 /CLAUDE.md @OWNER
 /docs/adr/ @OWNER
+**/GLOSSARY.md @OWNER
 
 # Dependencies and the Go version.
 /go.mod @OWNER

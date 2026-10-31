@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,8 +76,8 @@ func TestFileStoreNeverOverwritesANote(t *testing.T) {
 	if err := s.Save(ctx, note("same", 1)); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Save(ctx, note("same", 1)); err == nil {
-		t.Fatal("the second save of the same id succeeded")
+	if err := s.Save(ctx, note("same", 1)); err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("the second save of the same id: err = %v, want it to say the note already exists", err)
 	}
 	got, err := s.Newest(ctx, 10)
 	if err != nil || len(got) != 1 || got[0].Body != "body of same" {
