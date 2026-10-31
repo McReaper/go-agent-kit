@@ -71,5 +71,8 @@ func mutateReport(r mutate.Report, o mutateOptions) string {
 	}
 	fmt.Fprintf(&b, "kit mutate: the tests killed %d of the %d mutants of the lines changed since %s: %.0f%%, %.0f%% needed\n",
 		killed, len(r.Mutants), o.base, 100*r.Score, 100*o.min)
+	if r.ErrorReturns > 0 {
+		fmt.Fprintf(&b, "kit mutate: %d more only drop an error's return, not counted: the compiler and errcheck refuse a dropped error\n", r.ErrorReturns)
+	}
 	return b.String()
 }

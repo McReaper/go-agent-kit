@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -22,6 +23,9 @@ type Mutant struct {
 	Mutator string
 	Wrote   string
 	Killed  bool
+	// DropsErrorReturn: the mutant only removes the return of an
+	// `if err != nil` block.
+	DropsErrorReturn bool
 }
 
 // Run mutates the packages in dir, given as ./dir patterns, and returns the
@@ -83,7 +87,36 @@ func Read(dir string) (ms []Mutant, err error) {
 
 func (e entry) mutant(killed bool) Mutant {
 	m := e.Mutator
-	return Mutant{File: filepath.ToSlash(m.File), Line: m.Line, Mutator: m.Name, Wrote: wrote(e.Diff), Killed: killed}
+	return Mutant{
+		File: filepath.ToSlash(m.File), Line: m.Line, Mutator: m.Name, Wrote: wrote(e.Diff), Killed: killed,
+		DropsErrorReturn: dropsErrorReturn(m.Name, e.Diff),
+	}
+}
+
+var (
+	returnsErr = regexp.MustCompile(`^\s*return\b.*\berr\)?$`)
+	ifErr      = regexp.MustCompile(`\berr != nil \{\s*$`)
+)
+
+// WHY: go-mutesting's branch mutators replace a block's body and show the
+// removed lines in a diff; one removed return of err, right under an
+// `err != nil` test, is that block whole.
+func dropsErrorReturn(mutator, diff string) bool {
+	if !strings.HasPrefix(mutator, "branch/") {
+		return false
+	}
+	lines := strings.Split(diff, "\n")
+	removed := -1
+	for i, l := range lines {
+		if !strings.HasPrefix(l, "-") || strings.HasPrefix(l, "---") {
+			continue
+		}
+		if removed >= 0 {
+			return false
+		}
+		removed = i
+	}
+	return removed > 0 && returnsErr.MatchString(lines[removed][1:]) && ifErr.MatchString(lines[removed-1])
 }
 
 func wrote(diff string) string {
