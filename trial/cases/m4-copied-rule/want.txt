@@ -1,0 +1,5 @@
+# M4: a ten-line rule copied whole from one operation to another, under dupl's 100 tokens (a crash test copied list's limit check into search).
+# Nothing calls the two functions either: kit sweep reports them as only-tests too.
+sweep/copied-function internal/notes/internal/copycase/limit.go:18 LimitOfSearch repeats the body of LimitOfList \(copycase/limit\.go:7\)
+sweep/only-tests internal/notes/internal/copycase/limit.go:7 copycase\.LimitOfList is reached by tests only, or by nothing
+sweep/only-tests internal/notes/internal/copycase/limit.go:18 copycase\.LimitOfSearch is reached by tests only, or by nothing

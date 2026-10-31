@@ -1,7 +1,8 @@
 // Package sweep checks what only the whole module shows: code only tests
 // reach (criterion M5, where deadcode never reports a method), exported
-// names their own package alone uses (M5), and log messages written in two
-// places (M7, the unique EventId of .NET).
+// names their own package alone uses (M5), log messages written in two
+// places (M7, the unique EventId of .NET), and function bodies written
+// twice (M4).
 package sweep
 
 import (
@@ -40,7 +41,8 @@ func Check(dir string) ([]Finding, error) {
 	m := newModel(pkgs)
 	out := m.onlyTests()
 	out = append(out, m.overExported()...)
-	return append(out, m.duplicateMessages()...), nil
+	out = append(out, m.duplicateMessages()...)
+	return append(out, m.copiedFunctions()...), nil
 }
 
 type use struct {
@@ -54,10 +56,11 @@ type model struct {
 	uses      map[types.Object][]use
 	ifaceSeen map[string]bool
 	messages  map[string][]token.Position
+	bodies    map[string][]site
 }
 
 func newModel(pkgs []*packages.Package) *model {
-	m := &model{decls: map[types.Object]*ast.Ident{}, uses: map[types.Object][]use{}, ifaceSeen: map[string]bool{}, messages: map[string][]token.Position{}}
+	m := &model{decls: map[types.Object]*ast.Ident{}, uses: map[types.Object][]use{}, ifaceSeen: map[string]bool{}, messages: map[string][]token.Position{}, bodies: map[string][]site{}}
 	packages.Visit(pkgs, nil, func(p *packages.Package) {
 		if p.Module == nil || !p.Module.Main || p.TypesInfo == nil {
 			return
@@ -74,6 +77,7 @@ func (m *model) read(p *packages.Package) {
 		if !test && !isTestVariant(p) {
 			m.declare(p, f)
 			m.collectMessages(p, f)
+			m.collectBodies(p, f)
 		}
 		m.collectUses(p, f, test)
 	}
