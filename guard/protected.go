@@ -16,7 +16,7 @@ func protected(f File) []Finding {
 	if isTestFile(f.Path) && f.Status != 'A' {
 		out = append(out, Finding{
 			"protected-test", f.Path, 0,
-			"T2: changing, renaming or deleting a test needs a code owner's approval: add a new test instead, or ask for review",
+			"T2: a test changed: the owner approves it before merge; say in your report what changed in it and why",
 		})
 	}
 	if isTestFile(f.Path) && f.Status == 'A' {
@@ -38,7 +38,7 @@ func newTestHooks(f File) []Finding {
 		if testHook.MatchString(l.Text) {
 			out = append(out, Finding{
 				"protected-testmain", f.Path, l.N,
-				"T2: a new TestMain or init in a test runs before every test of the package and can skip them all: it needs a code owner's approval",
+				"T2: a new TestMain or init in a test runs before every test of the package and can skip them all: the owner approves it before merge",
 			})
 		}
 	}
@@ -51,7 +51,7 @@ func goLineChanges(f File) []Finding {
 		if goLine.MatchString(strings.TrimSpace(l.Text)) {
 			out = append(out, Finding{
 				"protected-gomod", f.Path, l.N,
-				"M8: the go and toolchain lines choose the compiler and the language: a dependency bump must not move them; restore it or ask for review",
+				"M8: the go and toolchain lines choose the compiler and the language: the owner approves a move before merge; a dependency bump must not move them by itself",
 			})
 		}
 	}

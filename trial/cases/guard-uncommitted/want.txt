@@ -2,5 +2,5 @@
 # An agent runs the checks before committing; the guard must see what it is about to commit.
 !isolated
 !uncommitted
-guard/protected-test internal/notes/internal/add/add_test.go:0 changing, renaming or deleting a test needs a code owner's approval
+guard/protected-test internal/notes/internal/add/add_test.go:0 a test changed: the owner approves it before merge
 guard/bypass-suppression internal/notes/internal/list/quiet.go:3 a finding is fixed, not silenced
