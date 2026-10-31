@@ -19,6 +19,7 @@ import (
 var (
 	domainPath   = regexp.MustCompile(`(^|/)internal/[^/]+/internal/domain(/|$)`)
 	platformPath = regexp.MustCompile(`(^|/)internal/platform(/|$)`)
+	innerPath    = regexp.MustCompile(`(^|/)internal/[^/]+/internal/([^/]+)$`)
 )
 
 // IsMain reports whether pkg is a main package.
@@ -36,6 +37,13 @@ func IsContract(pkg *types.Package) bool {
 // IsDomain reports whether pkg is part of a module's pure domain.
 func IsDomain(pkg *types.Package) bool {
 	return domainPath.MatchString(pkg.Path())
+}
+
+// IsSlice reports whether pkg is a vertical slice: a module's inside that is
+// neither its domain nor its infra.
+func IsSlice(pkg *types.Package) bool {
+	m := innerPath.FindStringSubmatch(pkg.Path())
+	return m != nil && m[2] != "domain" && m[2] != "infra"
 }
 
 // IsPlatform reports whether pkg is part of the shared kernel.

@@ -2,6 +2,7 @@
 package all
 
 import (
+	"github.com/McReaper/go-agent-kit/analyzers/boundedlist"
 	"github.com/McReaper/go-agent-kit/analyzers/comments"
 	"github.com/McReaper/go-agent-kit/analyzers/ctxroot"
 	"github.com/McReaper/go-agent-kit/analyzers/domainconv"
@@ -18,6 +19,7 @@ import (
 // Analyzers returns a new instance of every analyzer of the kit.
 func Analyzers() []*analysis.Analyzer {
 	return []*analysis.Analyzer{
+		boundedlist.New(),
 		comments.New(),
 		ctxroot.New(),
 		domainconv.New(),
