@@ -63,6 +63,19 @@ func (s *FileStore) Save(_ context.Context, n domain.Note) error {
 	return nil
 }
 
+// Delete removes the note with id. It returns domain.ErrNoSuchNote when no
+// note has that id.
+func (s *FileStore) Delete(_ context.Context, id domain.NoteID) error {
+	err := s.root.Remove(string(id) + ext)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("%w: %s", domain.ErrNoSuchNote, id)
+	}
+	if err != nil {
+		return fmt.Errorf("delete note %s: %w", id, err)
+	}
+	return nil
+}
+
 func (s *FileStore) Newest(_ context.Context, limit int) ([]domain.Note, error) {
 	names, err := fs.Glob(s.root.FS(), "*"+ext)
 	if err != nil {

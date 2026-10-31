@@ -22,6 +22,7 @@ var (
 	ErrNoSlugInTitle = errors.New("the title has no letter or digit to name the note by")
 	ErrBadID         = errors.New("a note id is lowercase letters and digits joined by single hyphens")
 	ErrEmptyTag      = errors.New("a tag is empty")
+	ErrNoSuchNote    = errors.New("no note has this id")
 )
 
 var idShape = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
