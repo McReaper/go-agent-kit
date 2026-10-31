@@ -14,7 +14,7 @@ const (
 )
 
 type Args struct {
-	Limit int `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 20 by default, 100 at most"`
+	Limit *int `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 1 to 100, 20 if not given"`
 }
 
 type Item struct {
@@ -48,11 +48,11 @@ func (l *List) Op() op.Op[Args, Out] {
 }
 
 func (l *List) Run(ctx context.Context, args Args) (Out, error) {
-	limit := args.Limit
-	switch {
-	case limit == 0:
-		limit = defaultLimit
-	case limit < 0 || limit > maxLimit:
+	limit := defaultLimit
+	if args.Limit != nil {
+		limit = *args.Limit
+	}
+	if limit < 1 || limit > maxLimit {
 		return Out{}, fmt.Errorf("limit %d is out of range: give 1 to %d", limit, maxLimit)
 	}
 	notes, err := l.store.Newest(ctx, limit)

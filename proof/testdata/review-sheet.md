@@ -58,7 +58,7 @@ _what other modules or the app build on_
 
 _CI, the agent's settings and instructions, decision records_
 
-- `AGENTS.md`: the agent's instructions, added
+- `AGENTS.md`: the agent's instructions, changed
 
 ### Decisions
 

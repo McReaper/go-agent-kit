@@ -7,10 +7,12 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/McReaper/go-agent-kit/template/internal/notes"
-	"github.com/McReaper/go-agent-kit/template/internal/platform/paths"
+	"github.com/McReaper/go-agent-kit/template/internal/platform/config"
+	"github.com/McReaper/go-agent-kit/template/internal/platform/journal"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 )
@@ -29,25 +31,30 @@ func main() {
 }
 
 func run(ctx context.Context, out io.Writer) (err error) {
-	dir, err := paths.DataDir("notes")
+	cfg, err := config.Load("notes", os.Getenv)
 	if err != nil {
 		return err
 	}
-	m, err := notes.Open(dir, time.Now)
+	j, err := journal.Open(cfg.DataDir, time.Now)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, j.Close()) }()
+	m, err := notes.Open(filepath.Join(cfg.DataDir, "notes"), time.Now)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, m.Close()) }()
-	root, err := rootCommand(m, out)
+	root, err := rootCommand(m, j, out)
 	if err != nil {
 		return err
 	}
 	return root.ExecuteContext(ctx)
 }
 
-func rootCommand(m *notes.Module, out io.Writer) (*cobra.Command, error) {
+func rootCommand(m *notes.Module, j *journal.Journal, out io.Writer) (*cobra.Command, error) {
 	root := &cobra.Command{Use: "notes", Short: "Short notes for people and agents", Version: version, SilenceUsage: true}
-	cmds, err := m.Commands(out)
+	cmds, err := m.Commands(j, out)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +65,7 @@ func rootCommand(m *notes.Module, out io.Writer) (*cobra.Command, error) {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			s := mcp.NewServer(&mcp.Implementation{Name: "notes", Version: version}, nil)
-			if err := m.Register(s); err != nil {
+			if err := m.Register(s, j); err != nil {
 				return err
 			}
 			return s.Run(cmd.Context(), &mcp.StdioTransport{})

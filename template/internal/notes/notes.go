@@ -39,15 +39,17 @@ func (m *Module) Close() error {
 	return m.store.Close()
 }
 
-// Register adds the module's tools to s.
-func (m *Module) Register(s *mcp.Server) error {
-	return errors.Join(op.Register(s, m.add.Op()), op.Register(s, m.list.Op()))
+// Register adds the module's tools to s, journaling in j those that change
+// something.
+func (m *Module) Register(s *mcp.Server, j op.Journal) error {
+	return errors.Join(op.Register(s, j, m.add.Op()), op.Register(s, j, m.list.Op()))
 }
 
-// Commands returns the module's CLI commands, which print their results to out.
-func (m *Module) Commands(out io.Writer) ([]*cobra.Command, error) {
-	addCmd, aerr := op.Command(m.add.Op(), out)
-	listCmd, lerr := op.Command(m.list.Op(), out)
+// Commands returns the module's CLI commands, which journal in j those that
+// change something and print their results to out.
+func (m *Module) Commands(j op.Journal, out io.Writer) ([]*cobra.Command, error) {
+	addCmd, aerr := op.Command(m.add.Op(), j, out)
+	listCmd, lerr := op.Command(m.list.Op(), j, out)
 	if err := errors.Join(aerr, lerr); err != nil {
 		return nil, fmt.Errorf("notes commands: %w", err)
 	}

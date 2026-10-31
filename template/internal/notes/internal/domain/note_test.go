@@ -28,6 +28,12 @@ func TestParseTitle(t *testing.T) {
 			t.Fatalf("err = %v, want ErrNoSlugInTitle", err)
 		}
 	})
+	t.Run("accepts a title of exactly the limit", func(t *testing.T) {
+		limit := strings.Repeat("é", domain.MaxTitleRunes)
+		if got, err := domain.ParseTitle(limit); err != nil || string(got) != limit {
+			t.Fatalf("ParseTitle = %q, %v; want the title, nil", got, err)
+		}
+	})
 	t.Run("refuses a title over the limit, counted in characters", func(t *testing.T) {
 		long := strings.Repeat("é", domain.MaxTitleRunes+1)
 		_, err := domain.ParseTitle(long)

@@ -126,9 +126,28 @@ func filesWithExt(t *testing.T, dir string, exts ...string) []string {
 	return files
 }
 
+var shellShebang = regexp.MustCompile(`^#!\s*(/bin/|/usr/bin/env\s+)(ba|da|k)?sh\b`)
+
+// WHY: a git hook has no extension; like kit check, the proof knows it by
+// its shebang.
+func gitHooks(t *testing.T, dir string) []string {
+	t.Helper()
+	var hooks []string
+	for _, f := range filesWithExt(t, dir, "") {
+		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(f)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if shellShebang.Match(data) {
+			hooks = append(hooks, f)
+		}
+	}
+	return hooks
+}
+
 func shellcheckFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	scripts := filesWithExt(t, dir, ".sh")
+	scripts := append(filesWithExt(t, dir, ".sh"), gitHooks(t, dir)...)
 	if len(scripts) == 0 {
 		t.Fatal("no shell script to check: the trial must hold at least one")
 	}
