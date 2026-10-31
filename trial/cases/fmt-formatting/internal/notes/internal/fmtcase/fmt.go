@@ -2,7 +2,7 @@ package fmtcase
 
 import (
 	"strings"
-	"example.com/notes/pkg/slug"
+	"github.com/McReaper/go-agent-kit/template/pkg/slug"
 )
 
 func Shout(s string) string {

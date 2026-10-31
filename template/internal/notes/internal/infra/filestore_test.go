@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"example.com/notes/internal/notes/internal/domain"
-	"example.com/notes/internal/notes/internal/infra"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/infra"
 	"github.com/google/go-cmp/cmp"
 )
 

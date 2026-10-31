@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	cleanDir = "../trial/clean"
+	cleanDir = "../template"
 	casesDir = "../trial/cases"
 )
 

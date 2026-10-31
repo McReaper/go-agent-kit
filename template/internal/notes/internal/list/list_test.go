@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"example.com/notes/internal/notes/internal/domain"
-	"example.com/notes/internal/notes/internal/list"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/list"
 	"github.com/google/go-cmp/cmp"
 )
 

@@ -1,6 +1,6 @@
 package add
 
-import "example.com/notes/internal/notes/internal/domain"
+import "github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
 
 func FromString(s string) domain.NoteID {
 	return domain.NoteID(s)

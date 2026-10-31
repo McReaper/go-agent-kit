@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"example.com/notes/internal/notes/internal/domain"
-	"example.com/notes/internal/platform/op"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
+	"github.com/McReaper/go-agent-kit/template/internal/platform/op"
 )
 
 const (

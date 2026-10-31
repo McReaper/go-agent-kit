@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"example.com/notes/internal/notes/internal/racecase"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/racecase"
 )
 
 func TestIncFromTwoGoroutines(t *testing.T) {
