@@ -20,9 +20,9 @@ gh api repos/OWNER/REPO/rulesets --method POST --input platform/ruleset.json
 - the `kit` check passing;
 - only the owner updates the branch, through a pull request (`update` rule, bypass by pull request only): the app can't merge even an approved change.
 
-## Code owners: `CODEOWNERS`
+## Code owners: the template's `.github/CODEOWNERS`
 
-Copy it to the app's `.github/CODEOWNERS`, with `@OWNER` replaced: tests, testdata, `go.mod`, `.github/`, `.kit/`, `.claude/`, AGENTS.md and the ADRs need the owner's approval.
+An app started from the template has it; replace `@OWNER` with the owner's login. Tests, testdata, `go.mod`, `.github/`, `.kit/`, `.claude/`, AGENTS.md, the glossaries and the ADRs need the owner's approval.
 
 ## The merge check: `kit-check.yml`
 

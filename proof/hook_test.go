@@ -1,0 +1,37 @@
+package proof_test
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// WHY: the hook is the fastest gate: it stops a secret before it enters
+// the history, where only a rewrite removes it.
+func TestThePreCommitHookStopsAStagedSecret(t *testing.T) {
+	dir := changeOf(t, trialCase{name: "no change"})
+	t.Setenv("PATH", filepath.Dir(kitCommand(t, "kit"))+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("KIT_BASE", "base")
+	hook := func() (string, int) {
+		cmd := exec.CommandContext(t.Context(), "sh", ".githooks/pre-commit")
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return string(out), exitCode(err)
+		}
+		return string(out), 0
+	}
+	if out, code := hook(); code != 0 {
+		t.Fatalf("nothing staged: exit %d\n%s", code, out)
+	}
+	token := "ghp_" + strings.Repeat("a1B2c3D4e5F6", 3)
+	if err := os.WriteFile(filepath.Join(dir, "settings.txt"), []byte("token = \""+token+"\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, dir, "add", "settings.txt")
+	if out, code := hook(); code != 1 || !strings.Contains(out, "leaks found: 1") {
+		t.Errorf("a staged token: exit %d\n%s", code, out)
+	}
+}

@@ -1,0 +1,23 @@
+name: kit
+
+# The kit's merge check and review sheet. Both pins name the same kit
+# commit; move them together.
+
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted]
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  kit:
+    permissions:
+      contents: read
+      pull-requests: write # the review sheet's comment
+      issues: write # the review sheet's labels
+    uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@38fd769c339ea0955d4139ab7e5b9c5a5690512a
+    with:
+      kit-version: 38fd769c339ea0955d4139ab7e5b9c5a5690512a

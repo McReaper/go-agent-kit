@@ -168,9 +168,11 @@ Not whether code is covered, but whether tests fail when the code breaks.
 | No mocks | depguard denies `golang/mock`, `go.uber.org/mock`, testify; fakes implement the interface | Tests that freeze calls instead of behaviour | mechanism in `m3-consistency` |
 | Properties and fuzzing | `pgregory.net/rapid`, `testing.F` | Code that only passes the planned cases | `template` (`slug`, `domain`) |
 | Golden files | stdlib golden pattern with `-update`, protected by the guard | Partial assertions on large outputs | `template` (`tools.golden.json`), `guard-protected` |
-| Tests first | Skill: spec, tests, owner review, then implementation | Tests written to fit the code | milestone 2 |
+| Tests first | The template's `new-feature` skill: the contract, then tests that must fail first, then the slice; the owner may ask to see the tests alone | Tests written to fit the code | guided (Pass 4) |
 
 No coverage gate: mutation already counts uncovered code. Equivalent mutants exist (in `template/…/list`, `limit <= 0` after a `limit == 0` case); the gate is a score on changed code, calibrated on the reference slice. A mutant counts on the line it starts: removing a block whose first line the change left alone doesn't count — the clean trial scores 52/77 overall, 15/17 on `list` once its tests pin the limits its tool description promises.
+
+The threshold comes from the template. Its tests kill 76 of the 81 mutants that count; the survivors are equivalent: `return -2` where `strings.Map` drops any negative, `> MaxASCII` where DEL is neither letter nor digit, `iota + 2` for an enum whose values mean nothing, a sort comparison the store's file order never reaches. So 0.8 leaves room for one equivalent mutant in five. Go adds a kind .NET doesn't have: 29 more mutants only drop the return of an `if err != nil` block, and live unless a test makes a disk or system call fail. Counted, they would take the infra from 91% to 55%; the compiler (an unused `err`) and errcheck already refuse a dropped error, so `kit mutate` lists them apart (ADR 4). A refusal (`errors.Is(err, fs.ErrExist)`, a sentinel error) is a behaviour and counts.
 
 ### Pass 1 — Linters
 
@@ -238,9 +240,21 @@ The Go version rule comes from the trial: on go1.25.5, govulncheck found 29 vuln
 | No panic, exit or recover in the code | forbidigo: `panic` and `recover` in platform only, `os.Exit` in main only | Crashes and swallowed panics | `m7-diagnosability` |
 | No log in the domain | depguard `pure-domain` | Logic and diagnostics mixed | `m10-testability` |
 
-### Pass 4 — Guided (milestone 2)
+### Pass 4 — Guided: the template
 
-The template (`gonew`) with the reference slice, AGENTS.md checked by a test, the new-feature and new-module skills, ADRs, the S11 journal of side-effecting operations, a `Secret` type whose `LogValue` redacts (S6), bounded list arguments (S8), and Claude Code hooks that run `kitvet` and golangci-lint on the edited package. Rules stay in the gates; these explain and point to them.
+An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit/template@<version> example.com/app`. It is the code every proof runs on, so what an app starts from passes every gate. Rules stay in the gates; these show and explain them.
+
+| Criterion | What the template holds | Its test |
+| --- | --- | --- |
+| E3, E7 | The reference slices (`add`, `list`), their module's contract, domain and infra, the platform; AGENTS.md says where code goes, and a test fails on any path it names that doesn't exist | `template/agents_test.go` |
+| E4 | A glossary per module: every exported domain type defined; a test fails on one missing | `template/internal/notes/glossary_test.go` |
+| S11 | The op binding journals every run of an operation that isn't read-only, one JSON line in the data directory: the operation, its arguments, its error; binding an operation without a journal is refused | `template/internal/platform/op`, `…/journal` tests |
+| S8 | A list takes a bounded limit with a default (`list_notes`: 1 to 100, 20 when not given) | `template/internal/notes/internal/list` tests |
+| S6 | The `secrets` skill: a `secret.Secret` type that reads `[redacted]` through fmt, slog, errors, JSON and the journal; its code is extracted from the skill and run through every gate | `TestTheSecretsSkillsCodePassesEveryGate` |
+| M10 | Configuration read once at startup, checked, with a message naming the setting (`NOTES_DATA_DIR` must be absolute) | `template/internal/platform/config` tests |
+| M2 | An optional argument is a pointer: nil when not given, a CLI flag left out stays nil, so "not given" differs from zero | `template/internal/platform/op` tests |
+| M6, C2 | The `new-feature` skill: the contract first, tests as sentences that must fail first, the slice, the golden diff, `kit check`, `kit mutate`, `kit review`; a wrong test is fixed and reported, never bent around. The `new-module` skill: when a module, its skeleton in its own pull request | AGENTS.md's skill test |
+| T2 | `.github/CODEOWNERS` and the CI that calls `kit-check.yml` pinned by SHA; the pre-commit hook | `TestTheAppCodeOwnersProtectWhatJudgesTheAgent`, `TestThePreCommitHookStopsAStagedSecret` |
 
 ## Coverage check
 
