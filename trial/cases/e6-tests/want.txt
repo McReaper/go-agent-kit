@@ -1,5 +1,6 @@
-# E6/M6: a white-box test (package add, not add_test), a helper without t.Helper, and a temp dir the test never cleans.
+# E6/M6: a white-box test (package add, not add_test), even in export_test.go, which the linter skips by default, a helper without t.Helper, and a temp dir the test never cleans.
 golangci/testpackage internal/notes/internal/add/whitebox_test.go:1 package should be `add_test` instead of `add`
 golangci/thelper internal/notes/internal/add/whitebox_test.go:8 test helper function should start from t\.Helper\(\)
 golangci/usetesting internal/notes/internal/add/whitebox_test.go:9 os\.MkdirTemp\(\) could be replaced by t\.TempDir\(\) in scratch
 kitvet/testassert internal/notes/internal/add/trivial_test.go:16 M6: TestAddRuns only fails on an error or a nil
+golangci/testpackage internal/notes/internal/add/export_test.go:1 package should be `add_test` instead of `add`
