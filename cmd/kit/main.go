@@ -27,7 +27,7 @@ func main() {
 
 func root(out io.Writer) *cobra.Command {
 	r := &cobra.Command{Use: "kit", Short: "The anti-drift kit's checks", SilenceUsage: true}
-	r.AddCommand(guardCommand(out), sweepCommand(out))
+	r.AddCommand(guardCommand(out), sweepCommand(out), appCommand(out))
 	return r
 }
 
