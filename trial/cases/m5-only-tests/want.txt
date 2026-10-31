@@ -1,0 +1,3 @@
+# M5: a store method only a test calls (deadcode never reports a method), and a constant exported though only its package uses it.
+sweep/only-tests internal/notes/internal/infra/oldest.go:9 \*FileStore\.Oldest is reached by tests only
+sweep/over-exported internal/notes/internal/list/pages.go:3 list\.PageSize is exported but only its own package uses it

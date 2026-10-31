@@ -180,6 +180,7 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | M2 | `kitvet comments` (`// WHY:` only; doc comments on a contract's exported API and a command's package doc; a `Copyright` or `SPDX-License-Identifier:` header above the package clause), staticcheck ST*, misspell, predeclared, `kitvet pkgname` (stutter), gofumpt and goimports | Paraphrasing comments, mixed naming | `m2-readability`, `e7-names`, `fmt-formatting` |
 | M3 | depguard one-library-per-need (slog, stdlib errors, go-cmp, go-sdk, cobra), forbidigo `fmt.Print*`, modernize, tagliatelle (snake_case json) | Two ways to do one thing | `m3-consistency` |
 | M5 | unused, unparam, wastedassign, unconvert, interfacebloat ≤ 5 | Dead code, unused parameters | `m5-minimality` |
+| M5 | `kit sweep`, over the whole module: code only tests reach, methods included (deadcode never reports a method, which let a crash test leave one alive), and names a module's inside exports though only their package uses them | Code kept alive by its tests; a package's inside leaking out | `m5-only-tests` |
 | M10 | depguard `pure-domain` (no `os`, `io/fs`, `net`, `os/exec`, `database/sql`, `log/slog`, `reflect`, randomness), forbidigo `time.Now/Since/Until` and `os.Getenv` in the domain, gochecknoglobals, gochecknoinits | Hidden clock, environment, I/O, state | `m10-testability` |
 | M11 | errcheck (type assertions, blank), govet (all but fieldalignment, shadow), forcetypeassert, nilerr, nilnil, nilnesserr, containedctx, fatcontext, bodyclose, noctx, sqlclosecheck, rowserrcheck, exhaustive, makezero, durationcheck, reassign, musttag; `kitvet goroutine` (`go` only in platform), `kitvet ctxroot` (no new root context outside main) | Unchecked errors, leaked resources, orphan goroutines | `m11-robustness` |
 | M11 | nilaway | A nil that flows to a dereference | `m11-nil` |
@@ -199,7 +200,7 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | E2 | A slice imports no other slice, and no infra (the contract passes it in) | Coupled slices, slices that need I/O to test | `e1-boundaries` |
 | E1 | Platform imports no module | Shared code coupled to one module | `e1-boundaries` |
 | E7 | Every package sits in the layout | A package invented outside it | `e1-boundaries` |
-| E4 | `kitvet typedid`: no id of a bare string or integer in the domain | Ids of different things swapped | `e4-typed-ids` |
+| E4 | `kitvet typedid`: no id of a bare string or integer in the domain; `kitvet domainconv`: a domain type is built by its Parse function, never by conversion outside the domain (a crash test validated ids in one session and converted them in the next) | Ids of different things swapped; unchecked values in the model | `e4-typed-ids` |
 | E6 | testpackage (black-box `_test` packages), no mocks | Tests tied to internals | `e6-tests` |
 | S3 | An operation's effect (`ReadOnly`, `Additive`, `Destructive`) has no default: registering one without it fails; it becomes the MCP tool's annotations | A side-effecting tool advertised as harmless | `trial/clean` (`op_test`, `tools.golden.json`) |
 
@@ -231,6 +232,7 @@ The Go version rule comes from the trial: on go1.25.5, govulncheck found 29 vuln
 | Structured logs | sloglint: attributes only, static messages, snake_case keys, no global logger, context variants | `slog.Info("…", "k", v)` with no context | `m7-diagnosability` |
 | Errors keep their chain | errorlint (`%w`, `errors.Is`) | `err == ErrX`, `%v` on an error | `m7-diagnosability` |
 | Logged once | `kitvet logreturn`: an error logged and returned in one block | The same failure logged at every level | `m7-diagnosability` |
+| One message, one place | `kit sweep`: a log message written in two places | A log line that can't say which code ran (.NET's unique `EventId`) | `m7-duplicate-messages` |
 | No panic, exit or recover in the code | forbidigo: `panic` and `recover` in platform only, `os.Exit` in main only | Crashes and swallowed panics | `m7-diagnosability` |
 | No log in the domain | depguard `pure-domain` | Logic and diagnostics mixed | `m10-testability` |
 
@@ -266,7 +268,6 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
 - Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). AGENTS.md says to stop and ask; review catches the rest.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
-- Two log lines with the same message (M7, .NET's unique `EventId`), and an exported name used only inside its own package (M5): no analyzer yet.
 - A foreign JSON format decoded in production code: tagliatelle wants snake_case; tests are exempt, production would need an override.
 - Renovate's configuration: not yet proven (milestone 2).
 
