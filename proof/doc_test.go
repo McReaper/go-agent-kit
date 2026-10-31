@@ -78,6 +78,9 @@ func TestTheDocsProofTestsExist(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
 		data, err := os.ReadFile(f.Name())
 		if err != nil {
 			t.Fatal(err)
