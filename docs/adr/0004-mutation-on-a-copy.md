@@ -6,4 +6,9 @@ gremlins has `--diff` and thresholds but swaps operators only, and on Windows re
 
 ## Decision
 
-`kit mutate` (milestone 2) runs go-mutesting on a copy of the module, on the lines a change touches, and fails under a score calibrated on the reference slice. Equivalent mutants are why the gate is a score, not zero survivors.
+`kit mutate` runs go-mutesting on a copy of the module, the files git sees (tracked and new, ignored ones left out, so build outputs and databases aren't copied), in the packages a change touches. Only mutants that start on a line the change adds count, so old code's survivors don't fail a new change. It fails under `--min`, 0.8 until the reference slice calibrates it. Equivalent mutants are why the gate is a score, not zero survivors.
+
+## Consequences
+
+- A mutant counts on the line it starts: removing a block whose first line the change left alone isn't counted.
+- Each mutant is a recompile plus the package's tests, so the gate runs in the merge check, not in the agent's stop hook.
