@@ -160,7 +160,7 @@ func sharedKind(p string) string {
 	case strings.HasPrefix(p, "cmd/"):
 		return "composition root"
 	}
-	if dir, m, ok := guard.Module(p); ok && m != "platform" && path.Dir(p) == dir {
+	if dir, m, ok := guard.Module(p); ok && path.Dir(p) == dir {
 		return "the " + m + " module's contract"
 	}
 	return ""
@@ -235,8 +235,8 @@ func continuesComment(line string) bool {
 func newModules(ctx context.Context, dir string, d guard.Diff) ([]string, error) {
 	var out []string
 	for _, f := range d.Files {
-		mdir, name, ok := guard.Module(f.Path)
-		if !ok || name == "platform" || f.Status == 'D' || slices.Contains(out, mdir) {
+		mdir, _, ok := guard.Module(f.Path)
+		if !ok || f.Status == 'D' || slices.Contains(out, mdir) {
 			continue
 		}
 		at, err := git.Run(ctx, dir, "ls-tree", d.Base, "--", mdir)
