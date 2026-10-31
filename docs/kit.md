@@ -271,17 +271,18 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 
 ## Step 3 — Assembly (milestone 2)
 
-The kit's repository is itself the arbiter: everything in it goes through the owner's full review, like the reference slice.
+The kit's repository is itself the arbiter: everything in it goes through the owner's full review, like the reference slice. Every .NET tactical solution is built first, the ones step 2 marks *milestone 2* included, and trimmed later by use. One PR per package, each usable alone:
 
-1. Platform: the bot account; ruleset and CODEOWNERS on this repository; managed Claude Code settings.
-2. `kit lint` (golangci-lint with the embedded config, then kitvet, per GOOS) and `kit guard` as a pinned module; reusable workflows (`workflow_call`) apps pin by SHA.
-3. The `gonew` template with the reference slice, read in full by the owner, which calibrates the thresholds and the mutation score.
-4. archtest set on that slice; `kit mutate` (go-mutesting on a copy, changed lines only).
-5. The remaining checks (Renovate, the AGENTS.md test, the review sheet).
-6. Skills, hooks, AGENTS.md, ADRs.
-7. Haiku crash tests: a feature, a refactor, and "make this test pass fast" prompts; each successful bypass becomes a rule.
-
-v0 = steps 1–3, protected tests, gitleaks and the per-GOOS lint.
+1. **Guard v2.** Locally, protected changes are reported, not failures: a guard that failed on them made an agent bend the code to fit a wrong test rather than ask (crash test `r2-envtest`). Bypasses stay blocking. In CI, protected changes fail until a code owner approved the last commit. Sensitive files (`.env`, keys, certificates) are refused.
+2. **Analyzers from the crash tests.** Functions and methods only tests reach (deadcode never reports a method); a domain type built by conversion outside the domain; duplicate log messages; exported names used only in their package.
+3. **`kit check`.** One command, the same locally and in CI: lint per GOOS, kitvet, archtest, dead code, nilaway, govulncheck, tests, guard.
+4. **`kit mutate`.** go-mutesting on a copy, changed lines only, a threshold calibrated on the reference slice.
+5. **`kit review`.** The review sheet posted on the PR: protected changes, test scenarios added or removed, read as sentences, contract changes (golden snapshot, apidiff), new modules, shared code touched, `// WHY:` added; path labels.
+6. **Platform.** The bot account; CODEOWNERS and the ruleset; reusable workflows apps pin by SHA; Claude Code hooks, deny rules and managed settings; pre-commit hooks.
+7. **Template and reference slice** (`gonew`): a `Secret` type that redacts in logs (S6), bounded list arguments (S8), a journal of every non-read-only operation in the op binding (S11), configuration validated at startup, optional arguments, AGENTS.md and the test of its paths and commands, a glossary per module, the new-feature (tests first) and new-module skills. The owner reads the slice in full; it calibrates the thresholds.
+8. **Supply chain.** Renovate, proven by its validator; PSScriptAnalyzer for PowerShell.
+9. **Crash tests.** The environment test rerun on guard v2; the same chain of features with and without the kit; a platform round under the bot (merge, weaken the CI, edit a workflow). Each attempt is kept as a `crash/<round>-<name>` branch.
+10. **Final review** with the dotnet-agent-harness checklist.
 
 ## Principles
 
