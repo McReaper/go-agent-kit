@@ -11,6 +11,12 @@ import (
 )
 
 type ruleset struct {
+	Target     string `json:"target"`
+	Conditions struct {
+		RefName struct {
+			Include []string `json:"include"`
+		} `json:"ref_name"`
+	} `json:"conditions"`
 	BypassActors []struct {
 		ActorType  string `json:"actor_type"`
 		BypassMode string `json:"bypass_mode"`
@@ -53,6 +59,26 @@ func TestTheRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T) {
 	}
 	if len(r.BypassActors) != 1 || r.BypassActors[0].BypassMode != "pull_request" {
 		t.Errorf("only the admin role may bypass, through a pull request: %+v", r.BypassActors)
+	}
+}
+
+func TestTheTagRulesetLetsOnlyTheOwnerTagARelease(t *testing.T) {
+	var r ruleset
+	readJSON(t, "../platform/ruleset-tags.json", &r)
+	if r.Target != "tag" || !slices.Equal(r.Conditions.RefName.Include, []string{"~ALL"}) {
+		t.Errorf("the ruleset must hold every tag: target %q, include %v", r.Target, r.Conditions.RefName.Include)
+	}
+	var types []string
+	for _, rule := range r.Rules {
+		types = append(types, rule.Type)
+	}
+	for _, want := range []string{"creation", "update", "deletion"} {
+		if !slices.Contains(types, want) {
+			t.Errorf("the tag ruleset lacks a %s rule", want)
+		}
+	}
+	if len(r.BypassActors) != 1 || r.BypassActors[0].ActorType != "RepositoryRole" || r.BypassActors[0].BypassMode != "always" {
+		t.Errorf("only the admin role may tag, from its own clone: %+v", r.BypassActors)
 	}
 }
 
