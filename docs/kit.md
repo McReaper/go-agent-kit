@@ -224,6 +224,7 @@ The threshold comes from the template. Its tests kill 76 of the 81 mutants that 
 | E5 | MCP tools: a golden snapshot of `tools/list` (names, schemas, annotations), protected by the guard; libraries: apidiff against the base | A contract changed in passing | `template` (`tools.golden.json`), `e5-api-break` |
 | M5 | deadcode from `cmd/`: functions only tests reach | Code nothing ships | `m5-deadcode` |
 | M4 | dupl ≥ 100 tokens | Copied rules | `m4-duplication` |
+| M4 | `kit sweep`: a function body of 3 statements or more written twice, under dupl's 100 tokens (a crash test copied a ten-line limit check from one operation to another) | A short rule with two homes | `m4-copied-rule` |
 | T1 | Absolute: zero findings everywhere, every gate | Slow degradation | `template` |
 | T3 | `kit guard`: ≤ 400 changed production lines, one module per PR | PRs too big to review | `guard-size` |
 | Scripts | shellcheck | Word splitting, globbing | `sh-script` |
