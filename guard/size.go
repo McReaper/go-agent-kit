@@ -8,7 +8,17 @@ import (
 	"strings"
 )
 
-var moduleOf = regexp.MustCompile(`^(?:[^/]+/)*?internal/([^/]+)/`)
+var moduleOf = regexp.MustCompile(`^((?:[^/]+/)*?internal/([^/]+))/`)
+
+// Module returns the directory and the name of the module p belongs to:
+// the first internal/<name>/ in its path.
+func Module(p string) (dir, name string, ok bool) {
+	m := moduleOf.FindStringSubmatch(p)
+	if m == nil {
+		return "", "", false
+	}
+	return m[1], m[2], true
+}
 
 func size(d Diff) []Finding {
 	lines := 0
@@ -18,8 +28,8 @@ func size(d Diff) []Finding {
 			continue
 		}
 		lines += len(f.Added) + f.Removed
-		if m := moduleOf.FindStringSubmatch(f.Path); m != nil && !slices.Contains(modules, m[1]) {
-			modules = append(modules, m[1])
+		if _, m, ok := Module(f.Path); ok && !slices.Contains(modules, m) {
+			modules = append(modules, m)
 		}
 	}
 	var out []Finding
