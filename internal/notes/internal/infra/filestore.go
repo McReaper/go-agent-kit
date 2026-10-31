@@ -20,6 +20,7 @@ type record struct {
 	ID      string    `json:"id"`
 	Title   string    `json:"title"`
 	Body    string    `json:"body"`
+	Tags    []string  `json:"tags,omitempty"`
 	Created time.Time `json:"created"`
 }
 
@@ -43,7 +44,11 @@ func (s *FileStore) Close() error {
 }
 
 func (s *FileStore) Save(_ context.Context, n domain.Note) error {
-	data, err := json.Marshal(record{ID: string(n.ID), Title: string(n.Title), Body: n.Body, Created: n.Created})
+	var tags []string
+	for _, t := range n.Tags {
+		tags = append(tags, string(t))
+	}
+	data, err := json.Marshal(record{ID: string(n.ID), Title: string(n.Title), Body: n.Body, Tags: tags, Created: n.Created})
 	if err != nil {
 		return fmt.Errorf("encode note %s: %w", n.ID, err)
 	}
@@ -101,5 +106,9 @@ func (s *FileStore) read(name string) (domain.Note, error) {
 	if err != nil {
 		return domain.Note{}, fmt.Errorf("decode %s: %w", name, err)
 	}
-	return domain.Note{ID: id, Title: title, Body: r.Body, Created: r.Created}, nil
+	tags, err := domain.ParseTags(r.Tags)
+	if err != nil {
+		return domain.Note{}, fmt.Errorf("decode %s: %w", name, err)
+	}
+	return domain.Note{ID: id, Title: title, Body: r.Body, Tags: tags, Created: r.Created}, nil
 }

@@ -36,6 +36,7 @@ type Note struct {
 	ID      NoteID
 	Title   Title
 	Body    string
+	Tags    []Tag
 	Created time.Time
 }
 

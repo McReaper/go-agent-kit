@@ -6,13 +6,23 @@
       "openWorldHint": false,
       "readOnlyHint": false
     },
-    "description": "Adds a note and returns its id. Never overwrites: a second note with the same title in the same second is refused.",
+    "description": "Adds a note under the tags given, case-insensitive, and returns its id. Never overwrites: a second note with the same title in the same second is refused.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
         "body": {
           "description": "the note's text",
           "type": "string"
+        },
+        "tags": {
+          "description": "tags to file the note under, case-insensitive, each at most 32 characters",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "title": {
           "description": "the note's title, at most 80 characters",
@@ -44,7 +54,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Lists the newest notes, their ids and titles.",
+    "description": "Lists the newest notes, their ids, titles and tags. Given a tag, lists only the notes filed under it.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -53,6 +63,13 @@
           "type": [
             "null",
             "integer"
+          ]
+        },
+        "tag": {
+          "description": "list only the notes filed under this tag, case-insensitive; the limit counts those notes",
+          "type": [
+            "null",
+            "string"
           ]
         }
       },
@@ -68,6 +85,15 @@
             "properties": {
               "id": {
                 "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
               },
               "title": {
                 "type": "string"
