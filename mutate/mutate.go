@@ -20,10 +20,12 @@ import (
 type Mutant = mutesting.Mutant
 
 // Report is the mutants of the changed lines and their score: the share a
-// test killed, 1 when no changed line could be mutated.
+// test killed, 1 when no changed line could be mutated. ErrorReturns counts
+// the mutants left out because they only drop an error's return.
 type Report struct {
-	Mutants []Mutant
-	Score   float64
+	Mutants      []Mutant
+	Score        float64
+	ErrorReturns int
 }
 
 // Run mutates the lines changed since base in the module at dir, the root
@@ -81,20 +83,30 @@ func Packages(changed Lines) []string {
 }
 
 // Score keeps the mutants that start on a changed line and scores them.
+//
+// WHY: a mutant that only removes `if err != nil { return …err… }` lives
+// unless a test makes the call fail, which for I/O rarely pays; and the
+// compiler (an unused err) and errcheck already refuse a dropped error.
+// Counted, they take the template's infra from 91% to 55% (ADR 4).
 func Score(ms []Mutant, changed Lines) Report {
-	var kept []Mutant
+	var r Report
 	killed := 0
 	for _, m := range ms {
 		if !slices.Contains(changed[m.File], m.Line) {
 			continue
 		}
-		kept = append(kept, m)
+		if m.DropsErrorReturn {
+			r.ErrorReturns++
+			continue
+		}
+		r.Mutants = append(r.Mutants, m)
 		if m.Killed {
 			killed++
 		}
 	}
-	if len(kept) == 0 {
-		return Report{Score: 1}
+	r.Score = 1
+	if len(r.Mutants) > 0 {
+		r.Score = float64(killed) / float64(len(r.Mutants))
 	}
-	return Report{Mutants: kept, Score: float64(killed) / float64(len(kept))}
+	return r
 }
