@@ -254,7 +254,7 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 | E3, E7 | The reference slices (`add`, `list`), their module's contract, domain and infra, the platform; AGENTS.md says where code goes, and a test fails on any path it names that doesn't exist | `template/agents_test.go` |
 | E4 | A glossary per module: every exported domain type defined; a test fails on one missing | `template/internal/notes/glossary_test.go` |
 | S11 | The op binding journals every run of an operation that isn't read-only, one JSON line in the data directory: the operation, its arguments, its error; binding an operation without a journal is refused | `template/internal/platform/op`, `…/journal` tests |
-| S8 | A list takes a bounded limit with a default (`list_notes`: 1 to 100, 20 when not given); `kitvet boundedlist` holds every slice to it | `template/internal/notes/internal/list` tests |
+| S8 | A list takes a bounded limit with a default (`list_notes`: 1 to 100, 20 when not given), read by the platform's `op.Limit`, the rule's one home; `kitvet boundedlist` holds every slice to it | `template/internal/notes/internal/list` tests |
 | S6 | The `secrets` skill: a `secret.Secret` type that reads `[redacted]` through fmt, slog, errors, JSON and the journal; its code is extracted from the skill and run through every gate | `TestTheSecretsSkillsCodePassesEveryGate` |
 | M10 | Configuration read once at startup, checked, with a message naming the setting (`NOTES_DATA_DIR` must be absolute) | `template/internal/platform/config` tests |
 | M2 | An optional argument is a pointer: nil when not given, a CLI flag left out stays nil, so "not given" differs from zero | `template/internal/platform/op` tests |

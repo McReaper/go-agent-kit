@@ -48,12 +48,9 @@ func (l *List) Op() op.Op[Args, Out] {
 }
 
 func (l *List) Run(ctx context.Context, args Args) (Out, error) {
-	limit := defaultLimit
-	if args.Limit != nil {
-		limit = *args.Limit
-	}
-	if limit < 1 || limit > maxLimit {
-		return Out{}, fmt.Errorf("limit %d is out of range: give 1 to %d", limit, maxLimit)
+	limit, err := op.Limit(args.Limit, defaultLimit, maxLimit)
+	if err != nil {
+		return Out{}, err
 	}
 	notes, err := l.store.Newest(ctx, limit)
 	if err != nil {
