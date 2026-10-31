@@ -2,6 +2,9 @@ package infra_test
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -43,6 +46,26 @@ func TestFileStoreReturnsTheNewestFirstUpToTheLimit(t *testing.T) {
 	want := []domain.Note{note("newest", 3), note("middle", 2)}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("Newest (-want +got):\n%s", diff)
+	}
+}
+
+func TestFileStoreRefusesARecordWithABadID(t *testing.T) {
+	dir := t.TempDir()
+	s, err := infra.OpenFileStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	bad := `{"id":"../escape","title":"Fine","body":"","created":"2026-10-30T22:00:00Z"}`
+	if err := os.WriteFile(filepath.Join(dir, "x.json"), []byte(bad), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Newest(context.Background(), 10); !errors.Is(err, domain.ErrBadID) {
+		t.Fatalf("Newest err = %v, want ErrBadID", err)
 	}
 }
 
