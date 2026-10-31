@@ -144,7 +144,8 @@ The workstation gives fast feedback but can be bypassed; the Git platform is the
 | Solution | Tool | What it blocks | Proof |
 | --- | --- | --- | --- |
 | A separate identity for the agent: push to its branches, no merge, no admin | A GitHub App with contents and pull requests only, no workflows or administration permission; `kit app exec -- <command>` mints its hour-long installation token into the command's environment, never printed, and commits as `<app>[bot]` | The agent merging alone, editing protection rules, or changing a workflow | `internal/platform/ghapp` tests; the live round is milestone 2 |
-| One command, the same on the agent's machine and in CI | `kit check`: golangci-lint with the kit's embedded config and the kit's analyzers per GOOS, archtest, sweep, deadcode, nilaway, govulncheck, the tests (with `-race` on Linux) and the guard; an app's own lint config is never read (crash tests ran a local check that missed a gate CI ran) | A local pass that CI then fails; a config weakened in the app | `TestKitCheckRunsEveryGateAndFailsOnAny` |
+| One command, the same on the agent's machine and in CI | `kit check`: golangci-lint with the kit's embedded config and the kit's analyzers per GOOS, archtest, sweep, deadcode, nilaway, govulncheck, the tests (with `-race` on Linux), the guard, and the files no Go gate reads: actionlint and zizmor on the workflows, shellcheck on the scripts (`.sh`, or a shell shebang for git hooks), gitleaks on the change's commits and on what isn't committed yet; an app's own lint config is never read (crash tests ran a local check that missed a gate CI ran) | A local pass that CI then fails; a config weakened in the app; a workflow, script or secret an app's CI never checked | `TestKitCheckRunsEveryGateAndFailsOnAny`, `TestKitCheckFailsOnAWorkflowAScriptAndASecret` |
+| A secret stopped before it enters the history | The template's `.githooks/pre-commit`: `kit guard`, then gitleaks on the staged lines; enabled per clone with `git config core.hooksPath .githooks` | A token committed, which only a history rewrite removes | `TestThePreCommitHookStopsAStagedSecret` |
 | Protected paths need the owner's approval | `platform/CODEOWNERS` (tests, testdata, `go.mod`, `.github/`, `.kit/`, `.claude/`, AGENTS.md, ADRs) and `platform/ruleset.json`: a code owner approves the last commit, stale approvals dismissed, the `kit` check required, and only the owner updates the branch, through a pull request, so the app can't merge even an approved change. The app's CI calls `kit-check.yml`, pinned by SHA | Changes to config, thresholds, CI, hooks, `.claude/`, `go.mod`, existing tests; the agent merging | `TestTheRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange`, `TestTheAppCodeOwnersProtectWhatJudgesTheAgent`; applying them is the owner's |
 | Rules shipped by the kit, pinned by version | `lint/golangci.yml`, `cmd/kitvet`, `tools.txt`; an app's own `.golangci.yml` is never read | A rule weakened in the app repository | all cases |
 | Lint and vet per target system | CI runs golangci-lint and kitvet with `GOOS=linux` and `GOOS=windows` | A file built for one system escaping the checks | `m11-robustness` (`clean_windows.go`) |
@@ -267,11 +268,13 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 | Go production code | golangci-lint, kitvet, archtest, nilaway, deadcode, govulncheck, mutation, per GOOS | Proven |
 | Tests, golden files, fuzz corpus | testassert, testpackage, thelper, usetesting; the guard's protected-test rules | Proven |
 | Generated code | `exclusions.generated: disable`; the guard allows the header in `gen/`, `*_gen.go`, `*.pb.go` only | Proven |
-| `go.mod`, `go.sum` | gomoddirectives, `go mod tidy -diff`, govulncheck, the guard's go-line rule; CODEOWNERS | Proven; CODEOWNERS milestone 2 |
-| Workflows | actionlint, zizmor | Proven |
-| Shell scripts | shellcheck | Proven |
-| The kit's config in an app (`.golangci.yml`, `tools.txt`, hooks, `.claude/`) | Never read from the app; CODEOWNERS, managed settings | Milestone 2 |
-| Markdown (AGENTS.md, ADRs) | A test that every path and command cited exists | Milestone 2 |
+| `go.mod`, `go.sum` | gomoddirectives, `go mod tidy -diff`, govulncheck, the guard's go-line rule; CODEOWNERS | Proven |
+| Workflows | actionlint, zizmor, in `kit check` | Proven |
+| Shell scripts, git hooks | shellcheck, in `kit check` | Proven |
+| Secrets in any file | gitleaks in `kit check` and the pre-commit hook; the guard's sensitive files | Proven |
+| The kit's config in an app (`.golangci.yml`, `tools.txt`, hooks, `.claude/`) | Never read from the app; CODEOWNERS, managed settings | Proven; managed settings are the owner's to deploy |
+| Markdown (AGENTS.md, glossaries, skills) | AGENTS.md's paths and skills exist; every domain type is in its glossary; a skill's code passes every gate | Proven (template) |
+| ADRs | CODEOWNERS; the review sheet lists them | Proven |
 | PowerShell, Dockerfiles, IaC | PSScriptAnalyzer, hadolint, Checkov when they appear | Out of target until then |
 
 **What stays uncovered**, each a review point or a future rule:
