@@ -5,6 +5,7 @@ package main
 import (
 	"github.com/McReaper/go-agent-kit/analyzers/comments"
 	"github.com/McReaper/go-agent-kit/analyzers/ctxroot"
+	"github.com/McReaper/go-agent-kit/analyzers/domainconv"
 	"github.com/McReaper/go-agent-kit/analyzers/goroutine"
 	"github.com/McReaper/go-agent-kit/analyzers/logreturn"
 	"github.com/McReaper/go-agent-kit/analyzers/nesting"
@@ -19,6 +20,7 @@ func main() {
 	multichecker.Main(
 		comments.New(),
 		ctxroot.New(),
+		domainconv.New(),
 		goroutine.New(),
 		logreturn.New(),
 		nesting.New(),

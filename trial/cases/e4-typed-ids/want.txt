@@ -1,3 +1,4 @@
-# E4: ids of other notes and users held as bare strings and integers in the domain.
+# E4: ids of other notes and users held as bare strings and integers in the domain, and an id built by conversion in a slice, skipping the domain's ParseNoteID.
 kitvet/typedid internal/notes/internal/domain/link.go:5 E4: ToID is a bare string
 kitvet/typedid internal/notes/internal/domain/link.go:9 E4: userID is a bare int64
+kitvet/domainconv internal/notes/internal/add/convert.go:6 E4: NoteID is built by conversion outside the domain: call the domain.s ParseNoteID

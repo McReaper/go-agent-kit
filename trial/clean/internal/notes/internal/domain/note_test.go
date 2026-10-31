@@ -61,6 +61,29 @@ func TestNewNamesTheNoteByItsTitleAndUTCTime(t *testing.T) {
 	}
 }
 
+func TestParseNoteID(t *testing.T) {
+	for _, ok := range []string{"buy-milk-20261030t220509", "a", "a1-b2"} {
+		if got, err := domain.ParseNoteID(ok); err != nil || string(got) != ok {
+			t.Errorf("ParseNoteID(%q) = %q, %v", ok, got, err)
+		}
+	}
+	for _, bad := range []string{"", "-a", "a-", "a--b", "A", "../x", "a b", "a/b"} {
+		if _, err := domain.ParseNoteID(bad); !errors.Is(err, domain.ErrBadID) {
+			t.Errorf("ParseNoteID(%q) err = %v, want ErrBadID", bad, err)
+		}
+	}
+}
+
+func TestEveryNewNoteHasAnIDThatParses(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		title := rapid.StringMatching(`[a-zA-Z0-9][a-zA-Z0-9 ]{0,40}`).Draw(t, "title")
+		n := domain.New(domain.Title(title), "", time.Unix(rapid.Int64Range(0, 4e9).Draw(t, "at"), 0))
+		if _, err := domain.ParseNoteID(string(n.ID)); err != nil {
+			t.Fatalf("New(%q) made id %q: %v", title, n.ID, err)
+		}
+	})
+}
+
 func FuzzParseTitle(f *testing.F) {
 	for _, seed := range []string{"Groceries", "", "  x  ", "?!", strings.Repeat("a", 81)} {
 		f.Add(seed)

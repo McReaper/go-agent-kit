@@ -93,5 +93,13 @@ func (s *FileStore) read(name string) (domain.Note, error) {
 	if err := json.Unmarshal(data, &r); err != nil {
 		return domain.Note{}, fmt.Errorf("decode %s: %w", name, err)
 	}
-	return domain.Note{ID: domain.NoteID(r.ID), Title: domain.Title(r.Title), Body: r.Body, Created: r.Created}, nil
+	id, err := domain.ParseNoteID(r.ID)
+	if err != nil {
+		return domain.Note{}, fmt.Errorf("decode %s: %w", name, err)
+	}
+	title, err := domain.ParseTitle(r.Title)
+	if err != nil {
+		return domain.Note{}, fmt.Errorf("decode %s: %w", name, err)
+	}
+	return domain.Note{ID: id, Title: title, Body: r.Body, Created: r.Created}, nil
 }
