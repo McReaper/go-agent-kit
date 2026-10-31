@@ -162,14 +162,14 @@ Not whether code is covered, but whether tests fail when the code breaks.
 
 | Solution | Tool | What it blocks | Proof |
 | --- | --- | --- | --- |
-| Mutation on changed code | go-mutesting (statement, branch, expression removal and operator swaps), always on a copy: it rewrites the source in place while tests run | Code that can be broken without any test failing | `m6-weak-test` |
+| Mutation on changed code | `kit mutate`: go-mutesting (statement, branch, expression removal and operator swaps) on a copy of the module, since it rewrites the source in place while tests run; only mutants starting on a line the change adds count; fails under `--min` (0.8 until the reference slice calibrates it). `kit-check.yml` runs it on every pull request | New code that can be broken without any test failing | `m6-weak-test`, `TestKitMutateFailsAChangeItsTestsDontPin` |
 | Tests must assert something | `kitvet testassert`: a test whose every failure sits under `err != nil` or a nil check | A test that only checks that the code ran | `e6-tests` |
 | No mocks | depguard denies `golang/mock`, `go.uber.org/mock`, testify; fakes implement the interface | Tests that freeze calls instead of behaviour | mechanism in `m3-consistency` |
 | Properties and fuzzing | `pgregory.net/rapid`, `testing.F` | Code that only passes the planned cases | `trial/clean` (`slug`, `domain`) |
 | Golden files | stdlib golden pattern with `-update`, protected by the guard | Partial assertions on large outputs | `trial/clean` (`tools.golden.json`), `guard-protected` |
 | Tests first | Skill: spec, tests, owner review, then implementation | Tests written to fit the code | milestone 2 |
 
-No coverage gate: mutation already counts uncovered code. Equivalent mutants exist (in `trial/clean/…/list`, `limit <= 0` after a `limit == 0` case); the gate is a score on changed code, calibrated on the reference slice — the clean trial scores 52/77 overall, 15/17 on `list` once its tests pin the limits its tool description promises.
+No coverage gate: mutation already counts uncovered code. Equivalent mutants exist (in `trial/clean/…/list`, `limit <= 0` after a `limit == 0` case); the gate is a score on changed code, calibrated on the reference slice. A mutant counts on the line it starts: removing a block whose first line the change left alone doesn't count — the clean trial scores 52/77 overall, 15/17 on `list` once its tests pin the limits its tool description promises.
 
 ### Pass 1 — Linters
 
@@ -267,7 +267,7 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 - A subprocess whose program name comes from input (S2): gosec G204 reports variable arguments, not a variable program (pinned in `s-security`).
 - Low-entropy secrets (S1): gitleaks misses `"correct horse"`.
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
-- Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). AGENTS.md says to stop and ask; review catches the rest.
+- Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). Guard v2 reports a changed test locally instead of failing on it, and in the rerun the agent fixed the test and said why (`r4-envtest`); review catches the rest.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
 - Renovate's configuration: not yet proven (milestone 2).
 
