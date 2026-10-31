@@ -1,0 +1,23 @@
+# Replace @OWNER with the owner's login. With the ruleset's "code owner review", a change to any of these
+# paths can't merge without the owner's approval of its last commit.
+
+# The kit's settings and the CI that runs it.
+/.kit/ @OWNER
+/.github/ @OWNER
+/.claude/ @OWNER
+
+# What the agent reads as rules, words and decisions.
+/AGENTS.md @OWNER
+/CLAUDE.md @OWNER
+/docs/adr/ @OWNER
+**/GLOSSARY.md @OWNER
+
+# Dependencies, the Go version, and the bot that moves them.
+/go.mod @OWNER
+/go.sum @OWNER
+/renovate.json @OWNER
+
+# Tests and their data: a new test file is free locally, any change to an
+# existing one is the owner's to approve.
+*_test.go @OWNER
+**/testdata/ @OWNER
