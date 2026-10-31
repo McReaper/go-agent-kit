@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	DefaultLimit = 20
-	MaxLimit     = 100
+	defaultLimit = 20
+	maxLimit     = 100
 )
 
 type Args struct {
@@ -51,9 +51,9 @@ func (l *List) Run(ctx context.Context, args Args) (Out, error) {
 	limit := args.Limit
 	switch {
 	case limit == 0:
-		limit = DefaultLimit
-	case limit < 0 || limit > MaxLimit:
-		return Out{}, fmt.Errorf("limit %d is out of range: give 1 to %d", limit, MaxLimit)
+		limit = defaultLimit
+	case limit < 0 || limit > maxLimit:
+		return Out{}, fmt.Errorf("limit %d is out of range: give 1 to %d", limit, maxLimit)
 	}
 	notes, err := l.store.Newest(ctx, limit)
 	if err != nil {
