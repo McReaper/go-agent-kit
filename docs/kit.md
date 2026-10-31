@@ -226,6 +226,8 @@ The threshold comes from the template. Its tests kill 76 of the 81 mutants that 
 | T1 | Absolute: zero findings everywhere, every gate | Slow degradation | `template` |
 | T3 | `kit guard`: ≤ 400 changed production lines, one module per PR | PRs too big to review | `guard-size` |
 | Scripts | shellcheck | Word splitting, globbing | `sh-script` |
+| Scripts | PSScriptAnalyzer at warning severity, on `.ps1`, `.psm1` and `.psd1`, in pwsh or Windows PowerShell | Aliases, `Write-Host`, `Invoke-Expression`, a password taken as plain text | `ps-script` |
+| M8, S10 | Renovate, the template's `renovate.json`: an update waits 7 days (`minimumReleaseAge`), `go mod tidy` runs after it, the `go` and `toolchain` lines stay the owner's, actions are pinned by digest, the kit's two pins move together. `kit check` runs Renovate's own validator, `--strict` | A misspelled option, which Renovate's server ignores without a word to the repository; a dependency released yesterday | `m8-renovate`, `TestRenovatesValidatorFindsNothingInTheTemplate` |
 
 The Go version rule comes from the trial: on go1.25.5, govulncheck found 29 vulnerabilities the code calls; on go1.25.14, the last 1.25 patch, still 11, because Go 1.25 is out of support and fixes land in 1.26 and 1.27 only. The trial moved to go 1.26.0 with toolchain go1.26.10, and x/text and x/sys took their fixes: none left.
 
@@ -275,7 +277,9 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 | The kit's config in an app (`.golangci.yml`, `tools.txt`, hooks, `.claude/`) | Never read from the app; CODEOWNERS, managed settings | Proven; managed settings are the owner's to deploy |
 | Markdown (AGENTS.md, glossaries, skills) | AGENTS.md's paths and skills exist; every domain type is in its glossary; a skill's code passes every gate | Proven (template) |
 | ADRs | CODEOWNERS; the review sheet lists them | Proven |
-| PowerShell, Dockerfiles, IaC | PSScriptAnalyzer, hadolint, Checkov when they appear | Out of target until then |
+| PowerShell | PSScriptAnalyzer, in `kit check` | Proven |
+| `renovate.json` | Renovate's validator, in `kit check`; CODEOWNERS | Proven |
+| Dockerfiles, IaC | hadolint, Checkov when they appear | Out of target until then |
 
 **What stays uncovered**, each a review point or a future rule:
 
@@ -287,7 +291,7 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
 - Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). Guard v2 reports a changed test locally instead of failing on it, and in the rerun the agent fixed the test and said why (`r4-envtest`); review catches the rest.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
-- Renovate's configuration: not yet proven (milestone 2).
+- What Renovate's rules do once on its server (S10): the validator proves the config is well-formed, not that a `matchDepTypes` matches; the first update pull requests show it.
 
 ## Step 3 — Assembly (milestone 2)
 

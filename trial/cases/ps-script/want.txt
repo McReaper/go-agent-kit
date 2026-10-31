@@ -1,0 +1,6 @@
+# Scripts: a PowerShell installer with an alias, Write-Host, Invoke-Expression, and a password taken as plain text and never used.
+psscriptanalyzer/PSAvoidUsingPlainTextForPassword scripts/install.ps1:2 should not use String type
+psscriptanalyzer/PSReviewUnusedParameter scripts/install.ps1:2 declared but not used
+psscriptanalyzer/PSAvoidUsingCmdletAliases scripts/install.ps1:5 'gci' is an alias of 'Get-ChildItem'
+psscriptanalyzer/PSAvoidUsingWriteHost scripts/install.ps1:6 uses Write-Host
+psscriptanalyzer/PSAvoidUsingInvokeExpression scripts/install.ps1:7 Invoke-Expression is used

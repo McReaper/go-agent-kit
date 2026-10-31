@@ -187,6 +187,8 @@ func rulesKind(p string) string {
 		return "the agent's instructions"
 	case strings.HasPrefix(p, "docs/adr/"):
 		return "a decision record"
+	case p == "renovate.json":
+		return "the dependency bot's rules"
 	}
 	return ""
 }

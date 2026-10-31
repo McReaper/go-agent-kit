@@ -17,14 +17,16 @@ import (
 	"github.com/McReaper/go-agent-kit/internal/platform/run"
 )
 
-// WHY: workflows, scripts and secrets aren't Go: the Go gates never read
-// them, and an app's CI runs kit check alone.
+// WHY: workflows, scripts, secrets and the dependency bot's config aren't
+// Go: the Go gates never read them, and an app's CI runs kit check alone.
 func fileGates() []gate {
 	return []gate{
 		{"actionlint", actionlintGate},
 		{"zizmor", zizmorGate},
 		{"shellcheck", shellcheckGate},
+		{"psscriptanalyzer", psscriptanalyzerGate},
 		{"gitleaks", gitleaksGate},
+		{"renovate", renovateGate},
 	}
 }
 

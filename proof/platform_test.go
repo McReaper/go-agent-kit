@@ -89,7 +89,7 @@ func TestTheAppCodeOwnersProtectWhatJudgesTheAgent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/.kit/", "/.github/", "/.claude/", "/go.mod", "*_test.go", "**/testdata/", "/AGENTS.md", "**/GLOSSARY.md"} {
+	for _, path := range []string{"/.kit/", "/.github/", "/.claude/", "/go.mod", "*_test.go", "**/testdata/", "/AGENTS.md", "**/GLOSSARY.md", "/renovate.json"} {
 		if !strings.Contains(string(data), "\n"+path+" @OWNER") {
 			t.Errorf("CODEOWNERS leaves %s to the agent", path)
 		}
