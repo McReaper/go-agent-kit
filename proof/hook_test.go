@@ -10,21 +10,17 @@ import (
 )
 
 // WHY: the proof builds kit as kit.exe on every system; the hook calls
-// kit, which only Windows resolves to kit.exe. The PATH gets a copy under
-// the system's own name.
+// kit, which only Windows resolves to kit.exe. Elsewhere the PATH gets a
+// link named kit.
 func kitOnPath(t *testing.T) {
 	t.Helper()
-	data, err := os.ReadFile(kitCommand(t, "kit"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := "kit"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, name), data, 0o700); err != nil {
-		t.Fatal(err)
+	kit := kitCommand(t, "kit")
+	dir := filepath.Dir(kit)
+	if runtime.GOOS != "windows" {
+		dir = t.TempDir()
+		if err := os.Symlink(kit, filepath.Join(dir, "kit")); err != nil {
+			t.Fatal(err)
+		}
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
