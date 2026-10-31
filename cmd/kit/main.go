@@ -26,6 +26,9 @@ func main() {
 		os.Exit(int(code))
 	}
 	if err != nil {
+		if !errors.Is(err, errFindings) {
+			fmt.Fprintln(os.Stderr, "kit:", err)
+		}
 		os.Exit(1)
 	}
 }
