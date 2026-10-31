@@ -139,7 +139,9 @@ func apply(t *testing.T, c trialCase, dir string) {
 			t.Fatalf("case %s: %v", c.name, err)
 		}
 	}
-	copyCase(t, c, dir)
+	if c.dir != "" {
+		copyCase(t, c, dir)
+	}
 }
 
 func copyCase(t *testing.T, c trialCase, dst string) {
