@@ -1,7 +1,7 @@
 # E1/E2/E7: a domain using a third-party package, a slice reaching into another slice and into infra,
 # the platform depending on a module, and a package outside the layout.
 archtest/domain-import internal/notes/internal/domain/compare.go:3 E1: the domain imports github\.com/google/go-cmp/cmp
-archtest/slice-infra internal/notes/internal/add/peek.go:4 E2: a slice imports example\.com/notes/internal/notes/internal/infra
-archtest/slice-import internal/notes/internal/add/peek.go:5 E2: a slice imports another slice, example\.com/notes/internal/notes/internal/list
-archtest/platform-import internal/platform/paths/leak.go:3 E1: the platform imports module example\.com/notes/internal/notes
-archtest/layout internal/notes/extra/extra.go:1 E7: package example.com/notes/internal/notes/extra is outside the layout
+archtest/slice-infra internal/notes/internal/add/peek.go:4 E2: a slice imports github.com/McReaper/go-agent-kit/template/internal/notes/internal/infra
+archtest/slice-import internal/notes/internal/add/peek.go:5 E2: a slice imports another slice, github.com/McReaper/go-agent-kit/template/internal/notes/internal/list
+archtest/platform-import internal/platform/paths/leak.go:3 E1: the platform imports module github.com/McReaper/go-agent-kit/template/internal/notes
+archtest/layout internal/notes/extra/extra.go:1 E7: package github.com/McReaper/go-agent-kit/template/internal/notes/extra is outside the layout

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"example.com/notes/internal/notes/internal/add"
-	"example.com/notes/internal/notes/internal/domain"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/add"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
 )
 
 type memStore struct {

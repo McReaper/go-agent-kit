@@ -1,8 +1,8 @@
 package add
 
 import (
-	"example.com/notes/internal/notes/internal/infra"
-	"example.com/notes/internal/notes/internal/list"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/infra"
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/list"
 )
 
 func Peek(s *infra.FileStore) *list.List {

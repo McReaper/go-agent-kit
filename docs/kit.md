@@ -2,7 +2,7 @@
 
 The Go counterpart of the .NET anti-drift kit. Target: **Go CLIs, MCP servers and libraries**.
 
-Every tool and setting this document names was run on the trial project (`trial/`): `trial/clean` passes all of them with no finding, and each case under `trial/cases/<case>` holds one deliberate violation and the exact findings it must produce (`want.txt`). `go test ./...` in this repository reruns them all; a tool upgrade that stops reporting a rule fails it. A row marked *milestone 2* is decided but not yet built or proven.
+Every tool and setting this document names was run on the template (`template/`, the app apps start from with `gonew`): it passes all of them with no finding, and each case under `trial/cases/<case>` holds one deliberate violation and the exact findings it must produce (`want.txt`). `go test ./...` in this repository reruns them all; a tool upgrade that stops reporting a rule fails it. A row marked *milestone 2* is decided but not yet built or proven.
 
 ## Goal and method
 
@@ -95,7 +95,7 @@ internal/platform/                 the shared kernel (MCP/CLI binding, paths); k
 pkg/<lib>/                         libraries
 ```
 
-`trial/clean` is built this way and compiles: the contract wires its slices and infra, each slice declares the interface it needs. One `Args` struct per operation: its `json` tags are the MCP arguments, the CLI flags are derived from them (`trial/clean/internal/platform/op`), so the two surfaces can't drift.
+The template is built this way and compiles: the contract wires its slices and infra, each slice declares the interface it needs. One `Args` struct per operation: its `json` tags are the MCP arguments, the CLI flags are derived from them (`template/internal/platform/op`), so the two surfaces can't drift.
 
 ## Step 2 — Tactical solutions
 
@@ -166,11 +166,11 @@ Not whether code is covered, but whether tests fail when the code breaks.
 | Mutation on changed code | `kit mutate`: go-mutesting (statement, branch, expression removal and operator swaps) on a copy of the module, since it rewrites the source in place while tests run; only mutants starting on a line the change adds count; fails under `--min` (0.8 until the reference slice calibrates it). `kit-check.yml` runs it on every pull request | New code that can be broken without any test failing | `m6-weak-test`, `TestKitMutateFailsAChangeItsTestsDontPin` |
 | Tests must assert something | `kitvet testassert`: a test whose every failure sits under `err != nil` or a nil check | A test that only checks that the code ran | `e6-tests` |
 | No mocks | depguard denies `golang/mock`, `go.uber.org/mock`, testify; fakes implement the interface | Tests that freeze calls instead of behaviour | mechanism in `m3-consistency` |
-| Properties and fuzzing | `pgregory.net/rapid`, `testing.F` | Code that only passes the planned cases | `trial/clean` (`slug`, `domain`) |
-| Golden files | stdlib golden pattern with `-update`, protected by the guard | Partial assertions on large outputs | `trial/clean` (`tools.golden.json`), `guard-protected` |
+| Properties and fuzzing | `pgregory.net/rapid`, `testing.F` | Code that only passes the planned cases | `template` (`slug`, `domain`) |
+| Golden files | stdlib golden pattern with `-update`, protected by the guard | Partial assertions on large outputs | `template` (`tools.golden.json`), `guard-protected` |
 | Tests first | Skill: spec, tests, owner review, then implementation | Tests written to fit the code | milestone 2 |
 
-No coverage gate: mutation already counts uncovered code. Equivalent mutants exist (in `trial/clean/…/list`, `limit <= 0` after a `limit == 0` case); the gate is a score on changed code, calibrated on the reference slice. A mutant counts on the line it starts: removing a block whose first line the change left alone doesn't count — the clean trial scores 52/77 overall, 15/17 on `list` once its tests pin the limits its tool description promises.
+No coverage gate: mutation already counts uncovered code. Equivalent mutants exist (in `template/…/list`, `limit <= 0` after a `limit == 0` case); the gate is a score on changed code, calibrated on the reference slice. A mutant counts on the line it starts: removing a block whose first line the change left alone doesn't count — the clean trial scores 52/77 overall, 15/17 on `list` once its tests pin the limits its tool description promises.
 
 ### Pass 1 — Linters
 
@@ -204,7 +204,7 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | E7 | Every package sits in the layout | A package invented outside it | `e1-boundaries` |
 | E4 | `kitvet typedid`: no id of a bare string or integer in the domain; `kitvet domainconv`: a domain type is built by its Parse function, never by conversion outside the domain (a crash test validated ids in one session and converted them in the next) | Ids of different things swapped; unchecked values in the model | `e4-typed-ids` |
 | E6 | testpackage (black-box `_test` packages, `export_test.go` and `internal_test.go` included, which it skips by default), no mocks | Tests tied to internals | `e6-tests` |
-| S3 | An operation's effect (`ReadOnly`, `Additive`, `Destructive`) has no default: registering one without it fails; it becomes the MCP tool's annotations | A side-effecting tool advertised as harmless | `trial/clean` (`op_test`, `tools.golden.json`) |
+| S3 | An operation's effect (`ReadOnly`, `Additive`, `Destructive`) has no default: registering one without it fails; it becomes the MCP tool's annotations | A side-effecting tool advertised as harmless | `template` (`op_test`, `tools.golden.json`) |
 
 ### Pass 3 — CI checks
 
@@ -217,10 +217,10 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | M8 | The `go` line follows the newest Go the pinned golangci-lint supports, the `toolchain` line its latest patch, on a supported release | Building on an unsupported Go | see below |
 | S10 | zizmor and actionlint on workflows: pinned actions, no `pull_request_target` with PR code, no template injection, least permissions | A workflow that leaks or runs untrusted code | `ci-workflow` |
 | S10 | cyclonedx-gomod: an SBOM of what the binary links | An unknown shipped dependency | `TestSBOMListsTheModulesTheBinaryLinks` |
-| E5 | MCP tools: a golden snapshot of `tools/list` (names, schemas, annotations), protected by the guard; libraries: apidiff against the base | A contract changed in passing | `trial/clean` (`tools.golden.json`), `e5-api-break` |
+| E5 | MCP tools: a golden snapshot of `tools/list` (names, schemas, annotations), protected by the guard; libraries: apidiff against the base | A contract changed in passing | `template` (`tools.golden.json`), `e5-api-break` |
 | M5 | deadcode from `cmd/`: functions only tests reach | Code nothing ships | `m5-deadcode` |
 | M4 | dupl ≥ 100 tokens | Copied rules | `m4-duplication` |
-| T1 | Absolute: zero findings everywhere, every gate | Slow degradation | `trial/clean` |
+| T1 | Absolute: zero findings everywhere, every gate | Slow degradation | `template` |
 | T3 | `kit guard`: ≤ 400 changed production lines, one module per PR | PRs too big to review | `guard-size` |
 | Scripts | shellcheck | Word splitting, globbing | `sh-script` |
 

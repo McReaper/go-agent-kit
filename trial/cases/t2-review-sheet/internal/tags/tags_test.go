@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"example.com/notes/internal/tags"
+	"github.com/McReaper/go-agent-kit/template/internal/tags"
 )
 
 func TestNormalizeKeepsTheFirstOrderOnce(t *testing.T) {
