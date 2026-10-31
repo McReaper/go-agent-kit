@@ -20,6 +20,18 @@ gh api repos/OWNER/REPO/rulesets --method POST --input platform/ruleset.json
 - the `kit` check passing;
 - only the owner updates the branch, through a pull request (`update` rule, bypass by pull request only): the app can't merge even an approved change.
 
+## Tags and releases: `ruleset-tags.json` and immutable releases
+
+Contents write lets the app push tags and publish releases: a `v*` tag runs an app's release workflow, and a published release's assets are what its users download. Apply both, as the owner:
+
+```sh
+gh api repos/OWNER/REPO/rulesets --method POST --input platform/ruleset-tags.json
+gh api repos/OWNER/REPO/immutable-releases --method PUT
+```
+
+- only the owner creates, moves or deletes a tag (the admin role bypasses; it pushes release tags from its own clone);
+- once published, a release's tag and assets can't change, so the app can't swap a binary under a release users already trust.
+
 ## Code owners: the template's `.github/CODEOWNERS`
 
 An app started from the template has it; replace `@OWNER` with the owner's login. Tests, testdata, `go.mod`, `.github/`, `.kit/`, `.claude/`, AGENTS.md, the glossaries and the ADRs need the owner's approval.
