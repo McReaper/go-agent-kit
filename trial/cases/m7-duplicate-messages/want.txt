@@ -1,0 +1,7 @@
+# M7: the same log message written in two places, so a log line can't say which one ran (.NET's unique EventId).
+# Nothing calls the three functions either: kit sweep reports them as only-tests too.
+sweep/duplicate-log-message internal/notes/internal/logcase/log.go:9 the log message "note saved" is written in 2 places
+sweep/duplicate-log-message internal/notes/internal/logcase/log.go:13 the log message "note saved" is written in 2 places
+sweep/only-tests internal/notes/internal/logcase/log.go:8 logcase\.Saved is reached by tests only, or by nothing
+sweep/only-tests internal/notes/internal/logcase/log.go:12 logcase\.Imported is reached by tests only, or by nothing
+sweep/only-tests internal/notes/internal/logcase/log.go:16 logcase\.Deleted is reached by tests only, or by nothing

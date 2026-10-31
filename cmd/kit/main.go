@@ -1,6 +1,7 @@
 // Command kit runs the kit's checks on a repository.
 //
 //	kit guard --base origin/main [--ci [--approved]] [--json]
+//	kit sweep [--json]
 package main
 
 import (
@@ -26,7 +27,7 @@ func main() {
 
 func root(out io.Writer) *cobra.Command {
 	r := &cobra.Command{Use: "kit", Short: "The anti-drift kit's checks", SilenceUsage: true}
-	r.AddCommand(guardCommand(out))
+	r.AddCommand(guardCommand(out), sweepCommand(out))
 	return r
 }
 
