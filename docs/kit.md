@@ -257,6 +257,7 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 | S6 | The `secrets` skill: a `secret.Secret` type that reads `[redacted]` through fmt, slog, errors, JSON and the journal; its code is extracted from the skill and run through every gate | `TestTheSecretsSkillsCodePassesEveryGate` |
 | M10 | Configuration read once at startup, checked, with a message naming the setting (`NOTES_DATA_DIR` must be absolute) | `template/internal/platform/config` tests |
 | M2 | An optional argument is a pointer: nil when not given, a CLI flag left out stays nil, so "not given" differs from zero | `template/internal/platform/op` tests |
+| E5 | Every MCP tool is a CLI command with the same arguments: a field the binding can't make a flag, a tool without its command, or a flag named otherwise fails (a crash test added a `[]string` argument that broke every CLI command while the MCP tests passed) | `template/internal/notes/parity_test.go` |
 | M6, C2 | The `new-feature` skill: the contract first, tests as sentences that must fail first, the slice, the golden diff, `kit check`, `kit mutate`, `kit review`; a wrong test is fixed and reported, never bent around. The `new-module` skill: when a module, its skeleton in its own pull request | AGENTS.md's skill test |
 | T2 | `.github/CODEOWNERS` and the CI that calls `kit-check.yml` pinned by SHA; the pre-commit hook | `TestTheAppCodeOwnersProtectWhatJudgesTheAgent`, `TestThePreCommitHookStopsAStagedSecret` |
 

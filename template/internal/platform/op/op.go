@@ -139,6 +139,8 @@ func bindFlags(cmd *cobra.Command, v reflect.Value) error {
 			cmd.Flags().IntVar(p, flag, *p, usage)
 		case *bool:
 			cmd.Flags().BoolVar(p, flag, *p, usage)
+		case *[]string:
+			cmd.Flags().StringSliceVar(p, flag, *p, usage)
 		case **string:
 			cmd.Flags().Var(optional[string]{p, func(s string) (string, error) { return s, nil }}, flag, usage)
 		case **int:
