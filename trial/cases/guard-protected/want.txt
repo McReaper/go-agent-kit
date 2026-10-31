@@ -1,7 +1,7 @@
 # T2: a test weakened, a test deleted, a golden file rewritten, and a new TestMain that could skip a package.
 !isolated
 !delete internal/notes/internal/list/list_test.go
-guard/protected-test internal/notes/internal/add/add_test.go:0 changing, renaming or deleting a test needs a code owner's approval
-guard/protected-test internal/notes/internal/list/list_test.go:0 changing, renaming or deleting a test needs a code owner's approval
-guard/protected-test internal/notes/testdata/tools.golden.json:0 changing, renaming or deleting a test needs a code owner's approval
+guard/protected-test internal/notes/internal/add/add_test.go:0 a test changed: the owner approves it before merge
+guard/protected-test internal/notes/internal/list/list_test.go:0 a test changed: the owner approves it before merge
+guard/protected-test internal/notes/testdata/tools.golden.json:0 a test changed: the owner approves it before merge
 guard/protected-testmain internal/notes/internal/infra/main_test.go:5 a new TestMain or init in a test
