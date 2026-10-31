@@ -8,7 +8,7 @@ import (
 // WHY: a case whose tool has no runner would have its findings silently
 // unchecked; every tool a want.txt names must have one on this system.
 func TestEveryCaseToolHasARunner(t *testing.T) {
-	runners := map[string]bool{golangciTool: true, kitvetTool: true, guardTool: true, reviewTool: true, archTool: true, sweepTool: true, "mutesting/": true, "apidiff/": true, "race/": raceRunner}
+	runners := map[string]bool{golangciTool: true, kitvetTool: true, guardTool: true, reviewTool: true, psTool: true, renovateTool: true, archTool: true, sweepTool: true, "mutesting/": true, "apidiff/": true, "race/": raceRunner}
 	for _, tl := range standalone {
 		runners[tl.prefix] = true
 	}
