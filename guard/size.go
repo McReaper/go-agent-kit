@@ -11,10 +11,11 @@ import (
 var moduleOf = regexp.MustCompile(`^((?:[^/]+/)*?internal/([^/]+))/`)
 
 // Module returns the directory and the name of the module p belongs to:
-// the first internal/<name>/ in its path.
+// the first internal/<name>/ in its path, internal/platform/ excepted,
+// which every module shares.
 func Module(p string) (dir, name string, ok bool) {
 	m := moduleOf.FindStringSubmatch(p)
-	if m == nil {
+	if m == nil || m[2] == "platform" {
 		return "", "", false
 	}
 	return m[1], m[2], true
