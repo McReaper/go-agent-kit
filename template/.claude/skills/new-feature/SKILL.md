@@ -33,7 +33,7 @@ Run them. Each must fail, and for the reason you expect, not a compile error you
 
 Follow `internal/notes/internal/list/`:
 
-- `Args`: its `json` tags are the MCP arguments and the CLI flags, its `jsonschema` tags the descriptions agents read. An optional argument is a pointer (`*int`, `*string`), nil when not given. A list takes a limit with a default and a maximum.
+- `Args`: its `json` tags are the MCP arguments and the CLI flags, its `jsonschema` tags the descriptions agents read. An optional argument is a pointer (`*int`, `*string`), nil when not given. The binding knows `string`, `int`, `bool`, `[]string` and those two pointers: another type fails `TestEveryToolIsACommandWithTheSameArguments`, and teaching the binding a new one is a platform change. An operation that returns a list takes a limit with a default and a maximum.
 - `Out`: what the operation returns.
 - The interface it needs from the infra, declared in the slice, named for what it does (`Saver`, `Reader`).
 - `New`, then `Op()`: the name, a description written for an agent (what it does, what it refuses), the effect. The binding journals every operation that isn't read-only.

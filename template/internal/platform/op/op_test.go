@@ -14,11 +14,12 @@ import (
 )
 
 type args struct {
-	Name    string  `json:"name"`
-	MaxSize int     `json:"max_size,omitempty"`
-	DryRun  bool    `json:"dry_run"`
-	Tag     *string `json:"tag,omitempty"`
-	Limit   *int    `json:"limit,omitempty"`
+	Name    string   `json:"name"`
+	MaxSize int      `json:"max_size,omitempty"`
+	DryRun  bool     `json:"dry_run"`
+	Tag     *string  `json:"tag,omitempty"`
+	Limit   *int     `json:"limit,omitempty"`
+	Labels  []string `json:"labels,omitempty"`
 }
 
 type entry struct {
@@ -75,7 +76,7 @@ func TestCommandFlagsAreTheJSONNamesWithHyphens(t *testing.T) {
 	}
 	var got []string
 	cmd.Flags().VisitAll(func(f *pflag.Flag) { got = append(got, f.Name+" "+f.Value.Type()) })
-	want := []string{"dry-run bool", "limit int", "max-size int", "name string", "tag string"}
+	want := []string{"dry-run bool", "labels stringSlice", "limit int", "max-size int", "name string", "tag string"}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("flags (-want +got):\n%s", diff)
 	}
@@ -90,6 +91,16 @@ func TestCommandRunsTheOperationWithItsFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got != `{"name":"x","max_size":7,"dry_run":true,"tag":"","limit":0}` {
+		t.Errorf("printed %s", got)
+	}
+}
+
+func TestAListFlagTakesCommasAndRepeats(t *testing.T) {
+	got, err := runCommand(t, echo(op.ReadOnly), &memJournal{}, "--name", "x", "--labels", "go,cli", "--labels", "mcp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != `{"name":"x","dry_run":false,"labels":["go","cli","mcp"]}` {
 		t.Errorf("printed %s", got)
 	}
 }
