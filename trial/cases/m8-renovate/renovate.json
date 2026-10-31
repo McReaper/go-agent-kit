@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "minimalReleaseAge": "7 days",
+  "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
+  "packageRules": [
+    {
+      "description": "The go and toolchain lines are the owner's: kit guard holds a change to them for approval.",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang", "toolchain"],
+      "enabled": false
+    },
+    {
+      "description": "The kit's workflow pin and the version it runs move together.",
+      "matchPackageNames": ["McReaper/go-agent-kit", "https://github.com/McReaper/go-agent-kit"],
+      "groupName": "go-agent-kit"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The kit version kit.yml passes to kit-check.yml.",
+      "managerFilePatterns": ["/^\\.github/workflows/kit\\.yml$/"],
+      "matchStrings": ["kit-version: (?<currentDigest>[0-9a-f]{40})"],
+      "depNameTemplate": "McReaper/go-agent-kit",
+      "packageNameTemplate": "https://github.com/McReaper/go-agent-kit",
+      "datasourceTemplate": "git-refs",
+      "currentValueTemplate": "main"
+    }
+  ]
+}

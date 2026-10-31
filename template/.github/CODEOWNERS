@@ -12,9 +12,10 @@
 /docs/adr/ @OWNER
 **/GLOSSARY.md @OWNER
 
-# Dependencies and the Go version.
+# Dependencies, the Go version, and the bot that moves them.
 /go.mod @OWNER
 /go.sum @OWNER
+/renovate.json @OWNER
 
 # Tests and their data: a new test file is free locally, any change to an
 # existing one is the owner's to approve.
