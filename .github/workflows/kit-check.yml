@@ -66,3 +66,54 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: kit mutate --base "origin/$BASE"
+
+  review:
+    # The review sheet: one comment on the pull request, updated on each
+    # push, and the kit's labels to match.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write # labels
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install the kit and apidiff
+        env:
+          GOTOOLCHAIN: auto
+          KIT_VERSION: ${{ inputs.kit-version }}
+        run: |
+          go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
+          dir=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION" | jq -r .Dir)
+          grep '^golang.org/x/exp/cmd/apidiff@' "$dir/tools.txt" | xargs go install
+      - name: Post the review sheet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          sheet="$RUNNER_TEMP/sheet.md"
+          kit review --base "origin/$BASE" > "$sheet"
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- kit review -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api "repos/$REPO/issues/comments/$id" --method PATCH -F "body=@$sheet" > /dev/null
+          else
+            gh pr comment "$PR" --repo "$REPO" --body-file "$sheet"
+          fi
+          kit review --base "origin/$BASE" --labels | while read -r label; do
+            name=${label#?}
+            case $label in
+              +*) gh label create "$name" --repo "$REPO" --force > /dev/null
+                  gh pr edit "$PR" --repo "$REPO" --add-label "$name" ;;
+              -*) gh pr edit "$PR" --repo "$REPO" --remove-label "$name" > /dev/null 2>&1 || true ;;
+            esac
+          done
