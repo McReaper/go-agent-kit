@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -119,5 +120,44 @@ func TestSyncRefusesAVersionThatIsntAFullCommitID(t *testing.T) {
 		if _, err := kitsync.Sync(t.TempDir(), template(t), v); !errors.Is(err, kitsync.ErrVersion) {
 			t.Errorf("Sync(%q): err = %v, want ErrVersion", v, err)
 		}
+	}
+}
+
+// WHY: the module cache holds the template read-only, and a first kit sync
+// copied that mode: the app could no longer edit the files it got, nor a
+// second sync rewrite them.
+func TestSyncedFilesStayWritableAndScriptsRunWhateverTheTemplatesMode(t *testing.T) {
+	tmpl, app := template(t), t.TempDir()
+	write(t, tmpl, map[string]string{".claude/skills/feature/hook": "#!/bin/sh\necho hook\n"})
+	readOnly := func(dir string) {
+		for _, name := range []string{".claude/skills/feature/a", ".claude/skills/feature/hook", kitsync.Agents} {
+			if err := os.Chmod(filepath.Join(dir, filepath.FromSlash(name)), 0o400); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	readOnly(tmpl)
+	if _, err := kitsync.Sync(app, tmpl, version); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{".claude/skills/feature/a", ".claude/skills/feature/hook", kitsync.Agents} {
+		info, err := os.Stat(filepath.Join(app, filepath.FromSlash(name)))
+		if err != nil || info.Mode().Perm()&0o200 == 0 {
+			t.Errorf("%s: mode %v (%v), want writable", name, info.Mode(), err)
+		}
+	}
+	if info, err := os.Stat(filepath.Join(app, ".claude/skills/feature/hook")); runtime.GOOS != "windows" && (err != nil || info.Mode().Perm()&0o100 == 0) {
+		t.Errorf("the script: mode %v (%v), want executable", info.Mode(), err)
+	}
+	readOnly(app)
+	if err := os.Chmod(filepath.Join(tmpl, ".claude/skills/feature/a"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	write(t, tmpl, map[string]string{".claude/skills/feature/a": "skill a, the kit's next version\n"})
+	if _, err := kitsync.Sync(app, tmpl, version); err != nil {
+		t.Fatalf("a second sync over the read-only files: %v", err)
+	}
+	if got := read(t, app, ".claude/skills/feature/a"); got != "skill a, the kit's next version\n" {
+		t.Errorf("skill a = %q", got)
 	}
 }

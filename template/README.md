@@ -11,7 +11,7 @@ go run golang.org/x/tools/cmd/gonew@latest github.com/McReaper/go-agent-kit/temp
 Then, once:
 
 1. In `.github/CODEOWNERS`, replace `@OWNER` with your login.
-2. In `.github/workflows/kit.yml`, pin both SHAs to the kit version you started from; Renovate moves them together after that.
+2. Run `kit sync --version <kit version>` (the kit's full commit id): it pins `.github/workflows/kit.yml` to it and brings the kit's own files (its skills, the git hook, AGENTS.md's kit section). Run it again to move to a newer kit; the diff is yours to review.
 3. Apply the kit's ruleset and deploy its Claude Code settings: the kit's `platform/README.md` says how.
 4. Enable the pre-commit hook: `git config core.hooksPath .githooks`.
 5. Replace `LICENSE`: gonew copies the kit's.

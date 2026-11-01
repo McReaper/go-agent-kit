@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 )
@@ -139,6 +140,9 @@ func (s *syncer) prune(d string, want map[string]bool) error {
 			return err
 		}
 		s.changes = append(s.changes, Change{p, "removed"})
+		if err := s.dst.Chmod(p, 0o644); err != nil {
+			return err
+		}
 		return s.dst.Remove(p)
 	})
 	if err != nil {
@@ -158,29 +162,63 @@ func (s *syncer) file(p string) error {
 	return s.write(p, data)
 }
 
+// WHY: the module cache holds the template read-only and gonew's zips
+// drop execute bits, so a file's mode comes from what it is: a script (a
+// #! line) runs, anything else doesn't, and both stay writable.
+func modeOf(data []byte) fs.FileMode {
+	if bytes.HasPrefix(data, []byte("#!")) {
+		return 0o755
+	}
+	return 0o644
+}
+
 func (s *syncer) write(p string, data []byte) error {
-	info, err := s.src.Stat(p)
-	if err != nil {
-		return fmt.Errorf("the template's %s: %w", p, err)
+	mode := modeOf(data)
+	action, err := s.compare(p, data, mode)
+	if err != nil || action == "" {
+		return err
 	}
-	old, err := s.dst.ReadFile(p)
-	switch {
-	case err == nil && bytes.Equal(old, data):
-		return nil
-	case err == nil:
-		s.changes = append(s.changes, Change{p, "updated"})
-	case errors.Is(err, fs.ErrNotExist):
-		s.changes = append(s.changes, Change{p, "added"})
-	default:
-		return fmt.Errorf("the app's %s: %w", p, err)
-	}
+	s.changes = append(s.changes, Change{p, action})
 	if err := s.dst.MkdirAll(path.Dir(p), 0o750); err != nil {
 		return fmt.Errorf("the app's %s: %w", path.Dir(p), err)
 	}
-	if err := s.dst.WriteFile(p, data, info.Mode().Perm()); err != nil {
+	// WHY: a file an older sync left read-only can't be rewritten until
+	// its mode changes.
+	if err := s.dst.Chmod(p, mode); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("the app's %s: %w", p, err)
 	}
-	return s.dst.Chmod(p, info.Mode().Perm())
+	if err := s.dst.WriteFile(p, data, mode); err != nil {
+		return fmt.Errorf("the app's %s: %w", p, err)
+	}
+	return s.dst.Chmod(p, mode)
+}
+
+func (s *syncer) compare(p string, data []byte, mode fs.FileMode) (string, error) {
+	info, err := s.dst.Stat(p)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "added", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("the app's %s: %w", p, err)
+	}
+	old, err := s.dst.ReadFile(p)
+	if err != nil {
+		return "", fmt.Errorf("the app's %s: %w", p, err)
+	}
+	if bytes.Equal(old, data) && !modeDiffers(info.Mode(), mode) {
+		return "", nil
+	}
+	return "updated", nil
+}
+
+// WHY: Windows has no execute bit, only a read-only one; comparing the
+// execute bit there would rewrite every script on every sync.
+func modeDiffers(have, want fs.FileMode) bool {
+	bits := fs.FileMode(0o200)
+	if runtime.GOOS != "windows" {
+		bits |= 0o100
+	}
+	return have&bits != want&bits
 }
 
 // WHY: AGENTS.md is the app's, but for its section between the kit's
