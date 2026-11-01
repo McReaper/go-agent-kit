@@ -4,6 +4,7 @@ import (
 	"go/build/constraint"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -43,11 +44,11 @@ func (f Finding) NeedsApproval() bool {
 // Blocking returns the findings that fail the check. Locally, only the
 // broken rules do: protected changes are reported for the owner, so fixing
 // a wrong test costs the agent no more than bending the code to it. In CI
-// they block too, until a code owner approved the change's last commit.
-func Blocking(fs []Finding, ci, approved bool) []Finding {
+// they block too, unless a code owner's approval covers them (see Covered).
+func Blocking(fs []Finding, ci bool, covered []Finding) []Finding {
 	var out []Finding
 	for _, f := range fs {
-		if !f.NeedsApproval() || ci && !approved {
+		if !f.NeedsApproval() || ci && !slices.Contains(covered, f) {
 			out = append(out, f)
 		}
 	}

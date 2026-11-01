@@ -19,7 +19,10 @@ type Options struct {
 	GOOS     []string
 	CI       bool
 	Approved bool
-	Race     bool
+	// ApprovedTrees is the directory of approved commits' trees (see
+	// guard.ReadTrees); empty when none.
+	ApprovedTrees string
+	Race          bool
 }
 
 // Result is one gate's outcome.

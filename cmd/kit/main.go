@@ -1,7 +1,7 @@
 // Command kit runs the kit's checks on a repository.
 //
-//	kit guard --base origin/main [--ci [--approved]] [--json]
-//	kit check [--base origin/main] [--ci [--approved]]
+//	kit guard --base origin/main [--ci [--approved] [--approved-trees dir]] [--json]
+//	kit check [--base origin/main] [--ci [--approved] [--approved-trees dir]]
 //	kit sweep [--json]
 //	kit mutate [--base origin/main] [--min 0.8]
 //	kit review [--base origin/main] [--labels | --json]
@@ -45,6 +45,7 @@ type guardOptions struct {
 	base     string
 	ci       bool
 	approved bool
+	trees    string
 	asJSON   bool
 }
 
@@ -61,6 +62,7 @@ func guardCommand(out io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&o.base, "base", "origin/main", "the branch the change goes into")
 	cmd.Flags().BoolVar(&o.ci, "ci", false, "the merge check: changes that need approval fail until --approved")
 	cmd.Flags().BoolVar(&o.approved, "approved", false, "a code owner approved the change's latest commit")
+	cmd.Flags().StringVar(&o.trees, "approved-trees", "", "a directory of the trees of commits a code owner approved: the protected files they hold unchanged stay approved")
 	cmd.Flags().BoolVar(&o.asJSON, "json", false, "print the findings as JSON")
 	return cmd
 }
@@ -71,7 +73,15 @@ func runGuard(ctx context.Context, out io.Writer, o guardOptions) error {
 		return err
 	}
 	findings := guard.Check(d)
-	blocking := guard.Blocking(findings, o.ci, o.approved)
+	trees, err := guard.ReadTrees(o.trees)
+	if err != nil {
+		return err
+	}
+	covered, err := guard.Covered(ctx, ".", findings, guard.Approval{Head: o.approved, Trees: trees})
+	if err != nil {
+		return err
+	}
+	blocking := guard.Blocking(findings, o.ci, covered)
 	if o.asJSON {
 		err = writeJSON(out, findings)
 	} else {

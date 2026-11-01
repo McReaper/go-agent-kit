@@ -30,6 +30,7 @@ func checkCommand(out io.Writer) *cobra.Command {
 	cmd.Flags().StringSliceVar(&o.GOOS, "goos", o.GOOS, "the systems the module builds for")
 	cmd.Flags().BoolVar(&o.CI, "ci", false, "the merge check: changes that need approval fail until --approved")
 	cmd.Flags().BoolVar(&o.Approved, "approved", false, "a code owner approved the change's latest commit")
+	cmd.Flags().StringVar(&o.ApprovedTrees, "approved-trees", "", "a directory of the trees of commits a code owner approved: the protected files they hold unchanged stay approved")
 	cmd.Flags().BoolVar(&o.Race, "race", o.Race, "run the tests with the race detector (needs cgo)")
 	return cmd
 }

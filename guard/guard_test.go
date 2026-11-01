@@ -58,7 +58,11 @@ func TestProtectedChangesBlockOnlyAtMergeUntilApprovedAndBypassesAlways(t *testi
 		{"in CI, approved, still the bypass", true, true, []string{"bypass-skip"}},
 	}
 	for _, c := range cases {
-		if diff := cmp.Diff(c.want, rules(guard.Blocking(all, c.ci, c.approved))); diff != "" {
+		covered, err := guard.Covered(t.Context(), ".", all, guard.Approval{Head: c.approved})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(c.want, rules(guard.Blocking(all, c.ci, covered))); diff != "" {
 			t.Errorf("%s (-want +got):\n%s", c.name, diff)
 		}
 	}

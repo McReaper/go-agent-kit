@@ -110,7 +110,15 @@ func guardGate(ctx context.Context, o Options) Result {
 		return failed(err)
 	}
 	all := guard.Check(d)
-	blocking := guard.Blocking(all, o.CI, o.Approved)
+	trees, err := guard.ReadTrees(o.ApprovedTrees)
+	if err != nil {
+		return failed(err)
+	}
+	covered, err := guard.Covered(ctx, o.Dir, all, guard.Approval{Head: o.Approved, Trees: trees})
+	if err != nil {
+		return failed(err)
+	}
+	blocking := guard.Blocking(all, o.CI, covered)
 	r := Result{}
 	for _, f := range all {
 		line := fmt.Sprintf("%s:%d: %s: %s", f.File, f.Line, f.Rule, f.Message)
