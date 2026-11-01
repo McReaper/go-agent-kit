@@ -1,0 +1,3 @@
+# M6: main forgets to register the module's tools on the MCP surface. Every unit test passes; only the built program shows it.
+test/TestTheBuiltProgramAnswersEveryToolAndCommandWithItsExample cmd/notes/smoke_test.go:33 the program serves no tool
+test/TestAnAgentAddsANoteThroughMCPThenFindsItInTheList cmd/notes/journey_test.go:61 unknown tool "add_note"
