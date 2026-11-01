@@ -45,7 +45,11 @@ func runSync(ctx context.Context, out io.Writer, version, from string) error {
 	for _, c := range changes {
 		fmt.Fprintf(&b, "%s %s\n", c.Action, c.Path)
 	}
-	fmt.Fprintf(&b, "kit sync: %d files changed, kit %s; the diff is the owner's to review\n", len(changes), version)
+	files := "files"
+	if len(changes) == 1 {
+		files = "file"
+	}
+	fmt.Fprintf(&b, "kit sync: %d %s changed, kit %s; the diff is the owner's to review\n", len(changes), files, version)
 	if _, err := io.WriteString(out, b.String()); err != nil {
 		return fmt.Errorf("print the changes: %w", err)
 	}
