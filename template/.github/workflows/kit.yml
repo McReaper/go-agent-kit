@@ -18,6 +18,6 @@ jobs:
       contents: read
       pull-requests: write # the review sheet's comment
       issues: write # the review sheet's labels
-    uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@38fd769c339ea0955d4139ab7e5b9c5a5690512a
+    uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@bf821cb8b654ec578e7245ca0c38753710cfca8c
     with:
-      kit-version: 38fd769c339ea0955d4139ab7e5b9c5a5690512a
+      kit-version: bf821cb8b654ec578e7245ca0c38753710cfca8c
