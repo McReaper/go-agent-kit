@@ -21,7 +21,7 @@ func apidiffFindings(t *testing.T, dir string) []finding {
 		out := runIn(t, dir, nil, "apidiff", "-incompatible", base, pkg)
 		for line := range strings.Lines(string(out)) {
 			if change, ok := strings.CutPrefix(strings.TrimSpace(line), "- "); ok {
-				file := strings.TrimPrefix(pkg, "example.com/notes/")
+				file := strings.TrimPrefix(pkg, "github.com/McReaper/go-agent-kit/template/")
 				findings = append(findings, finding{tool: "apidiff/incompatible", file: file, line: 0, text: change})
 			}
 		}

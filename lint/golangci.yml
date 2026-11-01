@@ -171,6 +171,10 @@ linters:
           msg: "M7: recover only at the process boundary, in platform code"
         - pattern: InsecureSkipVerify
           msg: "S5: TLS verification is never turned off"
+    testpackage:
+      # Its default skips export_test.go and internal_test.go: a door to any
+      # package's internals, open to every test.
+      skip-regexp: ^$
     tagliatelle:
       case:
         rules:
@@ -226,6 +230,9 @@ linters:
       - path: (^|/)internal/([^/]+/internal/infra|platform)/
         linters: [gosec]
         text: "^G204"
+      # Foreign formats are decoded at the I/O edges, in their own casing.
+      - path: (^|/)internal/([^/]+/internal/infra|platform)/
+        linters: [tagliatelle]
       # Clock and environment are banned in the domain only.
       - path-except: (^|/)internal/[^/]+/internal/domain/
         linters: [forbidigo]

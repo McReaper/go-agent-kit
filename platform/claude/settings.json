@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push * +*)",
+      "Bash(git push --force-with-lease * main)",
+      "Bash(git push --force-with-lease * main:*)",
+      "Bash(git push --force-with-lease * *:main)",
+      "Bash(git commit --no-verify *)",
+      "Bash(git commit -n *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh api * rulesets *)",
+      "Edit(./.kit/**)",
+      "Write(./.kit/**)",
+      "Edit(./.github/**)",
+      "Write(./.github/**)",
+      "Edit(./.claude/**)",
+      "Write(./.claude/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "kit hook post-edit" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "kit hook stop --base origin/main" }]
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+# S1: an env file and a certificate committed. Not refused: .env.example and a public key.
+!isolated
+guard/sensitive-file .env:0 keys, certificates and env files are never committed
+guard/sensitive-file deploy/server.pem:0 keys, certificates and env files are never committed

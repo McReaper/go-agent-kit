@@ -4,6 +4,7 @@ import (
 	"go/build/constraint"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -21,18 +22,37 @@ const (
 	MaxModules         = 1
 )
 
-// Check returns what d breaks. Protected changes (tests, golden files, the
-// go line) are findings unless approved is set: the CI sets it once the
-// change's latest commit is approved by a code owner.
-func Check(d Diff, approved bool) []Finding {
+// Check returns every rule d breaks: bypasses and sensitive files, which
+// block everywhere, and protected changes and size, which need a code
+// owner's approval before merge (see NeedsApproval).
+func Check(d Diff) []Finding {
 	var out []Finding
 	for _, f := range d.Files {
 		out = append(out, bypasses(f)...)
-		if !approved {
-			out = append(out, protected(f)...)
-		}
+		out = append(out, sensitive(f)...)
+		out = append(out, protected(f)...)
 	}
 	return append(out, size(d)...)
+}
+
+// NeedsApproval reports whether f is a change the owner may approve rather
+// than a rule broken: a protected file changed, or a change over the size.
+func (f Finding) NeedsApproval() bool {
+	return strings.HasPrefix(f.Rule, "protected-") || strings.HasPrefix(f.Rule, "size-")
+}
+
+// Blocking returns the findings that fail the check. Locally, only the
+// broken rules do: protected changes are reported for the owner, so fixing
+// a wrong test costs the agent no more than bending the code to it. In CI
+// they block too, unless a code owner's approval covers them (see Covered).
+func Blocking(fs []Finding, ci bool, covered []Finding) []Finding {
+	var out []Finding
+	for _, f := range fs {
+		if !f.NeedsApproval() || ci && !slices.Contains(covered, f) {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 var (

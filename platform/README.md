@@ -1,0 +1,45 @@
+# platform
+
+What the kit puts on GitHub and in Claude Code so the agent can't change the rules that judge it (criterion T2). The owner applies these; the agent can't.
+
+## The agent's identity: a GitHub App
+
+Repository permissions: Contents and Pull requests read and write; Checks, Actions and Commit statuses read; Metadata read. **Workflows and Administration: no access**, so the agent can't change CI or the protection rules, even through a pull request. No webhook. Installed on the chosen repositories only.
+
+The agent acts as the app through `kit app exec -- <command>`, with `KIT_APP_CLIENT_ID`, `KIT_APP_KEY` (the private key's path, outside every repository) and `KIT_APP_INSTALLATION` set. `kit app installations` lists the installation ids.
+
+## The default branch: `ruleset.json`
+
+Apply it once per repository, as the owner:
+
+```sh
+gh api repos/OWNER/REPO/rulesets --method POST --input platform/ruleset.json
+```
+
+- a pull request, approved by a code owner on its last commit; earlier approvals stay on record, so the merge check (`kit-check.yml`) keeps a protected file approved while its content is the one the owner approved;
+- the `kit` check passing;
+- only the owner updates the branch, through a pull request (`update` rule, bypass by pull request only): the app can't merge even an approved change.
+
+## Tags and releases: `ruleset-tags.json` and immutable releases
+
+Contents write lets the app push tags and publish releases: a `v*` tag runs an app's release workflow, and a published release's assets are what its users download. Apply both, as the owner:
+
+```sh
+gh api repos/OWNER/REPO/rulesets --method POST --input platform/ruleset-tags.json
+gh api repos/OWNER/REPO/immutable-releases --method PUT
+```
+
+- only the owner creates, moves or deletes a tag (the admin role bypasses; it pushes release tags from its own clone);
+- once published, a release's tag and assets can't change, so the app can't swap a binary under a release users already trust.
+
+## Code owners: the template's `.github/CODEOWNERS`
+
+An app started from the template has it; replace `@OWNER` with the owner's login. Tests, testdata, `go.mod`, `.github/`, `.kit/`, `.claude/`, AGENTS.md, the glossaries and the ADRs need the owner's approval.
+
+## The merge check: `kit-check.yml`
+
+The app's CI calls `.github/workflows/kit-check.yml` of this repository, pinned by SHA, on `pull_request`, `pull_request_review` and pushes to the default branch. It runs `kit check --ci` with the trees of the commits a code owner approved: a protected change passes once approved, and stays approved while its files hold the content approved, through later commits and rebases; touching one reopens it.
+
+## Claude Code: `claude/settings.json`
+
+Deny rules (a force push without a lease, any force push to `main`, `--no-verify`, merging, editing `.kit/`, `.github/`, `.claude/`; `--force-with-lease` stays allowed on the agent's own branches, so it can rebase its pull request) and the hooks: `kit hook post-edit` after each edit, `kit hook stop` before the agent stops. Deploy it as the agent's managed settings, which the agent can't override (see Claude Code's managed settings documentation for the file's place on each system); deny rules are a speed bump, the platform is the arbiter.

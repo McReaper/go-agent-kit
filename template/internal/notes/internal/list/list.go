@@ -1,0 +1,65 @@
+package list
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
+	"github.com/McReaper/go-agent-kit/template/internal/platform/op"
+)
+
+const (
+	defaultLimit = 20
+	maxLimit     = 100
+)
+
+type Args struct {
+	Limit *int `json:"limit,omitempty" jsonschema:"how many notes to return, newest first: 1 to 100, 20 if not given"`
+}
+
+type Item struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+type Out struct {
+	Notes []Item `json:"notes"`
+}
+
+type Reader interface {
+	Newest(ctx context.Context, limit int) ([]domain.Note, error)
+}
+
+type List struct {
+	store Reader
+}
+
+func New(store Reader) *List {
+	return &List{store: store}
+}
+
+func (l *List) Op() op.Op[Args, Out] {
+	return op.Op[Args, Out]{
+		Name:        "list_notes",
+		Description: "Lists the newest notes, their ids and titles.",
+		Effect:      op.ReadOnly,
+		Example:     &Args{Limit: new(5)},
+		Run:         l.Run,
+	}
+}
+
+func (l *List) Run(ctx context.Context, args Args) (Out, error) {
+	limit, err := op.Limit(args.Limit, defaultLimit, maxLimit)
+	if err != nil {
+		return Out{}, err
+	}
+	notes, err := l.store.Newest(ctx, limit)
+	if err != nil {
+		return Out{}, fmt.Errorf("list the notes: %w", err)
+	}
+	out := Out{Notes: make([]Item, 0, len(notes))}
+	for _, n := range notes {
+		out.Notes = append(out.Notes, Item{ID: string(n.ID), Title: string(n.Title)})
+	}
+	return out, nil
+}

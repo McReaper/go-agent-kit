@@ -1,4 +1,4 @@
-# M3: a second logger, a deprecated package, printing to stdout, camelCase json, and code a newer Go writes differently.
+# M3: a second logger, a deprecated package, printing to stdout, camelCase json (allowed in infra, where another program's format is decoded), and code a newer Go writes differently.
 golangci/depguard internal/notes/internal/m3case/m3.go:6 import 'io/ioutil' is not allowed from list 'one\-library\-per\-need': M3
 golangci/depguard internal/notes/internal/m3case/m3.go:7 import 'log' is not allowed from list 'one\-library\-per\-need': M3/M7: l
 golangci/forbidigo internal/notes/internal/m3case/m3.go:16 use of `fmt\.Println` forbidden because "M3: print to an io\.Writer the 

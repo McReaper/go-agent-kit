@@ -1,0 +1,2 @@
+# S8: a search that returns every matching note: its Args has no limit (a crash test without the kit shipped one).
+kitvet/boundedlist internal/notes/internal/s8case/s8.go:8 S8: Out\.Notes is a list, and Args has no limit

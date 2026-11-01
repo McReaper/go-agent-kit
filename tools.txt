@@ -11,3 +11,5 @@ github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0
 github.com/avito-tech/go-mutesting/cmd/go-mutesting@v0.0.0-20261002081621-9ce5f731e321
 zizmor 1.31.1
 shellcheck 0.11.0
+PSScriptAnalyzer 1.25.0
+renovate 44.181.0

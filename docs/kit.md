@@ -2,7 +2,7 @@
 
 The Go counterpart of the .NET anti-drift kit. Target: **Go CLIs, MCP servers and libraries**.
 
-Every tool and setting this document names was run on the trial project (`trial/`): `trial/clean` passes all of them with no finding, and each case under `trial/cases/<case>` holds one deliberate violation and the exact findings it must produce (`want.txt`). `go test ./...` in this repository reruns them all; a tool upgrade that stops reporting a rule fails it. A row marked *milestone 2* is decided but not yet built or proven.
+Every tool and setting this document names was run on the template (`template/`, the app apps start from with `gonew`): it passes all of them with no finding, and each case under `trial/cases/<case>` holds one deliberate violation and the exact findings it must produce (`want.txt`). `go test ./...` in this repository reruns them all; a tool upgrade that stops reporting a rule fails it. A row marked *milestone 2* is decided but not yet built or proven.
 
 ## Goal and method
 
@@ -95,7 +95,7 @@ internal/platform/                 the shared kernel (MCP/CLI binding, paths); k
 pkg/<lib>/                         libraries
 ```
 
-`trial/clean` is built this way and compiles: the contract wires its slices and infra, each slice declares the interface it needs. One `Args` struct per operation: its `json` tags are the MCP arguments, the CLI flags are derived from them (`trial/clean/internal/platform/op`), so the two surfaces can't drift.
+The template is built this way and compiles: the contract wires its slices and infra, each slice declares the interface it needs. One `Args` struct per operation: its `json` tags are the MCP arguments, the CLI flags are derived from them (`template/internal/platform/op`), so the two surfaces can't drift.
 
 ## Step 2 — Tactical solutions
 
@@ -143,15 +143,19 @@ The workstation gives fast feedback but can be bypassed; the Git platform is the
 
 | Solution | Tool | What it blocks | Proof |
 | --- | --- | --- | --- |
-| A separate identity for the agent: push to its branches, no merge, no admin | Bot account, fine-grained token | The agent merging alone or editing protection rules | milestone 2 |
-| Protected paths need the owner's approval | CODEOWNERS + ruleset (code-owner review, stale approvals dismissed, last push approved, no bypass) | Changes to config, thresholds, CI, hooks, `.claude/`, `go.mod`, existing tests | milestone 2 |
+| A separate identity for the agent: push to its branches, no merge, no admin | A GitHub App with contents and pull requests only, no workflows or administration permission; `kit app exec -- <command>` mints its hour-long installation token into the command's environment, never printed, and commits as `<app>[bot]` | The agent merging alone, editing protection rules, or changing a workflow | `internal/platform/ghapp` tests; live, GitHub refuses the App a workflow push ("without `workflows` permission"), a ruleset edit and a settings change (403 "Resource not accessible by integration") |
+| Releases only by the owner | `platform/ruleset-tags.json`: only the admin role creates, moves or deletes a tag; immutable releases, so a published release's tag and assets never change | The app pushing a `v*` tag that runs the release, or swapping an asset under a release users already trust (contents write allows both until these are on) | `TestTheTagRulesetLetsOnlyTheOwnerTagARelease`; live, the App's tag push and its release on a new tag are refused ("creations being restricted"); applying it is the owner's |
+| One command, the same on the agent's machine and in CI | `kit check`: golangci-lint with the kit's embedded config and the kit's analyzers per GOOS, archtest, sweep, deadcode, nilaway, govulncheck, the tests (with `-race` on Linux), the guard, and the files no Go gate reads: actionlint and zizmor on the workflows, shellcheck on the scripts (`.sh`, or a shell shebang for git hooks), gitleaks on the change's commits and on what isn't committed yet; an app's own lint config is never read (crash tests ran a local check that missed a gate CI ran) | A local pass that CI then fails; a config weakened in the app; a workflow, script or secret an app's CI never checked | `TestKitCheckRunsEveryGateAndFailsOnAny`, `TestKitCheckFailsOnAWorkflowAScriptAndASecret` |
+| A secret stopped before it enters the history | The template's `.githooks/pre-commit`: `kit guard`, then gitleaks on the staged lines; enabled per clone with `git config core.hooksPath .githooks` | A token committed, which only a history rewrite removes | `TestThePreCommitHookStopsAStagedSecret` |
+| Protected paths need the owner's approval | `platform/CODEOWNERS` (tests, testdata, `go.mod`, `.github/`, `.kit/`, `.claude/`, AGENTS.md, ADRs) and `platform/ruleset.json`: a code owner approves the last commit, earlier approvals kept on record, the `kit` check required, and only the owner updates the branch, through a pull request, so the app can't merge even an approved change. The app's CI calls `kit-check.yml`, pinned by SHA | Changes to config, thresholds, CI, hooks, `.claude/`, `go.mod`, existing tests; the agent merging | `TestTheRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange`, `TestTheAppCodeOwnersProtectWhatJudgesTheAgent`; live, the App's push to the default branch and its merges (plain, `--admin`, `--auto`) are refused, and so is its merge of a pull request the owner approved with `kit` green ("Cannot update this protected ref", HTTP 405: the `update` rule alone); applying them is the owner's |
 | Rules shipped by the kit, pinned by version | `lint/golangci.yml`, `cmd/kitvet`, `tools.txt`; an app's own `.golangci.yml` is never read | A rule weakened in the app repository | all cases |
 | Lint and vet per target system | CI runs golangci-lint and kitvet with `GOOS=linux` and `GOOS=windows` | A file built for one system escaping the checks | `m11-robustness` (`clean_windows.go`) |
 | Diff scan for bypasses | `kit guard`: `//nolint`, `#nosec`, `//lint:ignore`, `//go:linkname`, `//go:debug`, `import "C"`, unknown build tags, `_`/`.` directories, a generated header outside `gen/`, `t.Skip`, `testing.Short` | Silencing a finding or hiding a file; a normal change gets nothing | `guard-bypass`, `guard-clean` |
 | The guard reads the working tree, not only commits: edits and files git doesn't track yet | `kit guard` against base's merge base | A local check passing before the commit that CI then rejects | `guard-uncommitted` |
-| Tests: new test files are free, any change to an existing one is protected | `kit guard`: a modified, renamed or deleted `_test.go` or `testdata/` file, a new `TestMain` or `init` in a test, need `--approved` (CI sets it once a code owner approved the last commit). An addition counts too: an added line can cancel an assertion (a reassignment, an early return), and it makes the agent settle the tests before it develops | A test weakened or removed to pass | `guard-protected` |
+| Tests: new test files are free, any change to an existing one is protected | `kit guard`: a modified, renamed or deleted `_test.go` or `testdata/` file, a new `TestMain` or `init` in a test. An addition counts too: an added line can cancel an assertion (a reassignment, an early return). Locally they are reported for the owner, not failures: a guard that failed on them made an agent bend the code to fit a wrong test rather than ask (`r2-envtest`). The merge check (`--ci`) holds them until a code owner approved them: the last commit (`--approved`), or an earlier commit whose tree holds each protected file with the content it has now (`--approved-trees`, the trees of every approved commit, read from GitHub's API by `kit-check.yml`). The approval holds the content, not a commit: the agent goes on and rebases without asking again, and touching an approved file reopens it. A weakened assertion also shows as surviving mutants | A test weakened or removed to pass, without an incentive to bend the code instead; an approval asked again after every push, which teaches the agent to stop asking | `guard-protected`, `TestTheMergeCheckKeepsAnApprovalWhileTheProtectedFilesStayAsApproved` |
+| The owner reads what matters, not the diff | `kit review`: the review sheet, posted on the pull request by `kit-check.yml` and updated on each push: the changes that need the owner's approval, test scenarios added, removed or changed, read as sentences (TestAddReportsTheStoreFailure reads "Add reports the store failure", a subtest follows a colon), golden snapshots changed, a library's API changes (apidiff against the base), new modules, `go.mod` lines added, shared code (platform, `pkg/`, `cmd/`, a module's contract), rules (CI, the agent's settings and instructions, ADRs) and the `// WHY:` comments added; labels to match | A protected change, a removed scenario or a contract change lost in a large diff | `t2-review-sheet`, `TestKitReviewWritesTheSheetForThePullRequest` |
 | Nothing loaded or reached past the type system | depguard denies `unsafe`, `plugin`; `reflect` in the domain; gomoddirectives forbids `replace` to a local path and `godebug` | Dependencies hidden from the checks | `t2-directives`, `t2-gomod` |
-| Agent-side guardrails | Claude Code deny rules and hooks, enforced by managed settings | Writing a protected path, `--no-verify`, `push --force`: a speed bump, not a guarantee | milestone 2 |
+| Agent-side guardrails | `platform/claude/settings.json`, deployed as managed settings: deny rules (a force push without a lease, any force push to `main`, `--no-verify`, `gh pr merge`, editing `.kit/`, `.github/`, `.claude/`; `--force-with-lease` allowed on the agent's own branches, so it rebases its pull request), `kit hook post-edit` (each edit's package linted, findings back to the agent through exit code 2) and `kit hook stop` (the full `kit check` before the agent stops, once) | Writing a protected path, `--no-verify`, `push --force`: a speed bump, not a guarantee; rules learned at the end instead of at each edit | `TestTheAgentSettingsDenyBypassesAndRunTheKitHooks`, `TestThePostEditHookTellsTheAgentWhatItsEditBroke`, `TestTheStopHookLetsTheAgentStopOnItsSecondTry` |
 
 Left to review: PRs touching a protected path. A PR runs its own workflow version: CODEOWNERS on `.github/` is what stops a weakened CI from merging.
 
@@ -161,14 +165,17 @@ Not whether code is covered, but whether tests fail when the code breaks.
 
 | Solution | Tool | What it blocks | Proof |
 | --- | --- | --- | --- |
-| Mutation on changed code | go-mutesting (statement, branch, expression removal and operator swaps), always on a copy: it rewrites the source in place while tests run | Code that can be broken without any test failing | `m6-weak-test` |
+| Mutation on changed code | `kit mutate`: go-mutesting (statement, branch, expression removal and operator swaps) on a copy of the module, since it rewrites the source in place while tests run; only mutants starting on a line the change adds count, and not those that only drop the return of an `if err != nil` block; fails under `--min`, 0.8. `kit-check.yml` runs it on every pull request | New code that can be broken without any test failing | `m6-weak-test`, `TestKitMutateFailsAChangeItsTestsDontPin` |
+| The program people run is tested, not only its code | The template's `cmd/notes/smoke_test.go` builds the program and calls every MCP tool and every CLI command with the example its schema shows: a refusal passes (exit 1, a tool error); a start that fails, a command line that doesn't parse (exit 2) or a protocol error fails. `journey_test.go` holds a user journey per feature, through the built program | A program broken at startup while every gate passes (a crash test shipped one); wiring forgotten in `main` | `m6-broken-program`, `TestTheTemplatesTestsReportEveryCase` |
 | Tests must assert something | `kitvet testassert`: a test whose every failure sits under `err != nil` or a nil check | A test that only checks that the code ran | `e6-tests` |
 | No mocks | depguard denies `golang/mock`, `go.uber.org/mock`, testify; fakes implement the interface | Tests that freeze calls instead of behaviour | mechanism in `m3-consistency` |
-| Properties and fuzzing | `pgregory.net/rapid`, `testing.F` | Code that only passes the planned cases | `trial/clean` (`slug`, `domain`) |
-| Golden files | stdlib golden pattern with `-update`, protected by the guard | Partial assertions on large outputs | `trial/clean` (`tools.golden.json`), `guard-protected` |
-| Tests first | Skill: spec, tests, owner review, then implementation | Tests written to fit the code | milestone 2 |
+| Properties and fuzzing | `pgregory.net/rapid`, `testing.F` | Code that only passes the planned cases | `template` (`slug`, `domain`) |
+| Golden files | stdlib golden pattern with `-update`, protected by the guard | Partial assertions on large outputs | `template` (`tools.golden.json`), `guard-protected` |
+| Tests first | The template's `new-feature` skill: the contract, then tests that must fail first, then the slice; the owner may ask to see the tests alone | Tests written to fit the code | guided (Pass 4) |
 
-No coverage gate: mutation already counts uncovered code. Equivalent mutants exist (in `trial/clean/…/list`, `limit <= 0` after a `limit == 0` case); the gate is a score on changed code, calibrated on the reference slice — the clean trial scores 52/77 overall, 15/17 on `list` once its tests pin the limits its tool description promises.
+No coverage gate: mutation already counts uncovered code. A mutant counts on the line it starts: removing a block whose first line the change left alone doesn't count.
+
+The threshold comes from the template. Its tests kill 76 of the 81 mutants that count; the survivors are equivalent: `return -2` where `strings.Map` drops any negative, `> MaxASCII` where DEL is neither letter nor digit, `iota + 2` for an enum whose values mean nothing, a sort comparison the store's file order never reaches. So 0.8 leaves room for one equivalent mutant in five. Go adds a kind .NET doesn't have: 29 more mutants only drop the return of an `if err != nil` block, and live unless a test makes a disk or system call fail. Counted, they would take the infra from 91% to 55%; the compiler (an unused `err`) and errcheck already refuse a dropped error, so `kit mutate` lists them apart (ADR 4). A refusal (`errors.Is(err, fs.ErrExist)`, a sentinel error) is a behaviour and counts.
 
 ### Pass 1 — Linters
 
@@ -178,8 +185,9 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | --- | --- | --- | --- |
 | M1 | gocognit ≤ 10; revive function-length ≤ 30 lines, argument-limit ≤ 4, file-length-limit ≤ 300; `kitvet nesting` ≤ 2 (every control statement counts: revive's rule counts only `if`) | Long, deep or tangled functions | `m1-simplicity` |
 | M2 | `kitvet comments` (`// WHY:` only; doc comments on a contract's exported API and a command's package doc; a `Copyright` or `SPDX-License-Identifier:` header above the package clause), staticcheck ST*, misspell, predeclared, `kitvet pkgname` (stutter), gofumpt and goimports | Paraphrasing comments, mixed naming | `m2-readability`, `e7-names`, `fmt-formatting` |
-| M3 | depguard one-library-per-need (slog, stdlib errors, go-cmp, go-sdk, cobra), forbidigo `fmt.Print*`, modernize, tagliatelle (snake_case json) | Two ways to do one thing | `m3-consistency` |
+| M3 | depguard one-library-per-need (slog, stdlib errors, go-cmp, go-sdk, cobra), forbidigo `fmt.Print*`, modernize, tagliatelle (snake_case json; another program's format is decoded in its own casing, in infra or the platform) | Two ways to do one thing | `m3-consistency` |
 | M5 | unused, unparam, wastedassign, unconvert, interfacebloat ≤ 5 | Dead code, unused parameters | `m5-minimality` |
+| M5 | `kit sweep`, over the whole module: code only tests reach, methods included (deadcode never reports a method, which let a crash test leave one alive), and names a module's inside exports though only their package uses them | Code kept alive by its tests; a package's inside leaking out | `m5-only-tests` |
 | M10 | depguard `pure-domain` (no `os`, `io/fs`, `net`, `os/exec`, `database/sql`, `log/slog`, `reflect`, randomness), forbidigo `time.Now/Since/Until` and `os.Getenv` in the domain, gochecknoglobals, gochecknoinits | Hidden clock, environment, I/O, state | `m10-testability` |
 | M11 | errcheck (type assertions, blank), govet (all but fieldalignment, shadow), forcetypeassert, nilerr, nilnil, nilnesserr, containedctx, fatcontext, bodyclose, noctx, sqlclosecheck, rowserrcheck, exhaustive, makezero, durationcheck, reassign, musttag; `kitvet goroutine` (`go` only in platform), `kitvet ctxroot` (no new root context outside main) | Unchecked errors, leaked resources, orphan goroutines | `m11-robustness` |
 | M11 | nilaway | A nil that flows to a dereference | `m11-nil` |
@@ -199,26 +207,31 @@ No coverage gate: mutation already counts uncovered code. Equivalent mutants exi
 | E2 | A slice imports no other slice, and no infra (the contract passes it in) | Coupled slices, slices that need I/O to test | `e1-boundaries` |
 | E1 | Platform imports no module | Shared code coupled to one module | `e1-boundaries` |
 | E7 | Every package sits in the layout | A package invented outside it | `e1-boundaries` |
-| E4 | `kitvet typedid`: no id of a bare string or integer in the domain | Ids of different things swapped | `e4-typed-ids` |
-| E6 | testpackage (black-box `_test` packages), no mocks | Tests tied to internals | `e6-tests` |
-| S3 | An operation's effect (`ReadOnly`, `Additive`, `Destructive`) has no default: registering one without it fails; it becomes the MCP tool's annotations | A side-effecting tool advertised as harmless | `trial/clean` (`op_test`, `tools.golden.json`) |
+| E4 | `kitvet typedid`: no id of a bare string or integer in the domain; `kitvet domainconv`: a domain type is built by its Parse function, never by conversion outside the domain (a crash test validated ids in one session and converted them in the next) | Ids of different things swapped; unchecked values in the model | `e4-typed-ids` |
+| E6 | testpackage (black-box `_test` packages, `export_test.go` and `internal_test.go` included, which it skips by default), no mocks | Tests tied to internals | `e6-tests` |
+| S3 | An operation's effect (`ReadOnly`, `Additive`, `Destructive`) has no default: registering one without it fails; it becomes the MCP tool's annotations | A side-effecting tool advertised as harmless | `template` (`op_test`, `tools.golden.json`) |
+| S8 | `kitvet boundedlist`: a slice whose `Out` holds a list (a slice or a map) has an integer `limit` in its `Args` (a crash test without the kit shipped a search returning every match) | A call that returns every row | `s8-unbounded-list` |
 
 ### Pass 3 — CI checks
 
 | Criterion | Rule and tool | What it blocks | Proof |
 | --- | --- | --- | --- |
 | S1 | gitleaks on the tree and the history | A secret committed, even removed later | `s1-secrets` |
+| S1 | `kit guard`: env files, keys and certificates (`.env`, `.pem`, `.key`, `.pfx`, `.p12`, `.jks`, `id_ed25519`…) refused; `.env.example` and public keys allowed | A secret file committed whatever its content | `guard-sensitive` |
 | M8, S10 | govulncheck: only vulnerabilities the code calls | A known vulnerability shipped | `m8-vulnerable-dep` |
 | M8 | `go mod tidy -diff`, gomoddirectives, `kit guard` on the `go`/`toolchain` lines | Untidy or silently moved modules | `m8-untidy`, `t2-gomod`, `guard-gomod` |
 | M8 | The `go` line follows the newest Go the pinned golangci-lint supports, the `toolchain` line its latest patch, on a supported release | Building on an unsupported Go | see below |
 | S10 | zizmor and actionlint on workflows: pinned actions, no `pull_request_target` with PR code, no template injection, least permissions | A workflow that leaks or runs untrusted code | `ci-workflow` |
 | S10 | cyclonedx-gomod: an SBOM of what the binary links | An unknown shipped dependency | `TestSBOMListsTheModulesTheBinaryLinks` |
-| E5 | MCP tools: a golden snapshot of `tools/list` (names, schemas, annotations), protected by the guard; libraries: apidiff against the base | A contract changed in passing | `trial/clean` (`tools.golden.json`), `e5-api-break` |
+| E5 | MCP tools: a golden snapshot of `tools/list` (names, schemas, annotations), protected by the guard; libraries: apidiff against the base | A contract changed in passing | `template` (`tools.golden.json`), `e5-api-break` |
 | M5 | deadcode from `cmd/`: functions only tests reach | Code nothing ships | `m5-deadcode` |
 | M4 | dupl ≥ 100 tokens | Copied rules | `m4-duplication` |
-| T1 | Absolute: zero findings everywhere, every gate | Slow degradation | `trial/clean` |
+| M4 | `kit sweep`: a function body of 3 statements or more written twice, under dupl's 100 tokens (a crash test copied a ten-line limit check from one operation to another) | A short rule with two homes | `m4-copied-rule` |
+| T1 | Absolute: zero findings everywhere, every gate | Slow degradation | `template` |
 | T3 | `kit guard`: ≤ 400 changed production lines, one module per PR | PRs too big to review | `guard-size` |
 | Scripts | shellcheck | Word splitting, globbing | `sh-script` |
+| Scripts | PSScriptAnalyzer at warning severity, on `.ps1`, `.psm1` and `.psd1`, in pwsh or Windows PowerShell | Aliases, `Write-Host`, `Invoke-Expression`, a password taken as plain text | `ps-script` |
+| M8, S10 | Renovate, the template's `renovate.json`: an update waits 7 days (`minimumReleaseAge`), `go mod tidy` runs after it, the `go` and `toolchain` lines stay the owner's, actions are pinned by digest, the kit's two pins move together. `kit check` runs Renovate's own validator, `--strict` | A misspelled option, which Renovate's server ignores without a word to the repository; a dependency released yesterday | `m8-renovate`, `TestRenovatesValidatorFindsNothingInTheTemplate` |
 
 The Go version rule comes from the trial: on go1.25.5, govulncheck found 29 vulnerabilities the code calls; on go1.25.14, the last 1.25 patch, still 11, because Go 1.25 is out of support and fixes land in 1.26 and 1.27 only. The trial moved to go 1.26.0 with toolchain go1.26.10, and x/text and x/sys took their fixes: none left.
 
@@ -230,12 +243,28 @@ The Go version rule comes from the trial: on go1.25.5, govulncheck found 29 vuln
 | Structured logs | sloglint: attributes only, static messages, snake_case keys, no global logger, context variants | `slog.Info("…", "k", v)` with no context | `m7-diagnosability` |
 | Errors keep their chain | errorlint (`%w`, `errors.Is`) | `err == ErrX`, `%v` on an error | `m7-diagnosability` |
 | Logged once | `kitvet logreturn`: an error logged and returned in one block | The same failure logged at every level | `m7-diagnosability` |
+| One message, one place | `kit sweep`: a log message written in two places | A log line that can't say which code ran (.NET's unique `EventId`) | `m7-duplicate-messages` |
 | No panic, exit or recover in the code | forbidigo: `panic` and `recover` in platform only, `os.Exit` in main only | Crashes and swallowed panics | `m7-diagnosability` |
 | No log in the domain | depguard `pure-domain` | Logic and diagnostics mixed | `m10-testability` |
 
-### Pass 4 — Guided (milestone 2)
+### Pass 4 — Guided: the template
 
-The template (`gonew`) with the reference slice, AGENTS.md checked by a test, the new-feature and new-module skills, ADRs, the S11 journal of side-effecting operations, a `Secret` type whose `LogValue` redacts (S6), bounded list arguments (S8), and Claude Code hooks that run `kitvet` and golangci-lint on the edited package. Rules stay in the gates; these explain and point to them.
+An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit/template@<version> example.com/app`. It is the code every proof runs on, so what an app starts from passes every gate. Rules stay in the gates; these show and explain them.
+
+| Criterion | What the template holds | Its test |
+| --- | --- | --- |
+| E3, E7 | The reference slices (`add`, `list`), their module's contract, domain and infra, the platform; AGENTS.md says where code goes, and a test fails on any path it names that doesn't exist | `template/agents_test.go` |
+| E4 | A glossary per module: every exported domain type defined; a test fails on one missing | `template/internal/notes/glossary_test.go` |
+| S11 | The op binding journals every run of an operation that isn't read-only, one JSON line in the data directory: the operation, its arguments, its error; binding an operation without a journal is refused | `template/internal/platform/op`, `…/journal` tests |
+| S8 | A list takes a bounded limit with a default (`list_notes`: 1 to 100, 20 when not given), read by the platform's `op.Limit`, the rule's one home; `kitvet boundedlist` holds every slice to it | `template/internal/notes/internal/list` tests |
+| S6 | The `secrets` skill: a `secret.Secret` type that reads `[redacted]` through fmt, slog, errors, JSON and the journal; its code is extracted from the skill and run through every gate | `TestTheSecretsSkillsCodePassesEveryGate` |
+| M10 | Configuration read once at startup, checked, with a message naming the setting (`NOTES_DATA_DIR` must be absolute) | `template/internal/platform/config` tests |
+| M2 | An optional argument is a pointer: nil when not given, a CLI flag left out stays nil, so "not given" differs from zero | `template/internal/platform/op` tests |
+| E5 | Every MCP tool is a CLI command with the same arguments: a field the binding can't make a flag, a tool without its command, or a flag named otherwise fails (a crash test added a `[]string` argument that broke every CLI command while the MCP tests passed) | `template/internal/notes/parity_test.go` |
+| M6 | Every operation declares an example, which agents read in its tool's schema; binding one without it is refused. The smoke test calls every tool and command of the built program with it, and the program exits 1 for an operation that refused or failed, 2 for a command line or a start that went wrong; one journey per feature runs the built program as a user would | `template/cmd/notes/smoke_test.go`, `template/cmd/notes/journey_test.go`, `template/internal/platform/op/example_test.go` |
+| M6, C2 | The `new-feature` skill: the contract first, tests as sentences that must fail first, the slice, the golden diff, `kit check`, `kit mutate`, `kit review`; a justified protected change is expected: a wrong test is fixed in a pull request of its own that the feature rebases on, a contract the feature changes stays in its pull request under an approval that holds the content; the code is never bent around a wrong test. The `new-module` skill: when a module, its skeleton in its own pull request | AGENTS.md's skill test |
+| T2 | `.github/CODEOWNERS` and the CI that calls `kit-check.yml` pinned by SHA; the pre-commit hook | `TestTheAppCodeOwnersProtectWhatJudgesTheAgent`, `TestThePreCommitHookStopsAStagedSecret` |
+| T2, E7 | `kit sync --version <kit commit>` brings an app's kit-owned files to that kit version: the paths the template lists in `.kit/sync` (the skills, the git hook, `kit.yml`, pinned to the version), and AGENTS.md's section between `<!-- kit:begin -->` and `<!-- kit:end -->`, the app's own words left alone; a file the kit dropped leaves the app. The diff lands in a pull request the owner reviews, every path under CODEOWNERS | `TestKitSyncBringsAnAppsKitFilesToAVersionAndKeepsItsOwnWords` |
 
 ## Coverage check
 
@@ -248,12 +277,16 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 | Go production code | golangci-lint, kitvet, archtest, nilaway, deadcode, govulncheck, mutation, per GOOS | Proven |
 | Tests, golden files, fuzz corpus | testassert, testpackage, thelper, usetesting; the guard's protected-test rules | Proven |
 | Generated code | `exclusions.generated: disable`; the guard allows the header in `gen/`, `*_gen.go`, `*.pb.go` only | Proven |
-| `go.mod`, `go.sum` | gomoddirectives, `go mod tidy -diff`, govulncheck, the guard's go-line rule; CODEOWNERS | Proven; CODEOWNERS milestone 2 |
-| Workflows | actionlint, zizmor | Proven |
-| Shell scripts | shellcheck | Proven |
-| The kit's config in an app (`.golangci.yml`, `tools.txt`, hooks, `.claude/`) | Never read from the app; CODEOWNERS, managed settings | Milestone 2 |
-| Markdown (AGENTS.md, ADRs) | A test that every path and command cited exists | Milestone 2 |
-| PowerShell, Dockerfiles, IaC | PSScriptAnalyzer, hadolint, Checkov when they appear | Out of target until then |
+| `go.mod`, `go.sum` | gomoddirectives, `go mod tidy -diff`, govulncheck, the guard's go-line rule; CODEOWNERS | Proven |
+| Workflows | actionlint, zizmor, in `kit check` | Proven |
+| Shell scripts, git hooks | shellcheck, in `kit check` | Proven |
+| Secrets in any file | gitleaks in `kit check` and the pre-commit hook; the guard's sensitive files | Proven |
+| The kit's config in an app (`.golangci.yml`, `tools.txt`, hooks, `.claude/`) | Never read from the app; CODEOWNERS, managed settings; `kit sync` brings the kit-owned copies to a kit version | Proven; managed settings are the owner's to deploy |
+| Markdown (AGENTS.md, glossaries, skills) | AGENTS.md's paths and skills exist; every domain type is in its glossary; a skill's code passes every gate | Proven (template) |
+| ADRs | CODEOWNERS; the review sheet lists them | Proven |
+| PowerShell | PSScriptAnalyzer, in `kit check` | Proven |
+| `renovate.json` | Renovate's validator, in `kit check`; CODEOWNERS | Proven |
+| Dockerfiles, IaC | hadolint, Checkov when they appear | Out of target until then |
 
 **What stays uncovered**, each a review point or a future rule:
 
@@ -263,26 +296,25 @@ The template (`gonew`) with the reference slice, AGENTS.md checked by a test, th
 - A subprocess whose program name comes from input (S2): gosec G204 reports variable arguments, not a variable program (pinned in `s-security`).
 - Low-entropy secrets (S1): gitleaks misses `"correct horse"`.
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
-- Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). AGENTS.md says to stop and ask; review catches the rest.
+- Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). Guard v2 reports a changed test locally instead of failing on it, and in the rerun the agent fixed the test and said why (`r4-envtest`); the `new-feature` skill now gives each justified change its pull request, and review catches the rest.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
-- Two log lines with the same message (M7, .NET's unique `EventId`), and an exported name used only inside its own package (M5): no analyzer yet.
-- A foreign JSON format decoded in production code: tagliatelle wants snake_case; tests are exempt, production would need an override.
-- Renovate's configuration: not yet proven (milestone 2).
+- The code an app took from the template (E3): `internal/platform/` and the reference slices are the app's after `gonew`, and drift from the kit's; `kit sync` keeps only the files the kit owns outright. A platform change in the kit reaches an app by hand, its kit section or skill saying what changed.
+- What Renovate's rules do once on its server (S10): the validator proves the config is well-formed, not that a `matchDepTypes` matches; the first update pull requests show it.
 
 ## Step 3 — Assembly (milestone 2)
 
 The kit's repository is itself the arbiter: everything in it goes through the owner's full review, like the reference slice. Every .NET tactical solution is built first, the ones step 2 marks *milestone 2* included, and trimmed later by use. One PR per package, each usable alone:
 
-1. **Guard v2.** Locally, protected changes are reported, not failures: a guard that failed on them made an agent bend the code to fit a wrong test rather than ask (crash test `r2-envtest`). Bypasses stay blocking. In CI, protected changes fail until a code owner approved the last commit. Sensitive files (`.env`, keys, certificates) are refused.
-2. **Analyzers from the crash tests.** Functions and methods only tests reach (deadcode never reports a method); a domain type built by conversion outside the domain; duplicate log messages; exported names used only in their package.
-3. **`kit check`.** One command, the same locally and in CI: lint per GOOS, kitvet, archtest, dead code, nilaway, govulncheck, tests, guard.
-4. **`kit mutate`.** go-mutesting on a copy, changed lines only, a threshold calibrated on the reference slice.
-5. **`kit review`.** The review sheet posted on the PR: protected changes, test scenarios added or removed, read as sentences, contract changes (golden snapshot, apidiff), new modules, shared code touched, `// WHY:` added; path labels.
-6. **Platform.** The bot account; CODEOWNERS and the ruleset; reusable workflows apps pin by SHA; Claude Code hooks, deny rules and managed settings; pre-commit hooks.
-7. **Template and reference slice** (`gonew`): a `Secret` type that redacts in logs (S6), bounded list arguments (S8), a journal of every non-read-only operation in the op binding (S11), configuration validated at startup, optional arguments, AGENTS.md and the test of its paths and commands, a glossary per module, the new-feature (tests first) and new-module skills. The owner reads the slice in full; it calibrates the thresholds.
-8. **Supply chain.** Renovate, proven by its validator; PSScriptAnalyzer for PowerShell.
-9. **Crash tests.** The environment test rerun on guard v2; the same chain of features with and without the kit; a platform round under the bot (merge, weaken the CI, edit a workflow). Each attempt is kept as a `crash/<round>-<name>` branch.
-10. **Final review** with the dotnet-agent-harness checklist.
+1. **Guard v2.** Locally, protected changes are reported, not failures: a guard that failed on them made an agent bend the code to fit a wrong test rather than ask (crash test `r2-envtest`). Bypasses stay blocking. In CI, protected changes fail until a code owner approved the last commit. Sensitive files (`.env`, keys, certificates) are refused. *Built: #2.*
+2. **Analyzers from the crash tests.** Functions and methods only tests reach (deadcode never reports a method); a domain type built by conversion outside the domain; duplicate log messages; exported names used only in their package. *Built: #3; the A/B crash test added `boundedlist` (S8).*
+3. **`kit check`.** One command, the same locally and in CI: lint per GOOS, kitvet, archtest, dead code, nilaway, govulncheck, tests, guard. *Built: #4; #7 adds actionlint, zizmor, shellcheck and gitleaks, #8 PSScriptAnalyzer and Renovate's validator.*
+4. **`kit mutate`.** go-mutesting on a copy, changed lines only, a threshold calibrated on the reference slice. *Built: #5; calibrated in #7.*
+5. **`kit review`.** The review sheet posted on the PR: protected changes, test scenarios added or removed, read as sentences, contract changes (golden snapshot, apidiff), new modules, shared code touched, `// WHY:` added; path labels. *Built: #6.*
+6. **Platform.** The bot account; CODEOWNERS and the ruleset; reusable workflows apps pin by SHA; Claude Code hooks, deny rules and managed settings; pre-commit hooks. *Built: #4, the pre-commit hook in #7. Installing the App, applying the ruleset and deploying the managed settings are the owner's.*
+7. **Template and reference slice** (`gonew`): a `Secret` type that redacts in logs (S6), bounded list arguments (S8), a journal of every non-read-only operation in the op binding (S11), configuration validated at startup, optional arguments, AGENTS.md and the test of its paths and commands, a glossary per module, the new-feature (tests first) and new-module skills. The owner reads the slice in full; it calibrates the thresholds. *Built: #7. The `Secret` type lives in the `secrets` skill, its code proven, rather than unused in the template, where deadcode and sweep would rightly flag it.*
+8. **Supply chain.** Renovate, proven by its validator; PSScriptAnalyzer for PowerShell. *Built: #8.*
+9. **Crash tests.** The environment test rerun on guard v2; the same chain of features with and without the kit; a platform round under the bot (merge, weaken the CI, edit a workflow). Each attempt is kept as a `crash/<round>-<name>` branch. *Done: `r4-envtest`, and the A/B round (`crash/r5-ab-without`, `crash/r5-ab-with`). The platform round waits for the App's installation.*
+10. **Final review** with the dotnet-agent-harness checklist. *The checklist isn't in this repository: the owner's review.*
 
 ## Principles
 

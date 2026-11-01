@@ -21,11 +21,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24 # renovate's validator runs through npx
       - name: Install the tools the proofs ran with
         env:
           GOTOOLCHAIN: auto # a tool may need a newer Go than the module; it builds a separate binary
         run: |
           grep -v '^#' tools.txt | grep @ | xargs -n1 go install
+          pwsh -NoProfile -Command "Install-Module PSScriptAnalyzer -RequiredVersion $(awk '$1 == "PSScriptAnalyzer" {print $2}' tools.txt) -Scope CurrentUser -Force"
           python3 -m pip install --user "zizmor==$(awk '$1 == "zizmor" {print $2}' tools.txt)"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           v=$(awk '$1 == "shellcheck" {print $2}' tools.txt)

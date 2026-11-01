@@ -1,0 +1,9 @@
+# The files kit sync keeps as the kit ships them: an app's changes to them
+# are overwritten, and the diff is the owner's to review. AGENTS.md's
+# section between the kit's markers is synced too, and kit.yml is pinned to
+# the version synced to. A path ending in / is a directory the kit owns.
+.claude/skills/new-feature/
+.claude/skills/new-module/
+.claude/skills/secrets/
+.githooks/pre-commit
+.github/workflows/kit.yml
