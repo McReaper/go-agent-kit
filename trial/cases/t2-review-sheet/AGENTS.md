@@ -2,13 +2,6 @@
 
 notes keeps short notes for people and agents, served as MCP tools (`notes mcp`) and as CLI commands. It is built on the anti-drift kit, github.com/McReaper/go-agent-kit: the kit's checks judge every change, and only the owner can change them.
 
-## Commands
-
-- `go test ./...`: the tests.
-- `kit check`: every gate the merge check runs, the same as CI. Run it before you stop.
-- `kit mutate`: the tests must kill the mutants of the lines you changed.
-- `kit review`: the review sheet the owner reads. Read it before you open a pull request: it is what they will judge.
-
 ## Where code goes
 
 - `cmd/notes/`: wiring only: the config, the journal, the modules, the two surfaces. Its tests run the built program: `smoke_test.go` calls every tool and command with its example, `journey_test.go` holds one user journey per feature.
@@ -19,6 +12,15 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 - `internal/platform/`: shared by every module: the op binding, the journal, the config. It knows no module.
 - `pkg/slug/`: a library other programs may import: its exported API is a contract.
 
+<!-- kit:begin -->
+## Commands
+
+- `go test ./...`: the tests.
+- `kit check`: every gate the merge check runs, the same as CI. Run it before you stop.
+- `kit mutate`: the tests must kill the mutants of the lines you changed.
+- `kit review`: the review sheet the owner reads. Read it before you open a pull request: it is what they will judge.
+- `kit sync --version <kit commit>`: brings the kit's files here (its skills, hooks, `kit.yml`'s pin, this section) to that kit version; the diff is the owner's to review.
+
 ## Rules no check explains
 
 - A test you believe is wrong, or a contract the feature changes: a protected change is expected when it's justified. The `new-feature` skill says which pull request it goes in. Never bend the code to fit a wrong test.
@@ -26,3 +28,4 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 - Never silence a check (`//nolint`, `t.Skip`, a build tag): fix the code, or stop and ask.
 - A new operation: load the `new-feature` skill. A new module: the `new-module` skill.
 - Tags are lower-case: the tags module normalizes them, never the caller.
+<!-- kit:end -->

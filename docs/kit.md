@@ -264,6 +264,7 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 | M6 | Every operation declares an example, which agents read in its tool's schema; binding one without it is refused. The smoke test calls every tool and command of the built program with it, and the program exits 1 for an operation that refused or failed, 2 for a command line or a start that went wrong; one journey per feature runs the built program as a user would | `template/cmd/notes/smoke_test.go`, `template/cmd/notes/journey_test.go`, `template/internal/platform/op/example_test.go` |
 | M6, C2 | The `new-feature` skill: the contract first, tests as sentences that must fail first, the slice, the golden diff, `kit check`, `kit mutate`, `kit review`; a justified protected change is expected: a wrong test is fixed in a pull request of its own that the feature rebases on, a contract the feature changes stays in its pull request under an approval that holds the content; the code is never bent around a wrong test. The `new-module` skill: when a module, its skeleton in its own pull request | AGENTS.md's skill test |
 | T2 | `.github/CODEOWNERS` and the CI that calls `kit-check.yml` pinned by SHA; the pre-commit hook | `TestTheAppCodeOwnersProtectWhatJudgesTheAgent`, `TestThePreCommitHookStopsAStagedSecret` |
+| T2, E7 | `kit sync --version <kit commit>` brings an app's kit-owned files to that kit version: the paths the template lists in `.kit/sync` (the skills, the git hook, `kit.yml`, pinned to the version), and AGENTS.md's section between `<!-- kit:begin -->` and `<!-- kit:end -->`, the app's own words left alone; a file the kit dropped leaves the app. The diff lands in a pull request the owner reviews, every path under CODEOWNERS | `TestKitSyncBringsAnAppsKitFilesToAVersionAndKeepsItsOwnWords` |
 
 ## Coverage check
 
@@ -280,7 +281,7 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 | Workflows | actionlint, zizmor, in `kit check` | Proven |
 | Shell scripts, git hooks | shellcheck, in `kit check` | Proven |
 | Secrets in any file | gitleaks in `kit check` and the pre-commit hook; the guard's sensitive files | Proven |
-| The kit's config in an app (`.golangci.yml`, `tools.txt`, hooks, `.claude/`) | Never read from the app; CODEOWNERS, managed settings | Proven; managed settings are the owner's to deploy |
+| The kit's config in an app (`.golangci.yml`, `tools.txt`, hooks, `.claude/`) | Never read from the app; CODEOWNERS, managed settings; `kit sync` brings the kit-owned copies to a kit version | Proven; managed settings are the owner's to deploy |
 | Markdown (AGENTS.md, glossaries, skills) | AGENTS.md's paths and skills exist; every domain type is in its glossary; a skill's code passes every gate | Proven (template) |
 | ADRs | CODEOWNERS; the review sheet lists them | Proven |
 | PowerShell | PSScriptAnalyzer, in `kit check` | Proven |
@@ -297,6 +298,7 @@ An app starts as a copy of the template: `gonew github.com/McReaper/go-agent-kit
 - SQL built outside `database/sql` calls, through a helper (S2): `sqlconst` checks the call site only.
 - Code bent to fit a wrong test (M6, C2): since changing a test needs approval, an agent may change the code instead (a crash test made a Windows app read a Linux variable to satisfy a test with a Linux assumption). Guard v2 reports a changed test locally instead of failing on it, and in the rerun the agent fixed the test and said why (`r4-envtest`); the `new-feature` skill now gives each justified change its pull request, and review catches the rest.
 - Whether an event deserves a log (M7), names (M2), speculative abstractions (M5).
+- The code an app took from the template (E3): `internal/platform/` and the reference slices are the app's after `gonew`, and drift from the kit's; `kit sync` keeps only the files the kit owns outright. A platform change in the kit reaches an app by hand, its kit section or skill saying what changed.
 - What Renovate's rules do once on its server (S10): the validator proves the config is well-formed, not that a `matchDepTypes` matches; the first update pull requests show it.
 
 ## Step 3 — Assembly (milestone 2)

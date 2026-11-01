@@ -5,6 +5,7 @@
 //	kit sweep [--json]
 //	kit mutate [--base origin/main] [--min 0.8]
 //	kit review [--base origin/main] [--labels | --json]
+//	kit sync --version <kit commit> [--from template-dir]
 package main
 
 import (
@@ -37,7 +38,7 @@ func main() {
 
 func root(out io.Writer) *cobra.Command {
 	r := &cobra.Command{Use: "kit", Short: "The anti-drift kit's checks", SilenceUsage: true, SilenceErrors: true}
-	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand())
+	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand(), syncCommand(out))
 	return r
 }
 
