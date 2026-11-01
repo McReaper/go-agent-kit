@@ -11,10 +11,10 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 
 ## Where code goes
 
-- `cmd/notes/`: wiring only: the config, the journal, the modules, the two surfaces.
+- `cmd/notes/`: wiring only: the config, the journal, the modules, the two surfaces. Its tests run the built program: `smoke_test.go` calls every tool and command with its example, `journey_test.go` holds one user journey per feature.
 - `internal/notes/`: the notes module's contract, the only package other code imports. Its words are in `internal/notes/GLOSSARY.md`.
 - `internal/notes/internal/domain/`: the rules, pure: no I/O, no clock, no log.
-- `internal/notes/internal/add/`, `internal/notes/internal/list/`: one operation each, a vertical slice: its `Args`, its `Op` (name, description for agents, effect) and its tests. Slices don't import each other.
+- `internal/notes/internal/add/`, `internal/notes/internal/list/`: one operation each, a vertical slice: its `Args`, its `Op` (name, description for agents, effect, example) and its tests. Slices don't import each other.
 - `internal/notes/internal/infra/`: files and other I/O, behind the interfaces the slices declare.
 - `internal/platform/`: shared by every module: the op binding, the journal, the config. It knows no module.
 - `pkg/slug/`: a library other programs may import: its exported API is a contract.

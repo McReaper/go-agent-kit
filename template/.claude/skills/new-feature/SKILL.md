@@ -27,6 +27,8 @@ In a new slice, `internal/<module>/internal/<feature>/`, write `<feature>_test.g
 - fakes of the interfaces the slice declares, never a mock library;
 - every test fails on something it checks, not only on an error.
 
+Then add the feature's journey to `cmd/<app>/journey_test.go`: a user's path through the built program, from the command line or through MCP (`TestAUserAddsANoteFromTheCommandLineThenFindsItInTheList`), using the file's `build`, `run` and `connect`. It is the spec the owner reads, and it passes only once the feature works end to end.
+
 Run them. Each must fail, and for the reason you expect, not a compile error you didn't mean. If the owner asked to see tests first, open the pull request as a draft with the tests alone, and stop.
 
 ## 3. Write the slice
@@ -36,7 +38,7 @@ Follow `internal/notes/internal/list/`:
 - `Args`: its `json` tags are the MCP arguments and the CLI flags, its `jsonschema` tags the descriptions agents read. An optional argument is a pointer (`*int`, `*string`), nil when not given. The binding knows `string`, `int`, `bool`, `[]string` and those two pointers: another type fails `TestEveryToolIsACommandWithTheSameArguments`, and teaching the binding a new one is a platform change. An operation that returns a list takes a `limit` with a default and a maximum, read with `op.Limit`, never a copy of it.
 - `Out`: what the operation returns.
 - The interface it needs from the infra, declared in the slice, named for what it does (`Saver`, `Reader`).
-- `New`, then `Op()`: the name, a description written for an agent (what it does, what it refuses), the effect. The binding journals every operation that isn't read-only.
+- `New`, then `Op()`: the name, a description written for an agent (what it does, what it refuses), the effect, and an `Example`: one realistic call, which agents read in the tool's schema. The binding refuses an operation without one, and journals every operation that isn't read-only.
 - `Run`: it turns every input into a domain type through the domain's `Parse` function, never by conversion.
 
 Then wire it in the module's contract, `internal/<module>/<module>.go`: `Register` and `Commands`.
@@ -47,7 +49,7 @@ Run `go test ./internal/<module>/ -update`, then read the diff of `testdata/tool
 
 ## 5. Check before you stop
 
-- `kit check`: every gate.
+- `kit check`: every gate. Its tests include `cmd/<app>/smoke_test.go`, which builds the program and calls every tool and every command with its example: a refusal passes, a start that fails or a command line that doesn't parse fails.
 - `kit mutate`: the new lines' mutants must die. A mutant that lives is a behaviour no test pins: add the test, or delete the code if nothing needs it.
 - `kit review`: read the sheet as the owner will.
 
