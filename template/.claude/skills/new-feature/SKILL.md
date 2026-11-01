@@ -53,6 +53,9 @@ Run `go test ./internal/<module>/ -update`, then read the diff of `testdata/tool
 - `kit mutate`: the new lines' mutants must die. A mutant that lives is a behaviour no test pins: add the test, or delete the code if nothing needs it.
 - `kit review`: read the sheet as the owner will.
 
-## When a test is wrong
+## A protected change is expected when it is justified
 
-Fix the test, and say in your report what changed in it and why. The owner approves every changed test before merge. Never bend the code to fit a test you believe is wrong.
+Existing tests, golden files and `go.mod`'s go line are protected: the merge check holds them until the owner approves. Changing one when the work calls for it is part of the job. Bending the code around a test you believe is wrong is the one thing never to do.
+
+- **A test is wrong**: it checks something the contract doesn't say. Fix it in a pull request of its own, branched from the default branch, holding that fix alone, its description saying why. Tell the owner, and go on with the feature on top of it. Once they merged it, rebase the feature (`git rebase origin/main`, then `git push --force-with-lease`).
+- **The feature changes the contract**: a golden file, or a test whose expectation the feature changes. Keep the change in the feature's pull request and list each protected file in its description. Once the owner approved the pull request, the approval holds while those files keep the content approved: go on with the code, rebase if you need. Touch one of them again and it needs approving again.

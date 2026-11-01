@@ -21,7 +21,7 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 
 ## Rules no check explains
 
-- A test you believe is wrong: fix the test, and say in your report what changed in it and why. The owner approves every changed test before merge; bending the code to fit a wrong test is the one thing that costs more.
+- A test you believe is wrong, or a contract the feature changes: a protected change is expected when it's justified. The `new-feature` skill says which pull request it goes in. Never bend the code to fit a wrong test.
 - Code only tests reach: delete it with its tests.
 - Never silence a check (`//nolint`, `t.Skip`, a build tag): fix the code, or stop and ask.
 - A new operation: load the `new-feature` skill. A new module: the `new-module` skill.
