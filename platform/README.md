@@ -16,7 +16,7 @@ Apply it once per repository, as the owner:
 gh api repos/OWNER/REPO/rulesets --method POST --input platform/ruleset.json
 ```
 
-- a pull request, approved by a code owner on its last commit (stale approvals dismissed);
+- a pull request, approved by a code owner on its last commit; earlier approvals stay on record, so the merge check (`kit-check.yml`) keeps a protected file approved while its content is the one the owner approved;
 - the `kit` check passing;
 - only the owner updates the branch, through a pull request (`update` rule, bypass by pull request only): the app can't merge even an approved change.
 
@@ -38,8 +38,8 @@ An app started from the template has it; replace `@OWNER` with the owner's login
 
 ## The merge check: `kit-check.yml`
 
-The app's CI calls `.github/workflows/kit-check.yml` of this repository, pinned by SHA, on `pull_request`, `pull_request_review` and pushes to the default branch. It runs `kit check --ci`, approved once a code owner approved the last commit.
+The app's CI calls `.github/workflows/kit-check.yml` of this repository, pinned by SHA, on `pull_request`, `pull_request_review` and pushes to the default branch. It runs `kit check --ci` with the trees of the commits a code owner approved: a protected change passes once approved, and stays approved while its files hold the content approved, through later commits and rebases; touching one reopens it.
 
 ## Claude Code: `claude/settings.json`
 
-Deny rules (force pushes, `--no-verify`, merging, editing `.kit/`, `.github/`, `.claude/`) and the hooks: `kit hook post-edit` after each edit, `kit hook stop` before the agent stops. Deploy it as the agent's managed settings, which the agent can't override (see Claude Code's managed settings documentation for the file's place on each system); deny rules are a speed bump, the platform is the arbiter.
+Deny rules (a force push without a lease, any force push to `main`, `--no-verify`, merging, editing `.kit/`, `.github/`, `.claude/`; `--force-with-lease` stays allowed on the agent's own branches, so it can rebase its pull request) and the hooks: `kit hook post-edit` after each edit, `kit hook stop` before the agent stops. Deploy it as the agent's managed settings, which the agent can't override (see Claude Code's managed settings documentation for the file's place on each system); deny rules are a speed bump, the platform is the arbiter.

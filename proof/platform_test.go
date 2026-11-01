@@ -45,7 +45,10 @@ func TestTheRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T) {
 	for _, rule := range r.Rules {
 		types = append(types, rule.Type)
 		if rule.Type == "pull_request" {
-			for _, p := range []string{`"require_code_owner_review": true`, `"dismiss_stale_reviews_on_push": true`, `"require_last_push_approval": true`} {
+			// WHY: the merge needs an approval of the last push; earlier
+			// approvals stay on record for the merge check, which keeps a
+			// protected file approved while its content is the one approved.
+			for _, p := range []string{`"require_code_owner_review": true`, `"dismiss_stale_reviews_on_push": false`, `"require_last_push_approval": true`} {
 				if !strings.Contains(string(rule.Parameters), p) {
 					t.Errorf("pull_request rule lacks %s", p)
 				}
@@ -97,10 +100,15 @@ type claudeSettings struct {
 func TestTheAgentSettingsDenyBypassesAndRunTheKitHooks(t *testing.T) {
 	var s claudeSettings
 	readJSON(t, "../platform/claude/settings.json", &s)
-	for _, want := range []string{"Bash(git commit --no-verify *)", "Bash(git push --force *)", "Bash(gh pr merge *)", "Edit(./.kit/**)", "Edit(./.github/**)"} {
+	for _, want := range []string{"Bash(git commit --no-verify *)", "Bash(git push --force *)", "Bash(git push --force-with-lease * main)", "Bash(gh pr merge *)", "Edit(./.kit/**)", "Edit(./.github/**)"} {
 		if !slices.Contains(s.Permissions.Deny, want) {
 			t.Errorf("deny lacks %s", want)
 		}
+	}
+	// WHY: the agent rebases its own pull request while the owner hasn't
+	// approved it; main's ruleset refuses any force push there anyway.
+	if slices.Contains(s.Permissions.Deny, "Bash(git push --force-with-lease *)") {
+		t.Error("deny refuses --force-with-lease on the agent's own branches")
 	}
 	for event, command := range map[string]string{"PostToolUse": "kit hook post-edit", "Stop": "kit hook stop"} {
 		groups := s.Hooks[event]
