@@ -55,7 +55,10 @@ jobs:
           echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  $RUNNER_TEMP/shellcheck.tar.xz" | sha256sum -c -
           tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
           sudo mv "$RUNNER_TEMP/shellcheck-v$v/shellcheck" /usr/local/bin/
-      - name: Has a code owner approved the last commit?
+      - name: Which commits has a code owner approved?
+        # Each approved commit's tree goes to kit check, from the API, so a
+        # commit a rebase left behind still counts: a protected file whose
+        # content is the one approved stays approved.
         id: approval
         if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
         env:
@@ -64,14 +67,22 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          n=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
-            --jq "[.[] | select(.state == \"APPROVED\" and .commit_id == \"$HEAD\" and (.author_association == \"OWNER\" or .author_association == \"MEMBER\"))] | length")
-          if [ "${n:-0}" -gt 0 ]; then echo "approved=true" >> "$GITHUB_OUTPUT"; else echo "approved=false" >> "$GITHUB_OUTPUT"; fi
+          mkdir -p "$RUNNER_TEMP/approved-trees"
+          gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+            --jq '.[] | select(.state == "APPROVED" and (.author_association == "OWNER" or .author_association == "MEMBER")) | .commit_id' |
+            sort -u > "$RUNNER_TEMP/approved-commits"
+          head=false
+          while read -r sha; do
+            if [ "$sha" = "$HEAD" ]; then head=true; fi
+            gh api "repos/$REPO/git/trees/$sha?recursive=1" \
+              --jq '.tree[] | select(.type == "blob") | "\(.sha) \(.path)"' > "$RUNNER_TEMP/approved-trees/$sha"
+          done < "$RUNNER_TEMP/approved-commits"
+          echo "approved=$head" >> "$GITHUB_OUTPUT"
       - name: kit check
         env:
           BASE: ${{ github.base_ref || github.event.repository.default_branch }}
           APPROVED: ${{ steps.approval.outputs.approved || 'false' }}
-        run: kit check --base "origin/$BASE" --ci --approved="$APPROVED"
+        run: kit check --base "origin/$BASE" --ci --approved="$APPROVED" --approved-trees "$RUNNER_TEMP/approved-trees"
       - name: kit mutate
         if: ${{ !cancelled() && github.event_name != 'push' }}
         env:
