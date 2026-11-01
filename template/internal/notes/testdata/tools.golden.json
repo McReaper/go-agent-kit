@@ -9,6 +9,12 @@
     "description": "Adds a note and returns its id. Never overwrites: a second note with the same title in the same second is refused.",
     "inputSchema": {
       "additionalProperties": false,
+      "examples": [
+        {
+          "body": "eggs, milk, bread",
+          "title": "Groceries"
+        }
+      ],
       "properties": {
         "body": {
           "description": "the note's text",
@@ -47,6 +53,11 @@
     "description": "Lists the newest notes, their ids and titles.",
     "inputSchema": {
       "additionalProperties": false,
+      "examples": [
+        {
+          "limit": 5
+        }
+      ],
       "properties": {
         "limit": {
           "description": "how many notes to return, newest first: 1 to 100, 20 if not given",

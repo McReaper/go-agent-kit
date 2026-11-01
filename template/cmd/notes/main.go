@@ -13,6 +13,7 @@ import (
 	"github.com/McReaper/go-agent-kit/template/internal/notes"
 	"github.com/McReaper/go-agent-kit/template/internal/platform/config"
 	"github.com/McReaper/go-agent-kit/template/internal/platform/journal"
+	"github.com/McReaper/go-agent-kit/template/internal/platform/op"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 )
@@ -26,8 +27,18 @@ func main() {
 	stop()
 	if err != nil {
 		log.ErrorContext(ctx, "notes failed", slog.Any("err", err))
-		os.Exit(1)
+		os.Exit(exitCode(err))
 	}
+}
+
+// WHY: 1 says the operation ran and refused or failed; 2 says the command
+// line or the program's start went wrong. The smoke test accepts the first,
+// never the second.
+func exitCode(err error) int {
+	if errors.As(err, new(*op.Failure)) {
+		return 1
+	}
+	return 2
 }
 
 func run(ctx context.Context, out io.Writer) (err error) {

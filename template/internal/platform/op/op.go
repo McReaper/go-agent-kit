@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 )
@@ -30,12 +31,15 @@ const (
 	Destructive
 )
 
-// Op is one operation: its name, its description for agents, its effect and
-// its implementation. A's json tags are the MCP arguments and the CLI flags.
+// Op is one operation: its name, its description for agents, its effect, an
+// example of its arguments and its implementation. A's json tags are the MCP
+// arguments and the CLI flags. The example is required: agents read it in the
+// tool's schema, and the smoke test calls every tool and command with it.
 type Op[A, O any] struct {
 	Name        string
 	Description string
 	Effect      Effect
+	Example     *A
 	Run         func(context.Context, A) (O, error)
 }
 
@@ -47,17 +51,39 @@ type Journal interface {
 // ErrNoJournal is returned when an operation is bound without a journal.
 var ErrNoJournal = errors.New("no journal: every operation that changes something is journaled")
 
-// Register adds o to s as a tool, with annotations derived from its effect,
-// journaled in j unless it only reads.
+// ErrNoExample is returned when an operation is bound without an example.
+var ErrNoExample = errors.New("no example: agents read one call in the tool's schema, and the smoke test runs it")
+
+// Failure is the error of an operation run from its command: the operation
+// ran and refused or failed, unlike a command line that didn't parse.
+type Failure struct {
+	Op  string
+	Err error
+}
+
+// Error returns the operation's own message.
+func (f *Failure) Error() string {
+	return f.Err.Error()
+}
+
+// Unwrap returns the operation's error.
+func (f *Failure) Unwrap() error {
+	return f.Err
+}
+
+// Register adds o to s as a tool, with annotations derived from its effect and
+// its example in its input schema, journaled in j unless it only reads.
 func Register[A, O any](s *mcp.Server, j Journal, o Op[A, O]) error {
-	ann, err := annotations(o.Effect)
-	if err == nil && j == nil {
-		err = ErrNoJournal
-	}
+	ann, err := check(o, j)
 	if err != nil {
 		return fmt.Errorf("tool %s: %w", o.Name, err)
 	}
-	tool := &mcp.Tool{Name: o.Name, Description: o.Description, Annotations: ann}
+	schema, err := jsonschema.For[A](&jsonschema.ForOptions{})
+	if err != nil {
+		return fmt.Errorf("tool %s: %w", o.Name, err)
+	}
+	schema.Examples = []any{*o.Example}
+	tool := &mcp.Tool{Name: o.Name, Description: o.Description, Annotations: ann, InputSchema: schema}
 	mcp.AddTool(s, tool, func(ctx context.Context, _ *mcp.CallToolRequest, a A) (*mcp.CallToolResult, O, error) {
 		out, err := run(ctx, j, o, a)
 		return nil, out, err
@@ -78,6 +104,19 @@ func run[A, O any](ctx context.Context, j Journal, o Op[A, O], a A) (O, error) {
 	return out, err
 }
 
+func check[A, O any](o Op[A, O], j Journal) (*mcp.ToolAnnotations, error) {
+	ann, err := annotations(o.Effect)
+	switch {
+	case err != nil:
+		return nil, err
+	case j == nil:
+		return nil, ErrNoJournal
+	case o.Example == nil:
+		return nil, ErrNoExample
+	}
+	return ann, nil
+}
+
 func annotations(e Effect) (*mcp.ToolAnnotations, error) {
 	yes, no := true, false
 	switch e {
@@ -95,13 +134,10 @@ func annotations(e Effect) (*mcp.ToolAnnotations, error) {
 // Command returns o as a CLI command whose flags are A's fields, named by
 // their json tags with underscores turned into hyphens; a pointer field is
 // an optional flag, nil when absent. It journals the run in j unless o only
-// reads, and prints the result as JSON to out.
+// reads, and prints the result as JSON to out. The operation's own error
+// comes back as a *Failure.
 func Command[A, O any](o Op[A, O], j Journal, out io.Writer) (*cobra.Command, error) {
-	_, err := annotations(o.Effect)
-	if err == nil && j == nil {
-		err = ErrNoJournal
-	}
-	if err != nil {
+	if _, err := check(o, j); err != nil {
 		return nil, fmt.Errorf("command %s: %w", o.Name, err)
 	}
 	var a A
@@ -112,7 +148,7 @@ func Command[A, O any](o Op[A, O], j Journal, out io.Writer) (*cobra.Command, er
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			res, err := run(cmd.Context(), j, o, a)
 			if err != nil {
-				return err
+				return &Failure{Op: o.Name, Err: err}
 			}
 			return json.NewEncoder(out).Encode(res)
 		},

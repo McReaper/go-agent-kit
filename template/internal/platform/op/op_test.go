@@ -45,6 +45,7 @@ func echo(effect op.Effect) op.Op[args, args] {
 		Name:        "echo_args",
 		Description: "returns its arguments",
 		Effect:      effect,
+		Example:     &args{Name: "x"},
 		Run: func(_ context.Context, a args) (args, error) {
 			if a.Name == "fail" {
 				return a, errBoom
@@ -185,7 +186,7 @@ type unsupported struct {
 
 func refusal[A any](t *testing.T) error {
 	t.Helper()
-	o := op.Op[A, A]{Name: "x", Description: "x", Effect: op.ReadOnly, Run: func(_ context.Context, a A) (A, error) { return a, nil }}
+	o := op.Op[A, A]{Name: "x", Description: "x", Effect: op.ReadOnly, Example: new(A), Run: func(_ context.Context, a A) (A, error) { return a, nil }}
 	_, err := op.Command(o, &memJournal{}, &bytes.Buffer{})
 	return err
 }

@@ -11,7 +11,7 @@ review/test-changed internal/notes/internal/domain/note_test.go:0 ^Parse title$
 review/contract internal/notes/testdata/tools.golden.json:0 changed
 review/api pkg/slug:0 ^compatible: Join: added$
 review/module internal/tags:0 new module
-review/dependency go.mod:13 ^golang\.org/x/sync v0\.22\.0$
+review/dependency go.mod:14 ^golang\.org/x/sync v0\.22\.0$
 review/shared internal/tags/tags.go:0 the tags module's contract, added
 review/shared pkg/slug/slug.go:0 library, changed
 review/rules AGENTS.md:0 the agent's instructions, changed

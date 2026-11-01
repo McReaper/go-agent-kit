@@ -36,6 +36,7 @@ func (a *Add) Op() op.Op[Args, Out] {
 		Name:        "add_note",
 		Description: "Adds a note and returns its id. Never overwrites: a second note with the same title in the same second is refused.",
 		Effect:      op.Additive,
+		Example:     &Args{Title: "Groceries", Body: "eggs, milk, bread"},
 		Run:         a.Run,
 	}
 }

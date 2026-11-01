@@ -45,7 +45,7 @@ _apidiff against the base_
 
 _go.mod lines added_
 
-- `go.mod:13`: golang.org/x/sync v0.22.0
+- `go.mod:14`: golang.org/x/sync v0.22.0
 
 ### Shared code
 

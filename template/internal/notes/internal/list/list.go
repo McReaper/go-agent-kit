@@ -43,6 +43,7 @@ func (l *List) Op() op.Op[Args, Out] {
 		Name:        "list_notes",
 		Description: "Lists the newest notes, their ids and titles.",
 		Effect:      op.ReadOnly,
+		Example:     &Args{Limit: new(5)},
 		Run:         l.Run,
 	}
 }
