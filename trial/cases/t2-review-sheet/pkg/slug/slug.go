@@ -11,9 +11,9 @@ import (
 // Make returns s in lowercase ASCII, with every run of other characters
 // replaced by a single hyphen and no hyphen at either end. Accents are
 // dropped from the letters they sit on.
-func Make(s string) string {
+func Make(s, sep string) string {
 	bare := strings.Map(dropMarks, norm.NFKD.String(s))
-	return strings.ToLower(strings.Join(strings.FieldsFunc(bare, isSeparator), "-"))
+	return strings.ToLower(strings.Join(strings.FieldsFunc(bare, isSeparator), sep))
 }
 
 func dropMarks(r rune) rune {
@@ -31,7 +31,7 @@ func isSeparator(r rune) bool {
 func Join(parts ...string) string {
 	out := make([]string, 0, len(parts))
 	for _, p := range parts {
-		out = append(out, Make(p))
+		out = append(out, Make(p, "-"))
 	}
 	return strings.Join(out, "/")
 }

@@ -25,7 +25,7 @@ type testEvent struct {
 }
 
 // WHY: some rules live in the template's own tests (the smoke test, the
-// journeys), not in a linter; a case breaks the program, and each failing
+// spec), not in a linter; a case breaks the program, and each failing
 // test is a finding, at the line of the check that failed. A passing test's
 // logs are not findings.
 func testFindings(t *testing.T, dir string) []finding {

@@ -1,4 +1,4 @@
-package infra_test
+package list_test
 
 import "testing"
 

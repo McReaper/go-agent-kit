@@ -4,7 +4,8 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 
 ## Where code goes
 
-- `cmd/notes/`: wiring only: the config, the journal, the modules, the two surfaces. Its tests run the built program: `smoke_test.go` calls every tool and command with its example, `journey_test.go` holds one user journey per feature.
+- `features/`: the spec, the one thing the owner reads: Gherkin scenarios of what the app does, in `notes.feature`, and the steps that run them on the built program, in `notes_test.go`. A scenario tagged `@wip` is approved, not built yet.
+- `cmd/notes/`: wiring only: the config, the journal, the modules, the two surfaces. Its `smoke_test.go` builds the program and calls every tool and command with its example.
 - `internal/notes/`: the notes module's contract, the only package other code imports. Its words are in `internal/notes/GLOSSARY.md`.
 - `internal/notes/internal/domain/`: the rules, pure: no I/O, no clock, no log.
 - `internal/notes/internal/add/`, `internal/notes/internal/list/`: one operation each, a vertical slice: its `Args`, its `Op` (name, description for agents, effect, example) and its tests. Slices don't import each other.
@@ -18,14 +19,15 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 - `go test ./...`: the tests.
 - `kit check`: every gate the merge check runs, the same as CI. Run it before you stop.
 - `kit mutate`: the tests must kill the mutants of the lines you changed.
-- `kit review`: the review sheet the owner reads. Read it before you open a pull request: it is what they will judge.
+- `kit spec`: each built scenario passes alone, and fails once a value its `Then` steps expect is altered (`kit check` runs it).
+- `kit review`: the review sheet the owner reads: the spec's changes and what else is theirs to approve. Read it before you open a pull request.
 - `kit sync --version <kit commit>`: brings the kit's files here (its skills, hooks, `kit.yml`'s pin, this section) to that kit version; the diff is the owner's to review.
 
 ## Rules no check explains
 
-- A test you believe is wrong, or a contract the feature changes: a protected change is expected when it's justified. The `new-feature` skill says which pull request it goes in. Never bend the code to fit a wrong test.
+- The spec comes first, in its own pull request the owner approves; the feature is built on top. A scenario you believe is wrong: never bend the code or the steps to it; the `new-feature` skill says how to change it.
 - Code only tests reach: delete it with its tests.
 - Never silence a check (`//nolint`, `t.Skip`, a build tag): fix the code, or stop and ask.
 - A new operation: load the `new-feature` skill. A new module: the `new-module` skill.
-- Tags are lower-case: the tags module normalizes them, never the caller.
 <!-- kit:end -->
+- Tags are lower-case: the tags module normalizes them, never the caller.

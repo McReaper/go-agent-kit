@@ -35,9 +35,9 @@ func reviewFindings(t *testing.T, dir string) []finding {
 	return findings
 }
 
-// WHY: the owner judges a change from its sheet, not its diff; every
-// section must list exactly what the change did, or the owner approves
-// what they never saw.
+// WHY: the owner judges a change from its sheet, not its diff: it must
+// list exactly what is theirs, the spec first, or they approve what they
+// never saw; and nothing else, or they stop reading it.
 func TestKitReviewListsWhatTheOwnerMustRead(t *testing.T) {
 	for _, c := range loadCases(t) {
 		if !c.uses(reviewTool) {
@@ -60,11 +60,11 @@ func TestKitReviewWritesTheSheetForThePullRequest(t *testing.T) {
 		t.Errorf("exit %d, sheet (-want +got):\n%s", code, diff)
 	}
 	labels, _ := kitRun(t, dir, "review", "--base", "base", "--labels")
-	if !strings.Contains(labels, "+tests\n") || !strings.Contains(labels, "+needs-approval\n") {
+	if labels != "+needs-you\n" {
 		t.Errorf("labels:\n%s", labels)
 	}
 	out, _ = kitRun(t, changeOf(t, trialCase{name: "no change"}), "review", "--base", "base")
-	if !strings.Contains(out, "Nothing beyond the code itself") {
+	if !strings.Contains(out, "Nothing for you: this pull request merges by itself") {
 		t.Errorf("an empty change:\n%s", out)
 	}
 	labels, _ = kitRun(t, changeOf(t, trialCase{name: "no change"}), "review", "--base", "base", "--labels")

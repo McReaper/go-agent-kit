@@ -1,6 +1,6 @@
-# T2: the same change before any commit: a test weakened in the working tree, and a new file git doesn't track yet.
-# An agent runs the checks before committing; the guard must see what it is about to commit.
+# T2: a change before any commit: the harness edited in the working tree, and a new file git doesn't
+# track yet. An agent runs the checks before committing; the guard must see what it is about to commit.
 !isolated
 !uncommitted
-guard/protected-test internal/notes/internal/add/add_test.go:0 a test changed: the owner approves it before merge
+guard/protected-harness AGENTS.md:0 the agent's instructions changed
 guard/bypass-suppression internal/notes/internal/list/quiet.go:3 a finding is fixed, not silenced

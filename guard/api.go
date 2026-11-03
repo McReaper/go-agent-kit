@@ -1,4 +1,4 @@
-package review
+package guard
 
 import (
 	"archive/tar"
@@ -13,13 +13,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/guard"
 	"github.com/McReaper/go-agent-kit/internal/platform/run"
 )
 
-// WHY: only pkg/ holds libraries other programs import; an app's contract
-// with its users is its golden snapshot, listed apart.
-func apiChanges(ctx context.Context, dir string, d guard.Diff) (items []Item, err error) {
+// WHY: only pkg/ holds libraries other programs import, and only an
+// incompatible change breaks them: that one is the owner's call (E5). An
+// app's contract with its users is its spec.
+func apiChanges(ctx context.Context, dir string, d Diff) (items []Finding, err error) {
 	pkgs := libraryPackages(d)
 	if len(pkgs) == 0 {
 		return nil, nil
@@ -46,7 +46,7 @@ func apiChanges(ctx context.Context, dir string, d guard.Diff) (items []Item, er
 	return items, nil
 }
 
-func libraryPackages(d guard.Diff) []string {
+func libraryPackages(d Diff) []string {
 	var out []string
 	for _, f := range d.Files {
 		p := path.Dir(f.Path)
@@ -62,15 +62,13 @@ type trees struct {
 	head, base string
 }
 
-func packageAPI(ctx context.Context, t trees, module, p string) ([]Item, error) {
+func packageAPI(ctx context.Context, t trees, module, p string) ([]Finding, error) {
 	before, after := hasGo(filepath.Join(t.base, p)), hasGo(filepath.Join(t.head, p))
 	switch {
-	case !before && !after:
-		return nil, nil
 	case !before:
-		return []Item{{File: p, Text: "new package"}}, nil
+		return nil, nil
 	case !after:
-		return []Item{{File: p, Text: "package removed"}}, nil
+		return []Finding{apiBreak(p, "the package is removed")}, nil
 	}
 	export := filepath.Join(t.base, ".kit-api-export")
 	if _, err := output(ctx, t.base, "apidiff", "-w", export, module+"/"+p); err != nil {
@@ -83,21 +81,26 @@ func packageAPI(ctx context.Context, t trees, module, p string) ([]Item, error) 
 	return apidiffItems(p, out), nil
 }
 
-func apidiffItems(p, out string) []Item {
-	var items []Item
-	kind := ""
+func apidiffItems(p, out string) []Finding {
+	var items []Finding
+	incompatible := false
 	for line := range strings.Lines(out) {
 		line = strings.TrimSpace(line)
 		switch {
-		case line == "Incompatible changes:":
-			kind = "incompatible"
-		case line == "Compatible changes:":
-			kind = "compatible"
-		case strings.HasPrefix(line, "- ") && kind != "":
-			items = append(items, Item{File: p, Text: kind + ": " + strings.TrimPrefix(line, "- ")})
+		case line == "Incompatible changes:" || line == "Compatible changes:":
+			incompatible = line == "Incompatible changes:"
+		case strings.HasPrefix(line, "- ") && incompatible:
+			items = append(items, apiBreak(p, strings.TrimPrefix(line, "- ")))
 		}
 	}
 	return items
+}
+
+func apiBreak(p, what string) Finding {
+	return Finding{
+		"protected-api", p, 0,
+		"E5: an incompatible change to the library's API, " + what + ": every program that imports it breaks; the owner approves it",
+	}
 }
 
 func hasGo(dir string) bool {

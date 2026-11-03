@@ -1,23 +1,15 @@
-# Replace @OWNER with the owner's login. With the ruleset's "code owner review", a change to any of these
-# paths can't merge without the owner's approval of its last commit.
+# Replace @OWNER with the owner's login. These paths are the harness: what
+# tells the agent how to work and the merge check how to judge it. GitHub
+# holds a change to any of them for the owner, even if the check broke. The
+# kit check holds the rest that is theirs: the spec, a new dependency, the go
+# line, a library's API. The spec stays out of this file so that building a
+# scenario, removing its @wip tag, needs no one.
 
-# The kit's settings and the CI that runs it.
-/.kit/ @OWNER
 /.github/ @OWNER
 /.claude/ @OWNER
-
-# What the agent reads as rules, words and decisions.
+/.kit/ @OWNER
 /AGENTS.md @OWNER
 /CLAUDE.md @OWNER
 /docs/adr/ @OWNER
-**/GLOSSARY.md @OWNER
-
-# Dependencies, the Go version, and the bot that moves them.
-/go.mod @OWNER
-/go.sum @OWNER
 /renovate.json @OWNER
-
-# Tests and their data: a new test file is free locally, any change to an
-# existing one is the owner's to approve.
-*_test.go @OWNER
-**/testdata/ @OWNER
+**/GLOSSARY.md @OWNER

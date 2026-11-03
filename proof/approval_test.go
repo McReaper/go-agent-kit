@@ -36,18 +36,20 @@ func commitFile(t *testing.T, dir, name, text string) {
 
 // WHY: approving the last commit only made the owner approve the same
 // protected change after each push, and pushed the agent to stop asking.
-// The approval holds the protected files' content: the code goes on
-// without asking again, and touching a protected file reopens it.
+// The approval holds the protected files' content, the spec's included:
+// the code goes on without asking again, and touching one reopens it.
 func TestTheMergeCheckKeepsAnApprovalWhileTheProtectedFilesStayAsApproved(t *testing.T) {
-	dir := changeOf(t, caseNamed(t, "guard-protected"))
-	trees := t.TempDir()
-	approveHead(t, dir, trees)
-	commitFile(t, dir, "README.md", "notes, with more said about them\n")
-	if out, code := guardRun(t, dir, "--ci", "--approved-trees", trees); code != 0 {
-		t.Errorf("the code moved on, the protected files as approved: exit %d, want 0\n%s", code, out)
-	}
-	commitFile(t, dir, "internal/notes/internal/add/add_test.go", "package add_test\n")
-	if out, code := guardRun(t, dir, "--ci", "--approved-trees", trees); code != 1 {
-		t.Errorf("a protected file touched after the approval: exit %d, want 1\n%s", code, out)
+	for name, touched := range map[string]string{"guard-protected": "AGENTS.md", "guard-spec": "features/notes.feature"} {
+		dir := changeOf(t, caseNamed(t, name))
+		trees := t.TempDir()
+		approveHead(t, dir, trees)
+		commitFile(t, dir, "README.md", "notes, with more said about them\n")
+		if out, code := guardRun(t, dir, "--ci", "--approved-trees", trees); code != 0 {
+			t.Errorf("%s: the code moved on, the protected files as approved: exit %d, want 0\n%s", name, code, out)
+		}
+		commitFile(t, dir, touched, "Feature: Notes\n")
+		if out, code := guardRun(t, dir, "--ci", "--approved-trees", trees); code != 1 {
+			t.Errorf("%s: %s touched after the approval: exit %d, want 1\n%s", name, touched, code, out)
+		}
 	}
 }

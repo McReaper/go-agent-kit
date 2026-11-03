@@ -1,10 +1,13 @@
 name: kit
 
-# The kit's merge check and review sheet. Both pins name the same kit
-# commit; move them together.
+# The kit's merge check, review sheet and auto-merge. Both pins name the
+# same kit commit; move them together.
 
 on:
   pull_request:
+    # edited: GitHub moves a stacked pull request to the default branch
+    # once the one below it merged.
+    types: [opened, synchronize, reopened, edited]
   pull_request_review:
     types: [submitted]
   push:
@@ -15,9 +18,9 @@ permissions: {}
 jobs:
   kit:
     permissions:
-      contents: read
-      pull-requests: write # the review sheet's comment
-      issues: write # the review sheet's labels
+      contents: write # auto-merge
+      pull-requests: write # the review sheet's comment, auto-merge
+      issues: write # the review sheet's label
     uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@bf821cb8b654ec578e7245ca0c38753710cfca8c
     with:
       kit-version: bf821cb8b654ec578e7245ca0c38753710cfca8c

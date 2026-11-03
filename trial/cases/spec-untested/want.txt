@@ -1,0 +1,4 @@
+# T2: the spec without the test that runs it: no scenario can be shown to fail.
+!isolated
+!delete features/notes_test.go
+spec/spec-untested features:0 holds the spec but no test that runs it

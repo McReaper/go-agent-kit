@@ -13,6 +13,7 @@ import (
 	"github.com/McReaper/go-agent-kit/guard"
 	"github.com/McReaper/go-agent-kit/internal/platform/run"
 	"github.com/McReaper/go-agent-kit/lint"
+	"github.com/McReaper/go-agent-kit/spec"
 	"github.com/McReaper/go-agent-kit/sweep"
 	"golang.org/x/tools/go/analysis/checker"
 	"golang.org/x/tools/go/packages"
@@ -105,11 +106,10 @@ func sweepGate(_ context.Context, o Options) Result {
 }
 
 func guardGate(ctx context.Context, o Options) Result {
-	d, err := guard.Read(ctx, o.Dir, o.Base)
+	_, all, err := guard.Run(ctx, o.Dir, o.Base)
 	if err != nil {
 		return failed(err)
 	}
-	all := guard.Check(d)
 	trees, err := guard.ReadTrees(o.ApprovedTrees)
 	if err != nil {
 		return failed(err)
@@ -139,4 +139,12 @@ func nonEmpty(text []byte) []string {
 		}
 	}
 	return lines
+}
+
+func specGate(ctx context.Context, o Options) Result {
+	fs, err := spec.Prove(ctx, o.Dir)
+	if err != nil {
+		return failed(err)
+	}
+	return found(spec.Lines(fs))
 }

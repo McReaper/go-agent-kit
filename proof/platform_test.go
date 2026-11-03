@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/McReaper/go-agent-kit/guard"
 )
 
 type ruleset struct {
@@ -38,9 +40,9 @@ func readJSON(t *testing.T, path string, v any) {
 	}
 }
 
-func TestTheRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T) {
+func TestTheKitsRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T) {
 	var r ruleset
-	readJSON(t, "../platform/ruleset.json", &r)
+	readJSON(t, "../platform/ruleset-kit.json", &r)
 	var types []string
 	for _, rule := range r.Rules {
 		types = append(types, rule.Type)
@@ -62,6 +64,40 @@ func TestTheRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T) {
 	}
 	if len(r.BypassActors) != 1 || r.BypassActors[0].BypassMode != "pull_request" {
 		t.Errorf("only the admin role may bypass, through a pull request: %+v", r.BypassActors)
+	}
+}
+
+// WHY: an app's change merges by itself once green. GitHub asks no review
+// but the code owners' on the harness and keeps every approval on record;
+// the kit check, which only GitHub Actions may report, holds the rest that
+// is the owner's against the content they approved. No update rule, so
+// GitHub's auto-merge can land the change.
+func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
+	var r ruleset
+	readJSON(t, "../platform/ruleset.json", &r)
+	var types []string
+	for _, rule := range r.Rules {
+		types = append(types, rule.Type)
+		var want []string
+		switch rule.Type {
+		case "pull_request":
+			want = []string{`"required_approving_review_count": 0`, `"require_code_owner_review": true`, `"dismiss_stale_reviews_on_push": false`, `"require_last_push_approval": false`}
+		case "required_status_checks":
+			want = []string{`{ "context": "kit", "integration_id": 15368 }`}
+		}
+		for _, p := range want {
+			if !strings.Contains(string(rule.Parameters), p) {
+				t.Errorf("%s rule lacks %s", rule.Type, p)
+			}
+		}
+	}
+	if slices.Contains(types, "update") {
+		t.Error("an update rule stops GitHub's auto-merge")
+	}
+	for _, want := range []string{"pull_request", "required_status_checks", "non_fast_forward", "deletion"} {
+		if !slices.Contains(types, want) {
+			t.Errorf("the ruleset lacks a %s rule", want)
+		}
 	}
 }
 
@@ -118,15 +154,27 @@ func TestTheAgentSettingsDenyBypassesAndRunTheKitHooks(t *testing.T) {
 	}
 }
 
-func TestTheAppCodeOwnersProtectWhatJudgesTheAgent(t *testing.T) {
+func TestTheAppCodeOwnersHoldTheHarnessAndLeaveTheSpecToTheCheck(t *testing.T) {
 	data, err := os.ReadFile("../template/.github/CODEOWNERS")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/.kit/", "/.github/", "/.claude/", "/go.mod", "*_test.go", "**/testdata/", "/AGENTS.md", "**/GLOSSARY.md", "/renovate.json"} {
-		if !strings.Contains(string(data), "\n"+path+" @OWNER") {
-			t.Errorf("CODEOWNERS leaves %s to the agent", path)
+	var owned []string
+	for l := range strings.Lines(string(data)) {
+		if p, ok := strings.CutSuffix(strings.TrimSpace(l), " @OWNER"); ok {
+			owned = append(owned, p)
 		}
+	}
+	var want []string
+	for _, h := range guard.Harness() {
+		if h == "GLOSSARY.md" {
+			want = append(want, "**/"+h)
+		} else {
+			want = append(want, "/"+h)
+		}
+	}
+	if !slices.Equal(owned, want) {
+		t.Errorf("CODEOWNERS owns %q, the guard's harness is %q", owned, want)
 	}
 }
 
