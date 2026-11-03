@@ -62,22 +62,23 @@ func (r repo) tree() guard.Tree {
 
 func (r repo) covered(fs []guard.Finding, a guard.Approval) []string {
 	r.t.Helper()
-	got, err := guard.Covered(r.t.Context(), r.dir, fs, a)
+	a.Dir = r.dir
+	got, err := guard.Covered(r.t.Context(), fs, a)
 	if err != nil {
 		r.t.Fatal(err)
 	}
 	return rules(got)
 }
 
-var changedTest = []guard.Finding{{Rule: "protected-test", File: "x_test.go"}}
+var changedTest = []guard.Finding{{Rule: "protected-spec", File: "x_test.go"}}
 
-func TestAnApprovedTestStaysApprovedUntilItsContentChanges(t *testing.T) {
+func TestAnApprovedFileStaysApprovedUntilItsContentChanges(t *testing.T) {
 	r := newRepo(t)
 	r.commit(map[string]string{"x_test.go": "package x // v1\n"})
 	r.commit(map[string]string{"x_test.go": "package x // v2, the change the owner approves\n"})
 	approved := guard.Approval{Trees: []guard.Tree{r.tree()}}
 	r.commit(map[string]string{"x.go": "package x // the code goes on\n"})
-	if diff := cmp.Diff([]string{"protected-test"}, r.covered(changedTest, approved)); diff != "" {
+	if diff := cmp.Diff([]string{"protected-spec"}, r.covered(changedTest, approved)); diff != "" {
 		t.Errorf("the test as approved, the code moved on (-want +got):\n%s", diff)
 	}
 	r.commit(map[string]string{"x_test.go": "package x // v3, touched after the approval\n"})
@@ -91,7 +92,7 @@ func TestAnApprovedDeletionStaysApprovedWhileTheFileStaysDeleted(t *testing.T) {
 	r.commit(map[string]string{"x_test.go": "package x\n", "x.go": "package x\n"})
 	r.commit(nil, "x_test.go")
 	approved := guard.Approval{Trees: []guard.Tree{r.tree()}}
-	if diff := cmp.Diff([]string{"protected-test"}, r.covered(changedTest, approved)); diff != "" {
+	if diff := cmp.Diff([]string{"protected-spec"}, r.covered(changedTest, approved)); diff != "" {
 		t.Errorf("deleted as approved (-want +got):\n%s", diff)
 	}
 	r.commit(map[string]string{"x_test.go": "package x // back again\n"})

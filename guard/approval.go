@@ -16,8 +16,10 @@ import (
 type Tree map[string]string
 
 // Approval is what a code owner approved on a change: its head, or earlier
-// commits whose trees hold the protected files they saw.
+// commits whose trees hold the protected files they saw. Dir is the
+// repository whose HEAD the trees are compared with.
 type Approval struct {
+	Dir   string
 	Head  bool
 	Trees []Tree
 }
@@ -27,10 +29,10 @@ type Approval struct {
 // the agent goes on without asking again, and touching the file reopens the
 // approval. A change over the size needs the head approved: more code is
 // more to read.
-func Covered(ctx context.Context, dir string, fs []Finding, a Approval) ([]Finding, error) {
+func Covered(ctx context.Context, fs []Finding, a Approval) ([]Finding, error) {
 	var out []Finding
 	for _, f := range fs {
-		ok, err := covers(ctx, dir, f, a)
+		ok, err := covers(ctx, f, a)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +43,7 @@ func Covered(ctx context.Context, dir string, fs []Finding, a Approval) ([]Findi
 	return out, nil
 }
 
-func covers(ctx context.Context, dir string, f Finding, a Approval) (bool, error) {
+func covers(ctx context.Context, f Finding, a Approval) (bool, error) {
 	switch {
 	case !f.NeedsApproval():
 		return false, nil
@@ -50,7 +52,7 @@ func covers(ctx context.Context, dir string, f Finding, a Approval) (bool, error
 	case f.File == "" || strings.HasPrefix(f.Rule, "size-") || len(a.Trees) == 0:
 		return false, nil
 	}
-	head, err := blob(ctx, dir, f.File)
+	head, err := blob(ctx, a.Dir, f.File)
 	if err != nil {
 		return false, err
 	}

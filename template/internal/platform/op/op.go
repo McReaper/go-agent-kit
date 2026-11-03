@@ -85,7 +85,7 @@ func Register[A, O any](s *mcp.Server, j Journal, o Op[A, O]) error {
 	schema.Examples = []any{*o.Example}
 	tool := &mcp.Tool{Name: o.Name, Description: o.Description, Annotations: ann, InputSchema: schema}
 	mcp.AddTool(s, tool, func(ctx context.Context, _ *mcp.CallToolRequest, a A) (*mcp.CallToolResult, O, error) {
-		out, err := run(ctx, j, o, a)
+		out, err := o.run(ctx, j, a)
 		return nil, out, err
 	})
 	return nil
@@ -93,7 +93,7 @@ func Register[A, O any](s *mcp.Server, j Journal, o Op[A, O]) error {
 
 // WHY: the journal records what was asked and whether it failed; a run whose
 // entry can't be written still happened, so the caller hears both.
-func run[A, O any](ctx context.Context, j Journal, o Op[A, O], a A) (O, error) {
+func (o Op[A, O]) run(ctx context.Context, j Journal, a A) (O, error) {
 	out, err := o.Run(ctx, a)
 	if o.Effect == ReadOnly {
 		return out, err
@@ -146,7 +146,7 @@ func Command[A, O any](o Op[A, O], j Journal, out io.Writer) (*cobra.Command, er
 		Short: o.Description,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			res, err := run(cmd.Context(), j, o, a)
+			res, err := o.run(cmd.Context(), j, a)
 			if err != nil {
 				return &Failure{Op: o.Name, Err: err}
 			}

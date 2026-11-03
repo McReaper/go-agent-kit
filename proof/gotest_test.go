@@ -30,7 +30,7 @@ type testEvent struct {
 // logs are not findings.
 func testFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	out := runIn(t, dir, []int{1}, "go", "test", "-json", "-count=1", "./...")
+	out := runIn(t, place{dir, []int{1}}, "go", "test", "-json", "-count=1", "./...")
 	logged := map[string][]finding{}
 	var findings []finding
 	dec := json.NewDecoder(bytes.NewReader(out))

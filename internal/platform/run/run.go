@@ -16,13 +16,26 @@ type Output struct {
 	Code   int
 }
 
-// Command runs argv in dir with env added to the caller's environment. It
-// returns an error only when the command could not run; a non-zero exit is
-// reported in Output.Code.
-func Command(ctx context.Context, dir string, env []string, argv ...string) (Output, error) {
+// Cmd is a command to run: where, the variables it adds to the caller's
+// environment, and its argv.
+type Cmd struct {
+	Dir  string
+	Env  []string
+	Argv []string
+}
+
+// Command runs argv in dir with the caller's environment (see Run).
+func Command(ctx context.Context, dir string, argv ...string) (Output, error) {
+	return Run(ctx, Cmd{Dir: dir, Argv: argv})
+}
+
+// Run runs c. It returns an error only when the command could not run; a
+// non-zero exit is reported in Output.Code.
+func Run(ctx context.Context, c Cmd) (Output, error) {
+	argv := c.Argv
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
-	cmd.Dir = dir
-	cmd.Env = append(cmd.Environ(), env...)
+	cmd.Dir = c.Dir
+	cmd.Env = append(cmd.Environ(), c.Env...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()

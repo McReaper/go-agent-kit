@@ -32,7 +32,7 @@ var standalone = []tool{
 func TestStandaloneToolsFindNothingInTheCleanTrial(t *testing.T) {
 	for _, tl := range standalone {
 		t.Run(strings.TrimSuffix(tl.prefix, "/"), func(t *testing.T) {
-			check(t, nil, tl.prefix, tl.run(t, cleanDir))
+			check(t, wantsOf(tl.prefix), tl.run(t, cleanDir))
 		})
 	}
 }
@@ -45,10 +45,18 @@ func TestStandaloneToolsReportEveryCase(t *testing.T) {
 	}
 }
 
+// WHY: a place to run a tool: its directory, and the exit codes that mean
+// it ran and found something.
+type place struct {
+	dir string
+	ok  []int
+}
+
 // WHY: a tool that exits non-zero for findings is fine; one that couldn't
 // run at all fails the proof rather than passing as "nothing found".
-func runIn(t *testing.T, dir string, okCodes []int, argv ...string) []byte {
+func runIn(t *testing.T, p place, argv ...string) []byte {
 	t.Helper()
+	dir, okCodes := p.dir, p.ok
 	name, args := argv[0], argv[1:]
 	cmd := exec.CommandContext(t.Context(), name, args...)
 	cmd.Dir = dir
@@ -71,7 +79,7 @@ type diagTool struct {
 	rule   func(string) string
 }
 
-func lineDiagnostics(t *testing.T, dir string, out []byte, tl diagTool) []finding {
+func (tl diagTool) parse(t *testing.T, dir string, out []byte) []finding {
 	t.Helper()
 	var findings []finding
 	for line := range strings.Lines(string(out)) {
@@ -105,8 +113,8 @@ func actionlintFindings(t *testing.T, dir string) []finding {
 	if len(workflows) == 0 {
 		t.Fatal("no workflow to check: the trial must hold at least one")
 	}
-	out := runIn(t, dir, []int{1}, append([]string{"actionlint", "-oneline"}, workflows...)...)
-	return lineDiagnostics(t, dir, out, diagTool{"actionlint/", lastBracket})
+	out := runIn(t, place{dir, []int{1}}, append([]string{"actionlint", "-oneline"}, workflows...)...)
+	return diagTool{"actionlint/", lastBracket}.parse(t, dir, out)
 }
 
 func filesWithExt(t *testing.T, dir string, exts ...string) []string {
@@ -151,14 +159,14 @@ func shellcheckFindings(t *testing.T, dir string) []finding {
 	if len(scripts) == 0 {
 		t.Fatal("no shell script to check: the trial must hold at least one")
 	}
-	out := runIn(t, dir, []int{1}, append([]string{"shellcheck", "-f", "gcc"}, scripts...)...)
-	return lineDiagnostics(t, dir, out, diagTool{"shellcheck/", lastBracket})
+	out := runIn(t, place{dir, []int{1}}, append([]string{"shellcheck", "-f", "gcc"}, scripts...)...)
+	return diagTool{"shellcheck/", lastBracket}.parse(t, dir, out)
 }
 
 func deadcodeFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	out := runIn(t, dir, nil, "deadcode", "./cmd/...")
-	return lineDiagnostics(t, dir, out, diagTool{"deadcode/", func(string) string { return "unreachable" }})
+	out := runIn(t, place{dir: dir}, "deadcode", "./cmd/...")
+	return diagTool{"deadcode/", func(string) string { return "unreachable" }}.parse(t, dir, out)
 }
 
 // WHY: nilaway prints its diagnostics to standard error, like go vet.
@@ -171,7 +179,7 @@ func nilawayFindings(t *testing.T, dir string) []finding {
 	if err := cmd.Run(); err != nil && exitCode(err) != 3 {
 		t.Fatalf("nilaway: %v\n%s", err, stderr.String())
 	}
-	return lineDiagnostics(t, dir, stderr.Bytes(), diagTool{"nilaway/", func(string) string { return "nil-panic" }})
+	return diagTool{"nilaway/", func(string) string { return "nil-panic" }}.parse(t, dir, stderr.Bytes())
 }
 
 func tidyFindings(t *testing.T, dir string) []finding {
@@ -198,7 +206,7 @@ type gitleaksLeak struct {
 
 func gitleaksFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	out := runIn(t, dir, []int{1}, "gitleaks", "dir", ".", "--no-banner", "--redact", "-f", "json", "-r", "-")
+	out := runIn(t, place{dir, []int{1}}, "gitleaks", "dir", ".", "--no-banner", "--redact", "--config", kitGitleaksConfig(t), "-f", "json", "-r", "-")
 	var leaks []gitleaksLeak
 	if err := json.Unmarshal(out, &leaks); err != nil {
 		t.Fatalf("gitleaks: %v\n%s", err, out)
@@ -234,7 +242,7 @@ type zizmorFinding struct {
 
 func zizmorFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	out := runIn(t, dir, []int{11, 12, 13, 14}, zizmorPath(t), "--offline", "--format", "json", ".")
+	out := runIn(t, place{dir, []int{11, 12, 13, 14}}, zizmorPath(t), "--offline", "--format", "json", ".")
 	var zs []zizmorFinding
 	if err := json.Unmarshal(out, &zs); err != nil {
 		t.Fatalf("zizmor: %v\n%s", err, out)
@@ -278,7 +286,7 @@ type govulnMessage struct {
 // code calls it; the last frame of a called trace is where the code does.
 func govulnFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	out := runIn(t, dir, nil, "govulncheck", "-format", "json", "./...")
+	out := runIn(t, place{dir: dir}, "govulncheck", "-format", "json", "./...")
 	dec := json.NewDecoder(bytes.NewReader(out))
 	var findings []finding
 	for dec.More() {
@@ -321,4 +329,15 @@ func atoi(t *testing.T, s string) int {
 		n = n*10 + int(r-'0')
 	}
 	return n
+}
+
+// WHY: the proof runs gitleaks with the config kit embeds, as every scan
+// the kit makes does.
+func kitGitleaksConfig(t *testing.T) string {
+	t.Helper()
+	p, err := filepath.Abs("../lint/gitleaks.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
 }

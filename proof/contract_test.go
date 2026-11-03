@@ -15,10 +15,10 @@ import (
 func apidiffFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	var findings []finding
-	for pkg := range strings.FieldsSeq(string(runIn(t, cleanDir, nil, "go", "list", "./pkg/..."))) {
+	for pkg := range strings.FieldsSeq(string(runIn(t, place{dir: cleanDir}, "go", "list", "./pkg/..."))) {
 		base := filepath.Join(t.TempDir(), "base.export")
-		runIn(t, cleanDir, nil, "apidiff", "-w", base, pkg)
-		out := runIn(t, dir, nil, "apidiff", "-incompatible", base, pkg)
+		runIn(t, place{dir: cleanDir}, "apidiff", "-w", base, pkg)
+		out := runIn(t, place{dir: dir}, "apidiff", "-incompatible", base, pkg)
 		for line := range strings.Lines(string(out)) {
 			if change, ok := strings.CutPrefix(strings.TrimSpace(line), "- "); ok {
 				file := strings.TrimPrefix(pkg, "github.com/McReaper/go-agent-kit/template/")
@@ -30,7 +30,7 @@ func apidiffFindings(t *testing.T, dir string) []finding {
 }
 
 func TestApidiffFindsNothingInTheCleanTrial(t *testing.T) {
-	check(t, nil, "apidiff/", apidiffFindings(t, cleanDir))
+	check(t, wantsOf("apidiff/"), apidiffFindings(t, cleanDir))
 }
 
 func TestApidiffReportsEveryCase(t *testing.T) {
@@ -48,7 +48,7 @@ type sbom struct {
 // WHY: cyclonedx-gomod runs the go on PATH; the module's own toolchain goes
 // first, or an older go fails to read the standard library's module.
 func TestSBOMListsTheModulesTheBinaryLinks(t *testing.T) {
-	goroot := strings.TrimSpace(string(runIn(t, cleanDir, nil, "go", "env", "GOROOT")))
+	goroot := strings.TrimSpace(string(runIn(t, place{dir: cleanDir}, "go", "env", "GOROOT")))
 	out := filepath.Join(t.TempDir(), "bom.json")
 	cmd := exec.CommandContext(t.Context(), "cyclonedx-gomod", "app", "-json", "-main", "cmd/notes", "-output", out, ".")
 	cmd.Dir = cleanDir

@@ -35,7 +35,7 @@ func TestKitMutateFailsAChangeItsTestsDontPin(t *testing.T) {
 	if code != 1 || !strings.Contains(out, "killed 4 of the 7 mutants") {
 		t.Errorf("a weak test: exit %d\n%s", code, out)
 	}
-	check(t, []trialCase{c}, "mutesting/", kitMutateFindings(t, out))
+	check(t, wantsOf("mutesting/", c), kitMutateFindings(t, out))
 	out, code = kitRun(t, changeOf(t, trialCase{name: "no change"}), "mutate", "--base", "base")
 	if code != 0 || !strings.Contains(out, "killed 0 of the 0 mutants") {
 		t.Errorf("no change: exit %d\n%s", code, out)

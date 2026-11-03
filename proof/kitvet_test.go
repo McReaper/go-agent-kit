@@ -100,7 +100,7 @@ func cutLast(s, sep string) (string, string, bool) {
 }
 
 func TestKitvetFindsNothingInTheCleanTrial(t *testing.T) {
-	check(t, nil, kitvetTool, kitvetFindings(t, cleanDir))
+	check(t, wantsOf(kitvetTool), kitvetFindings(t, cleanDir))
 }
 
 func TestKitvetReportsEveryCase(t *testing.T) {

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Before each commit, what the merge check refuses outright: a bypass or a
-# sensitive file in the change, a secret in the staged lines.
+# secret, a key or an env file in the staged lines, with the kit's rules.
 # Enable once per clone: git config core.hooksPath .githooks
 set -eu
 kit guard --base "${KIT_BASE:-origin/main}"
-gitleaks git --pre-commit --staged --no-banner --redact .
+kit secrets

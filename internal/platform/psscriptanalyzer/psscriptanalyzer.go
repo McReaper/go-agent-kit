@@ -31,7 +31,7 @@ func Analyze(ctx context.Context, dir string, files []string) ([]Finding, error)
 	if _, err := exec.LookPath(shell); err != nil {
 		shell = "powershell"
 	}
-	out, err := run.Command(ctx, dir, nil, shell, "-NoProfile", "-NonInteractive", "-Command", script(files))
+	out, err := run.Command(ctx, dir, shell, "-NoProfile", "-NonInteractive", "-Command", script(files))
 	if err != nil {
 		return nil, err
 	}

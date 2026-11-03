@@ -13,14 +13,7 @@ import (
 
 func sweepCommand(out io.Writer) *cobra.Command {
 	var asJSON bool
-	cmd := &cobra.Command{
-		Use:   "sweep",
-		Short: "Check the whole module: code only tests reach, over-exported names, duplicate log messages",
-		Args:  cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return runSweep(out, asJSON)
-		},
-	}
+	cmd := leaf("sweep", "Check the whole module: code only tests reach, over-exported names, duplicate log messages", func(_ *cobra.Command) error { return runSweep(out, asJSON) })
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the findings as JSON")
 	return cmd
 }

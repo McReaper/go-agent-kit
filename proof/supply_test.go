@@ -53,7 +53,7 @@ func TestPSScriptAnalyzerReportsEveryCase(t *testing.T) {
 }
 
 func TestRenovatesValidatorFindsNothingInTheTemplate(t *testing.T) {
-	check(t, nil, renovateTool, renovateFindings(t, cleanDir))
+	check(t, wantsOf(renovateTool), renovateFindings(t, cleanDir))
 }
 
 func TestRenovatesValidatorReportsEveryCase(t *testing.T) {

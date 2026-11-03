@@ -25,13 +25,15 @@ func approveHead(t *testing.T, dir, trees string) {
 	}
 }
 
-func commitFile(t *testing.T, dir, name, text string) {
+func commitFile(t *testing.T, dir string, files map[string]string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(name)), []byte(text), 0o600); err != nil {
-		t.Fatal(err)
+	for name, text := range files {
+		if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(name)), []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	gitIn(t, dir, "add", "-A")
-	gitIn(t, dir, "commit", "-q", "-m", "after the approval: "+name)
+	gitIn(t, dir, "commit", "-q", "-m", "after the approval")
 }
 
 // WHY: approving the last commit only made the owner approve the same
@@ -43,11 +45,11 @@ func TestTheMergeCheckKeepsAnApprovalWhileTheProtectedFilesStayAsApproved(t *tes
 		dir := changeOf(t, caseNamed(t, name))
 		trees := t.TempDir()
 		approveHead(t, dir, trees)
-		commitFile(t, dir, "README.md", "notes, with more said about them\n")
+		commitFile(t, dir, map[string]string{"README.md": "notes, with more said about them\n"})
 		if out, code := guardRun(t, dir, "--ci", "--approved-trees", trees); code != 0 {
 			t.Errorf("%s: the code moved on, the protected files as approved: exit %d, want 0\n%s", name, code, out)
 		}
-		commitFile(t, dir, touched, "Feature: Notes\n")
+		commitFile(t, dir, map[string]string{touched: "Feature: Notes\n"})
 		if out, code := guardRun(t, dir, "--ci", "--approved-trees", trees); code != 1 {
 			t.Errorf("%s: %s touched after the approval: exit %d, want 1\n%s", name, touched, code, out)
 		}

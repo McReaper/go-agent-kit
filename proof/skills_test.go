@@ -36,7 +36,7 @@ func TestTheSecretsSkillsCodePassesEveryGate(t *testing.T) {
 	if out, err := exec.CommandContext(t.Context(), "gofmt", append([]string{"-l"}, files...)...).Output(); err != nil || len(out) > 0 {
 		t.Errorf("gofmt: %v: %s", err, out)
 	}
-	runIn(t, dir, nil, "go", "test", "-count=1", "./internal/platform/secret/")
-	check(t, nil, golangciTool, golangciFindings(t, dir))
-	check(t, nil, kitvetTool, kitvetFindings(t, dir))
+	runIn(t, place{dir: dir}, "go", "test", "-count=1", "./internal/platform/secret/")
+	check(t, wantsOf(golangciTool), golangciFindings(t, dir))
+	check(t, wantsOf(kitvetTool), kitvetFindings(t, dir))
 }

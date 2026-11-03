@@ -61,7 +61,7 @@ func Prove(ctx context.Context, dir string) (out []Finding, err error) {
 			"T2: features/ holds the spec but no test that runs it: add the godog test that runs every feature file of the directory",
 		}), nil
 	}
-	return append(out, verdicts(jobs, runAll(ctx, work, bin, jobs))...), nil
+	return append(out, verdicts(jobs, runner{work, bin}.all(ctx, jobs))...), nil
 }
 
 // WHY: a job runs one scenario, as written (step -1), or with the value one
@@ -106,7 +106,7 @@ func buildSpec(ctx context.Context, work string) (string, error) {
 	if runtime.GOOS == "windows" {
 		bin += ".exe"
 	}
-	out, err := run.Command(ctx, work, nil, "go", "test", "-c", "-o", bin, "./"+Dir)
+	out, err := run.Command(ctx, work, "go", "test", "-c", "-o", bin, "./"+Dir)
 	if err != nil {
 		return "", err
 	}
@@ -123,14 +123,19 @@ func buildSpec(ctx context.Context, work string) (string, error) {
 // WHY: each run gets a directory of its own beside features/, holding
 // features/'s other files and the one scenario, so the test finds what it
 // reads at the same relative paths and the runs don't see each other.
-func runAll(ctx context.Context, work, bin string, jobs []job) []outcome {
+// WHY: the runs share the module's copy and the spec's test, built once.
+type runner struct {
+	work, bin string
+}
+
+func (r runner) all(ctx context.Context, jobs []job) []outcome {
 	out := make([]outcome, len(jobs))
 	next := make(chan int)
 	var wg sync.WaitGroup
 	for range max(1, runtime.NumCPU()/2) {
 		wg.Go(func() {
 			for i := range next {
-				out[i] = runOne(ctx, filepath.Join(work, fmt.Sprintf(".kit-spec-%d", i)), bin, jobs[i].run)
+				out[i] = r.one(ctx, filepath.Join(r.work, fmt.Sprintf(".kit-spec-%d", i)), jobs[i].run)
 			}
 		})
 	}
@@ -147,7 +152,7 @@ var (
 	undefined = regexp.MustCompile(`\b\d+ undefined\b`)
 )
 
-func runOne(ctx context.Context, dir, bin string, s Scenario) outcome {
+func (r runner) one(ctx context.Context, dir string, s Scenario) outcome {
 	if err := os.CopyFS(dir, os.DirFS(filepath.Join(filepath.Dir(dir), Dir))); err != nil {
 		return outcome{err: fmt.Errorf("prepare a run of %q: %w", s.Name, err)}
 	}
@@ -157,7 +162,7 @@ func runOne(ctx context.Context, dir, bin string, s Scenario) outcome {
 	if err := os.WriteFile(filepath.Join(dir, "scenario.feature"), []byte(s.Gherkin()), 0o600); err != nil {
 		return outcome{err: fmt.Errorf("prepare a run of %q: %w", s.Name, err)}
 	}
-	res, err := run.Command(ctx, dir, nil, bin, "-test.timeout=5m")
+	res, err := run.Command(ctx, dir, r.bin, "-test.timeout=5m")
 	if err != nil {
 		return outcome{err: err}
 	}

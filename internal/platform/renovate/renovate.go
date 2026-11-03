@@ -21,7 +21,7 @@ var message = regexp.MustCompile(`"message": ("(?:[^"\\]|\\.)*")`)
 // --strict: a warning or a needed migration fails it too. It returns the
 // validator's messages, none when the config is valid.
 func Validate(ctx context.Context, dir, file string) ([]string, error) {
-	out, err := run.Command(ctx, dir, nil, "npx", "--yes", "--package", "renovate@"+Version,
+	out, err := run.Command(ctx, dir, "npx", "--yes", "--package", "renovate@"+Version,
 		"renovate-config-validator", "--strict", "--no-global", file)
 	if err != nil {
 		return nil, err

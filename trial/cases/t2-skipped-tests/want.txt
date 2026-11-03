@@ -1,0 +1,3 @@
+# T2: a test that skips itself, in short mode or always: forbidigo, in golangci-lint, refuses both calls.
+golangci/forbidigo internal/notes/internal/list/skip_test.go:6 a test that skips itself in short mode proves nothing
+golangci/forbidigo internal/notes/internal/list/skip_test.go:9 a skipped test proves nothing

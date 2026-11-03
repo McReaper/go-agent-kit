@@ -75,7 +75,7 @@ func TestGuardReportsEveryCase(t *testing.T) {
 			continue
 		}
 		t.Run(c.name, func(t *testing.T) {
-			check(t, []trialCase{c}, guardTool, guardFindings(t, changeOf(t, c)))
+			check(t, wantsOf(guardTool, c), guardFindings(t, changeOf(t, c)))
 		})
 	}
 }

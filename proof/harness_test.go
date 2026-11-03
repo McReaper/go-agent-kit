@@ -96,14 +96,21 @@ func loadCase(t *testing.T, name string) trialCase {
 		case strings.HasPrefix(line, "!expect-none "):
 			c.quiet = append(c.quiet, strings.TrimPrefix(line, "!expect-none ")+"/")
 		default:
-			c.wants = append(c.wants, parseWant(t, name, i+1, line))
+			c.wants = append(c.wants, parseWant(t, wantLine{name, i + 1, line}))
 		}
 	}
 	return c
 }
 
-func parseWant(t *testing.T, caseName string, n int, line string) want {
+type wantLine struct {
+	caseName string
+	n        int
+	text     string
+}
+
+func parseWant(t *testing.T, l wantLine) want {
 	t.Helper()
+	caseName, n, line := l.caseName, l.n, l.text
 	fields := strings.SplitN(line, " ", 3)
 	if len(fields) != 3 {
 		t.Fatalf("case %s want.txt:%d: want \"<tool> <file>:<line> <regexp>\", got %q", caseName, n, line)
@@ -169,8 +176,7 @@ func copyCase(t *testing.T, c trialCase, dst string) {
 	}
 }
 
-func check(t *testing.T, cases []trialCase, toolPrefix string, findings []finding) {
-	t.Helper()
+func wantsOf(toolPrefix string, cases ...trialCase) []want {
 	var wants []want
 	for _, c := range cases {
 		for _, w := range c.wants {
@@ -179,6 +185,11 @@ func check(t *testing.T, cases []trialCase, toolPrefix string, findings []findin
 			}
 		}
 	}
+	return wants
+}
+
+func check(t *testing.T, wants []want, findings []finding) {
+	t.Helper()
 	used := make([]bool, len(wants))
 	for _, f := range findings {
 		i := slices.IndexFunc(wants, func(w want) bool { return w.matches(f) })
@@ -213,13 +224,13 @@ func proveCases(t *testing.T, tool string, run func(*testing.T, string) []findin
 		case !c.uses(tool):
 		case c.isolated:
 			t.Run(c.name, func(t *testing.T) {
-				check(t, []trialCase{c}, tool, run(t, overlay(t, c)))
+				check(t, wantsOf(tool, c), run(t, overlay(t, c)))
 			})
 		default:
 			together = append(together, c)
 		}
 	}
-	check(t, together, tool, run(t, overlay(t, together...)))
+	check(t, wantsOf(tool, together...), run(t, overlay(t, together...)))
 }
 
 func relTo(t *testing.T, dir, path string) string {

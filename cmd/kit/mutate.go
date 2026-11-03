@@ -21,14 +21,7 @@ type mutateOptions struct {
 
 func mutateCommand(out io.Writer) *cobra.Command {
 	var o mutateOptions
-	cmd := &cobra.Command{
-		Use:   "mutate",
-		Short: "Mutate the lines a change touched; fail when the tests kill too few mutants",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runMutate(cmd.Context(), out, o)
-		},
-	}
+	cmd := leaf("mutate", "Mutate the lines a change touched; fail when the tests kill too few mutants", func(cmd *cobra.Command) error { return runMutate(cmd.Context(), out, o) })
 	cmd.Flags().StringVar(&o.base, "base", "origin/main", "the branch the change goes into")
 	cmd.Flags().Float64Var(&o.min, "min", 0.8, "the share of the mutants the tests must kill")
 	return cmd

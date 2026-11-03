@@ -8,3 +8,9 @@ import _ "embed"
 //
 //go:embed golangci.yml
 var Config []byte
+
+// Gitleaks is lint/gitleaks.toml: gitleaks' default rules and the kit's
+// sensitive files.
+//
+//go:embed gitleaks.toml
+var Gitleaks []byte
