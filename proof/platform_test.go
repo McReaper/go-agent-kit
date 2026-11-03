@@ -108,14 +108,19 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 // waits for a check that never comes, and no change merges.
 func appCheck(t *testing.T) string {
 	t.Helper()
-	caller := jobs(t, "../kitinit/files/kit.yml")
-	if len(caller) != 1 || !slices.Contains(jobs(t, "../.github/workflows/kit-check.yml"), "kit") {
+	var caller []string
+	for id, body := range jobs(t, "../kitinit/files/kit.yml") {
+		if strings.Contains(body, "/kit-check.yml@") {
+			caller = append(caller, id)
+		}
+	}
+	if _, ok := jobs(t, "../.github/workflows/kit-check.yml")["kit"]; len(caller) != 1 || !ok {
 		t.Fatalf("kit.yml calls the merge check from one job, its kit job reports: %v", caller)
 	}
 	return caller[0] + " / kit"
 }
 
-func jobs(t *testing.T, path string) []string {
+func jobs(t *testing.T, path string) map[string]string {
 	t.Helper()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -125,9 +130,16 @@ func jobs(t *testing.T, path string) []string {
 	if !ok {
 		t.Fatalf("%s has no jobs", path)
 	}
-	var out []string
-	for _, m := range regexp.MustCompile(`(?m)^  ([a-z][a-z0-9_-]*):\s*$`).FindAllStringSubmatch(body, -1) {
-		out = append(out, m[1])
+	job := regexp.MustCompile(`^  ([a-z][a-z0-9_-]*):\s*$`)
+	out := map[string]string{}
+	id := ""
+	for line := range strings.Lines(body) {
+		if m := job.FindStringSubmatch(strings.TrimRight(line, "\n")); m != nil {
+			id = m[1]
+			out[id] = ""
+		} else if id != "" {
+			out[id] += line
+		}
 	}
 	return out
 }
