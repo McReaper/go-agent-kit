@@ -1,7 +1,6 @@
-# T2: a test weakened, a test deleted, a golden file rewritten, and a new TestMain that could skip a package.
+# T2: what stays the owner's: the harness (AGENTS.md) and a new dependency. A test weakened, a test
+# deleted and a golden file rewritten are the machines' to judge (mutation, the spec's proof): no finding.
 !isolated
 !delete internal/notes/internal/list/list_test.go
-guard/protected-test internal/notes/internal/add/add_test.go:0 a test changed: the owner approves it before merge
-guard/protected-test internal/notes/internal/list/list_test.go:0 a test changed: the owner approves it before merge
-guard/protected-test internal/notes/testdata/tools.golden.json:0 a test changed: the owner approves it before merge
-guard/protected-testmain internal/notes/internal/infra/main_test.go:5 a new TestMain or init in a test
+guard/protected-harness AGENTS.md:0 the agent's instructions changed
+guard/protected-dependency go.mod:16 a new dependency, example\.com/newdep

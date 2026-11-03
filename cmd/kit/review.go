@@ -86,18 +86,9 @@ func reviewRows(s review.Sheet) []reviewRow {
 			rows = append(rows, reviewRow{Section: section, File: it.File, Line: it.Line, Text: it.Text})
 		}
 	}
-	add("approval", s.Approval)
-	add("test-added", s.Tests.Added)
-	add("test-removed", s.Tests.Removed)
-	add("test-changed", s.Tests.Changed)
-	add("contract", s.Contract)
-	add("api", s.API)
-	for _, m := range s.Modules {
-		rows = append(rows, reviewRow{Section: "module", File: m, Text: "new module"})
+	for _, c := range s.Spec {
+		rows = append(rows, reviewRow{Section: "spec-" + string(c.Kind), File: c.File, Line: c.Line, Text: c.Name})
 	}
-	add("dependency", s.Deps)
-	add("shared", s.Shared)
-	add("rules", s.Rules)
-	add("why", s.Why)
+	add("approval", s.Approval)
 	return rows
 }

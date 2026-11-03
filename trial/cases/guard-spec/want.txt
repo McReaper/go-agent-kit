@@ -1,0 +1,7 @@
+# T2: what a change does to the spec, scenario by scenario: one changed, one removed, one disabled
+# (tagged @wip again), one added. The scenario built, its @wip tag removed, is free: no finding.
+!isolated
+guard/protected-spec features/notes.feature:8 scenario "A title over 80 characters is refused" changed
+guard/protected-spec features/notes.feature:13 scenario "An agent adds a note over MCP, then finds it in the list" disabled
+guard/protected-spec features/notes.feature:23 scenario "The notes export as Markdown" added
+guard/protected-spec features/notes.feature:12 scenario "An unknown option is a usage error, not a refusal" removed

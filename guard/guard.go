@@ -1,6 +1,7 @@
 package guard
 
 import (
+	"context"
 	"go/build/constraint"
 	"path"
 	"regexp"
@@ -22,9 +23,9 @@ const (
 	MaxModules         = 1
 )
 
-// Check returns every rule d breaks: bypasses and sensitive files, which
-// block everywhere, and protected changes and size, which need a code
-// owner's approval before merge (see NeedsApproval).
+// Check returns every rule d breaks that its lines show: bypasses and
+// sensitive files, which block everywhere, and protected changes and size,
+// which need a code owner's approval before merge (see NeedsApproval).
 func Check(d Diff) []Finding {
 	var out []Finding
 	for _, f := range d.Files {
@@ -35,15 +36,46 @@ func Check(d Diff) []Finding {
 	return append(out, size(d)...)
 }
 
+// Run reads the change from base to the working tree of the git repository
+// at dir and returns it with every rule it breaks: Check's, and what it does
+// to the spec and to the libraries' API, which need the repository to read.
+func Run(ctx context.Context, dir, base string) (Diff, []Finding, error) {
+	d, err := Read(ctx, dir, base)
+	if err != nil {
+		return Diff{}, nil, err
+	}
+	out := Check(d)
+	specs, err := specChanges(ctx, dir, base)
+	if err != nil {
+		return Diff{}, nil, err
+	}
+	api, err := apiChanges(ctx, dir, d)
+	if err != nil {
+		return Diff{}, nil, err
+	}
+	return d, append(append(out, specs...), api...), nil
+}
+
+// Subject is what a finding is about, in the owner's words: its message
+// without the criterion before it and the instruction to the agent after
+// it, a message being "criterion: subject: instruction".
+func (f Finding) Subject() string {
+	_, rest, _ := strings.Cut(f.Message, ": ")
+	if i := strings.LastIndex(rest, ": "); i >= 0 {
+		rest = rest[:i]
+	}
+	return rest
+}
+
 // NeedsApproval reports whether f is a change the owner may approve rather
-// than a rule broken: a protected file changed, or a change over the size.
+// than a rule broken: the spec, the harness, a dependency or the go line, a
+// library's API, or a change over the size.
 func (f Finding) NeedsApproval() bool {
 	return strings.HasPrefix(f.Rule, "protected-") || strings.HasPrefix(f.Rule, "size-")
 }
 
 // Blocking returns the findings that fail the check. Locally, only the
-// broken rules do: protected changes are reported for the owner, so fixing
-// a wrong test costs the agent no more than bending the code to it. In CI
+// broken rules do: protected changes are reported for the owner. In CI
 // they block too, unless a code owner's approval covers them (see Covered).
 func Blocking(fs []Finding, ci bool, covered []Finding) []Finding {
 	var out []Finding
@@ -75,6 +107,9 @@ func bypasses(f File) []Finding {
 	}
 	for _, l := range f.Added {
 		out = append(out, lineBypasses(f.Path, l)...)
+	}
+	if isTestFile(f.Path) {
+		out = append(out, testHooks(f)...)
 	}
 	return out
 }

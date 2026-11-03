@@ -1,61 +1,53 @@
 ---
 name: new-feature
-description: How to add an operation to a module of this app, tests first. An operation is one MCP tool and its CLI command, from one arguments struct. Use when asked to add a feature, a tool, a command or an operation, or to change what an existing one does or accepts.
+description: How to add or change a feature of this app, spec first. The spec is the Gherkin scenarios in features/, the one thing the owner reads and approves; an operation is one MCP tool and its CLI command, from one arguments struct. Use when asked to add a feature, a tool, a command or an operation, or to change what an existing one does or accepts.
 ---
 
-# A new operation, tests first
+# A feature, spec first
 
-The tests are written before the code and read as the behaviour the owner approves: the review sheet (`kit review`) shows each test's name as a sentence. Name each one for what a user would notice.
+The owner reads the spec and nothing else: the scenarios in `features/*.feature`. They approve what the app does there. The code, its unit tests and the steps that run the scenarios are judged by the machines: `kit check`, `kit mutate`.
 
-## 1. Say what it does before writing anything
+## 1. Write the spec, open its pull request
 
-In the pull request's description, write the operation's contract:
+On a branch from the default branch, `spec/<feature>`, add or change scenarios in `features/<module>.feature`:
 
-- its name (`verb_noun`, snake_case: `add_note`, `list_notes`);
-- its arguments, the optional ones, and their limits;
-- its result;
-- its effect: `op.ReadOnly`, `op.Additive` (adds, never overwrites) or `op.Destructive` (may overwrite or delete);
-- what it refuses, and why.
+- one scenario per behaviour a user would notice, named as that behaviour;
+- in the user's words: what they do and what they see, not flags or JSON;
+- every `Then` says what it expects with a value, a quoted text or a number: `Then it is refused with "the limit is 80"`. The kit alters each value and checks the scenario then fails; a `Then` with no value is refused;
+- a new scenario is tagged `@wip`: approved, not built yet. The spec's test leaves it out.
 
-If the request leaves one of these open, ask before going on.
+Open the pull request with the spec alone. Its description says in one line what the feature is for. If the request leaves something open, a limit or what is refused, write the scenario you would choose and say so there: the owner decides. Once they approve it, the pull request merges by itself.
 
-## 2. Write the tests, see them fail
+## 2. Build it on top
 
-In a new slice, `internal/<module>/internal/<feature>/`, write `<feature>_test.go` in the black-box package `<feature>_test`:
+Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits: once the spec merges, GitHub moves it to the default branch.
 
-- one test per behaviour, named as its sentence: `TestListRefusesALimitOutOfRange` reads "List refuses a limit out of range";
-- fakes of the interfaces the slice declares, never a mock library;
-- every test fails on something it checks, not only on an error.
+- Remove the `@wip` tag of each scenario you build: that is free. Any other change to the spec is a spec change the owner approves again.
+- Write the steps in `features/*_test.go`, like the ones there: one method per step, bound by a pattern that takes any value (`"([^"]*)"`, `(\d+)`), driving the built program from the command line or over MCP.
+- Write the slice, its unit tests first (section 3). Each test fails on something it checks, not only on an error.
 
-Then add the feature's journey to `cmd/<app>/journey_test.go`: a user's path through the built program, from the command line or through MCP (`TestAUserAddsANoteFromTheCommandLineThenFindsItInTheList`), using the file's `build`, `run` and `connect`. It is the spec the owner reads, and it passes only once the feature works end to end.
+The pull request merges by itself once its checks pass.
 
-Run them. Each must fail, and for the reason you expect, not a compile error you didn't mean. If the owner asked to see tests first, open the pull request as a draft with the tests alone, and stop.
+## 3. The slice
 
-## 3. Write the slice
-
-Follow `internal/notes/internal/list/`:
+In a new slice, `internal/<module>/internal/<feature>/`, follow `internal/notes/internal/list/`:
 
 - `Args`: its `json` tags are the MCP arguments and the CLI flags, its `jsonschema` tags the descriptions agents read. An optional argument is a pointer (`*int`, `*string`), nil when not given. The binding knows `string`, `int`, `bool`, `[]string` and those two pointers: another type fails `TestEveryToolIsACommandWithTheSameArguments`, and teaching the binding a new one is a platform change. An operation that returns a list takes a `limit` with a default and a maximum, read with `op.Limit`, never a copy of it.
 - `Out`: what the operation returns.
 - The interface it needs from the infra, declared in the slice, named for what it does (`Saver`, `Reader`).
-- `New`, then `Op()`: the name, a description written for an agent (what it does, what it refuses), the effect, and an `Example`: one realistic call, which agents read in the tool's schema. The binding refuses an operation without one, and journals every operation that isn't read-only.
+- `New`, then `Op()`: the name (`verb_noun`, snake_case), a description written for an agent (what it does, what it refuses), the effect (`op.ReadOnly`, `op.Additive`, `op.Destructive`), and an `Example`: one realistic call, which agents read in the tool's schema. The binding refuses an operation without one, and journals every operation that isn't read-only.
 - `Run`: it turns every input into a domain type through the domain's `Parse` function, never by conversion.
+- Its tests, in the black-box package `<feature>_test`: fakes of the interfaces the slice declares, never a mock library.
 
-Then wire it in the module's contract, `internal/<module>/<module>.go`: `Register` and `Commands`.
+Then wire it in the module's contract, `internal/<module>/<module>.go`: `Register` and `Commands`. Run `go test ./internal/<module>/ -update` to record the tools MCP clients see in `testdata/tools.golden.json`.
 
-## 4. Read the contract change
+## 4. Check before you stop
 
-Run `go test ./internal/<module>/ -update`, then read the diff of `testdata/tools.golden.json`: it is what MCP clients will see, and the owner reviews it.
-
-## 5. Check before you stop
-
-- `kit check`: every gate. Its tests include `cmd/<app>/smoke_test.go`, which builds the program and calls every tool and every command with its example: a refusal passes, a start that fails or a command line that doesn't parse fails.
+- `kit check`: every gate. It runs `kit spec`, which runs each built scenario alone, then once per value its `Then` steps expect, that value altered: it must pass as written and fail altered. A step that passes whatever it is told checks nothing.
 - `kit mutate`: the new lines' mutants must die. A mutant that lives is a behaviour no test pins: add the test, or delete the code if nothing needs it.
-- `kit review`: read the sheet as the owner will.
+- `kit review`: the sheet the owner reads. On the build's pull request it says there is nothing for them.
 
-## A protected change is expected when it is justified
+## When something is wrong
 
-Existing tests, golden files and `go.mod`'s go line are protected: the merge check holds them until the owner approves. Changing one when the work calls for it is part of the job. Bending the code around a test you believe is wrong is the one thing never to do.
-
-- **A test is wrong**: it checks something the contract doesn't say. Fix it in a pull request of its own, branched from the default branch, holding that fix alone, its description saying why. Tell the owner, and go on with the feature on top of it. Once they merged it, rebase the feature (`git rebase origin/main`, then `git push --force-with-lease`).
-- **The feature changes the contract**: a golden file, or a test whose expectation the feature changes. Keep the change in the feature's pull request and list each protected file in its description. Once the owner approved the pull request, the approval holds while those files keep the content approved: go on with the code, rebase if you need. Touch one of them again and it needs approving again.
+- **A unit test is wrong**: fix it in the pull request where you find it, and say why in its description.
+- **A scenario is wrong**, or can't hold: never bend the code or the steps around it. Change it on the spec branch, or in a new spec pull request once it merged, and say why in one line: the owner approves it again.

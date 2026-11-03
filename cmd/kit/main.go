@@ -6,6 +6,7 @@
 //	kit mutate [--base origin/main] [--min 0.8]
 //	kit review [--base origin/main] [--labels | --json]
 //	kit sync --version <kit commit> [--from template-dir]
+//	kit spec [--json]
 package main
 
 import (
@@ -38,7 +39,7 @@ func main() {
 
 func root(out io.Writer) *cobra.Command {
 	r := &cobra.Command{Use: "kit", Short: "The anti-drift kit's checks", SilenceUsage: true, SilenceErrors: true}
-	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand(), syncCommand(out))
+	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand(), syncCommand(out), specCommand(out))
 	return r
 }
 
@@ -69,11 +70,10 @@ func guardCommand(out io.Writer) *cobra.Command {
 }
 
 func runGuard(ctx context.Context, out io.Writer, o guardOptions) error {
-	d, err := guard.Read(ctx, ".", o.base)
+	d, findings, err := guard.Run(ctx, ".", o.base)
 	if err != nil {
 		return err
 	}
-	findings := guard.Check(d)
 	trees, err := guard.ReadTrees(o.trees)
 	if err != nil {
 		return err

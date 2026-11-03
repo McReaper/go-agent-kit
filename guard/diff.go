@@ -28,6 +28,7 @@ type File struct {
 	Status  byte   // 'A' added, 'M' modified, 'D' deleted, 'R' renamed
 	Added   []Line
 	Removed int
+	Gone    []string // the removed lines' text
 }
 
 // Diff is a change: every file it touches, and the commit it starts from.
@@ -121,12 +122,13 @@ func Parse(status, numstat, patch string) (Diff, error) {
 	if err != nil {
 		return Diff{}, err
 	}
-	added, err := parsePatch(patch)
+	p, err := parsePatch(patch)
 	if err != nil {
 		return Diff{}, err
 	}
 	for i := range files {
-		files[i].Added = added[files[i].Path]
+		files[i].Added = p.added[files[i].Path]
+		files[i].Gone = p.gone[files[i].Path]
 		files[i].Removed = removed[files[i].Path]
 	}
 	return Diff{Files: files}, nil
@@ -194,23 +196,24 @@ func renamedTo(path string) string {
 
 type patchReader struct {
 	added map[string][]Line
+	gone  map[string][]string
 	file  string
 	next  int
 }
 
-func parsePatch(out string) (map[string][]Line, error) {
-	r := patchReader{added: map[string][]Line{}}
+func parsePatch(out string) (patchReader, error) {
+	r := patchReader{added: map[string][]Line{}, gone: map[string][]string{}}
 	sc := bufio.NewScanner(strings.NewReader(out))
 	sc.Buffer(make([]byte, 1<<20), 1<<24)
 	for sc.Scan() {
 		if err := r.line(sc.Text()); err != nil {
-			return nil, err
+			return patchReader{}, err
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("git diff: %w", err)
+		return patchReader{}, fmt.Errorf("git diff: %w", err)
 	}
-	return r.added, nil
+	return r, nil
 }
 
 func (r *patchReader) line(line string) error {
@@ -224,6 +227,8 @@ func (r *patchReader) line(line string) error {
 	case strings.HasPrefix(line, "+") && r.file != "/dev/null":
 		r.added[r.file] = append(r.added[r.file], Line{N: r.next, Text: line[1:]})
 		r.next++
+	case strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "--- ") && r.file != "/dev/null":
+		r.gone[r.file] = append(r.gone[r.file], line[1:])
 	}
 	return nil
 }

@@ -12,9 +12,9 @@ What it ships:
 
 - `lint/golangci.yml` — the curated golangci-lint config; an app's own is never read.
 - `cmd/kitvet` — eleven analyzers for rules no linter has: comments, nesting, test assertions, typed ids, goroutines, root contexts, package names, logged-and-returned errors, SQL built at run time, domain types built by conversion, unbounded lists.
-- `cmd/kit` — one CLI: `check` (every gate, the same on the agent's machine and in CI), `guard` (bypasses, protected changes, size), `sweep` (what only the whole module shows), `mutate` (the tests must kill the change's mutants), `review` (the sheet the owner reads), `sync` (brings an app's kit-owned files to a kit version), `app` (acts as the agent's GitHub App), `hook` (Claude Code's hooks).
+- `cmd/kit` — one CLI: `check` (every gate, the same on the agent's machine and in CI), `guard` (bypasses, what is the owner's to approve, size), `sweep` (what only the whole module shows), `mutate` (the tests must kill the change's mutants), `spec` (each step of the spec can fail), `review` (the short sheet the owner reads), `sync` (brings an app's kit-owned files to a kit version), `app` (acts as the agent's GitHub App), `hook` (Claude Code's hooks).
 - `archtest` — the layout rules the compiler can't see.
-- [`template/`](template) — the app an app starts from, with `gonew`: the reference slices, AGENTS.md, the skills, the smoke test on the built program.
+- [`template/`](template) — the app an app starts from, with `gonew`: the spec in Gherkin, the one thing the owner reads, run on the built program; the reference slices, AGENTS.md, the skills, the smoke test.
 - [`platform/`](platform) — what the owner applies on GitHub and in Claude Code: the rulesets, the App's permissions, the agent's settings; `.github/workflows/kit-check.yml`, the merge check apps call.
 - `tools.txt` — every tool at the version the proofs ran with.
 

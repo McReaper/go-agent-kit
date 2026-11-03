@@ -1,41 +1,42 @@
 package review_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/McReaper/go-agent-kit/review"
+	"github.com/McReaper/go-agent-kit/spec"
 )
 
-func TestATestNameReadsAsASentence(t *testing.T) {
-	for name, want := range map[string]string{
-		"TestAddReportsTheStoreFailure":     "Add reports the store failure",
-		"TestKitMutateFailsAChange":         "Kit mutate fails a change",
-		"TestJSONFileIsRead":                "JSON file is read",
-		"TestV2APIAnswers":                  "V2 API answers",
-		"Test_add_note":                     "Add note",
-		"TestParseTitle/trims_the_spaces":   "Parse title: trims the spaces",
-		"TestParseTitle/refuses an empty":   "Parse title: refuses an empty",
-		"FuzzSlugIsASCII":                   "Fuzz: Slug is ASCII",
-		"ExampleMake":                       "Example: Make",
-		"Test":                              "",
-		"TestParseNoteID":                   "Parse note ID",
-		"TestAddsTheNoteIn3Steps":           "Adds the note in3 steps",
-		"TestEveryNewNoteHasAnIDThatParses": "Every new note has an ID that parses",
-	} {
-		if got := review.Sentence(name); got != want {
-			t.Errorf("Sentence(%q) = %q, want %q", name, got, want)
-		}
+func TestASheetWithNothingForTheOwnerSaysTheChangeMergesByItself(t *testing.T) {
+	var s review.Sheet
+	if got := s.Markdown(); got != review.Marker+"\nNothing for you: this pull request merges by itself once its checks pass.\n" {
+		t.Errorf("Markdown() = %q", got)
+	}
+	if s.Labels()["needs-you"] {
+		t.Error("an empty sheet earns needs-you")
 	}
 }
 
-func TestAnEmptySheetSaysThereIsNothingToReview(t *testing.T) {
-	var s review.Sheet
-	if got := s.Markdown(); got != review.Marker+"\n## Review sheet\n\nNothing beyond the code itself: no protected change, no test scenario, no contract, dependency, shared code or rule touched.\n" {
-		t.Errorf("Markdown() = %q", got)
+func TestASheetListsTheSpecFirstThenWhatElseNeedsApproval(t *testing.T) {
+	s := review.Sheet{
+		Spec:     []spec.Change{{Kind: spec.Disabled, File: "features/notes.feature", Line: 7, Name: "A note is listed"}},
+		Approval: []review.Item{{File: "go.mod", Line: 9, Text: "a new dependency, example.com/x"}, {Text: "this change touches 401 production lines, the limit is 400"}},
 	}
-	for name, on := range s.Labels() {
-		if on {
-			t.Errorf("label %s on an empty sheet", name)
+	got := s.Markdown()
+	for _, want := range []string{
+		"- A note is listed, disabled: tagged @wip, it stops running (`features/notes.feature:7`)\n",
+		"- a new dependency, example.com/x (`go.mod:9`)\n",
+		"- this change touches 401 production lines, the limit is 400 (`the change`)\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the sheet lacks %q:\n%s", want, got)
 		}
+	}
+	if strings.Index(got, "The spec") > strings.Index(got, "Also yours") {
+		t.Errorf("the spec comes after the rest:\n%s", got)
+	}
+	if !s.Labels()["needs-you"] {
+		t.Error("a sheet with items lacks needs-you")
 	}
 }
