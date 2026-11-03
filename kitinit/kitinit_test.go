@@ -178,3 +178,17 @@ func TestExchangeTradesTheCodeForTheAppAndItsKey(t *testing.T) {
 		t.Errorf("an expired code: %v", err)
 	}
 }
+
+func TestTheWorkflowForAPinIsTheOneKitInitWritesForIt(t *testing.T) {
+	written := []byte(files(t)[".github/workflows/kit.yml"])
+	if got, err := kitinit.WorkflowFor(written); err != nil || string(got) != string(written) {
+		t.Errorf("WorkflowFor(what kit init wrote) = %s, %v", got, err)
+	}
+	trimmed := []byte(strings.Replace(string(written), "  pull_request_review:\n    types: [submitted]\n", "", 1))
+	if got, err := kitinit.WorkflowFor(trimmed); err != nil || string(got) == string(trimmed) {
+		t.Errorf("a kit.yml without the review trigger passes: %v", err)
+	}
+	if _, err := kitinit.WorkflowFor([]byte("name: kit\n")); err == nil {
+		t.Error("a kit.yml with no pin passes")
+	}
+}

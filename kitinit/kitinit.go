@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"regexp"
 	"text/template"
 
 	"github.com/McReaper/go-agent-kit/guard"
@@ -143,4 +144,19 @@ func (r *Report) write(root *os.Root, f File) error {
 	}
 	r.Written = append(r.Written, f.Path)
 	return nil
+}
+
+var pin = regexp.MustCompile(`kit-check\.yml@([0-9a-f]{40}) # (\S+)`)
+
+// WorkflowFor returns the kit.yml kit init writes for the pin current
+// holds: what a repository's kit.yml must be, its pin aside.
+//
+// WHY: a kit version may need another kit.yml, a trigger or a permission
+// more; the repository's, pinned to that version, can't say so itself.
+func WorkflowFor(current []byte) ([]byte, error) {
+	m := pin.FindSubmatch(current)
+	if m == nil {
+		return nil, errors.New("kit.yml pins no kit commit and release (kit-check.yml@<commit> # <tag>)")
+	}
+	return render("kit.yml", Version{Tag: string(m[2]), Commit: string(m[1])})
 }
