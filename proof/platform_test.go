@@ -132,6 +132,24 @@ func jobs(t *testing.T, path string) []string {
 	return out
 }
 
+// WHY: GitHub fills github.base_ref on pull_request events only; the merge
+// check also runs on the owner's approval (pull_request_review), where a
+// step reading it would compare with "origin/" and fail the approved change.
+func TestTheMergeCheckFindsThePullRequestsBaseOnAnApprovalToo(t *testing.T) {
+	for path, want := range map[string]string{"../kitinit/files/kit.yml": "pull_request_review:", "../.github/workflows/kit-check.yml": "github.event.pull_request.base.ref"} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), want) {
+			t.Errorf("%s lacks %s", path, want)
+		}
+		if strings.Contains(string(data), "github.base_ref") {
+			t.Errorf("%s reads github.base_ref, empty on an approval: read github.event.pull_request.base.ref", path)
+		}
+	}
+}
+
 func TestTheTagRulesetLetsOnlyTheOwnerTagARelease(t *testing.T) {
 	var r ruleset
 	readJSON(t, "../kitinit/files/ruleset-tags.json", &r)

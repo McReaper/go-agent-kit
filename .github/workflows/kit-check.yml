@@ -111,13 +111,13 @@ jobs:
           echo "approved=$head" >> "$GITHUB_OUTPUT"
       - name: kit check
         env:
-          BASE: ${{ github.base_ref || github.event.repository.default_branch }}
+          BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
           APPROVED: ${{ steps.approval.outputs.approved || 'false' }}
         run: kit check --base "origin/$BASE" --ci --approved="$APPROVED" --approved-trees "$RUNNER_TEMP/approved-trees"
       - name: kit mutate
         if: ${{ !cancelled() && github.event_name != 'push' }}
         env:
-          BASE: ${{ github.base_ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
         run: kit mutate --base "origin/$BASE"
 
   automerge:
@@ -176,7 +176,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
-          BASE: ${{ github.base_ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
         run: |
           sheet="$RUNNER_TEMP/sheet.md"
           kit review --base "origin/$BASE" > "$sheet"
