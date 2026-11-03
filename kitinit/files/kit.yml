@@ -1,7 +1,8 @@
 name: kit
 
-# The kit's merge check, review sheet and auto-merge. Both pins name the
-# same kit commit; move them together.
+# The kit's merge check, review sheet and auto-merge, at the kit commit the
+# uses line pins: kit-check.yml reads it from the job's token, so this is
+# the one pin, and Dependabot moves it.
 
 on:
   pull_request:
@@ -21,6 +22,5 @@ jobs:
       contents: write # auto-merge
       pull-requests: write # the review sheet's comment, auto-merge
       issues: write # the review sheet's label
-    uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@bf821cb8b654ec578e7245ca0c38753710cfca8c
-    with:
-      kit-version: bf821cb8b654ec578e7245ca0c38753710cfca8c
+      id-token: write # the kit's version, read from the job's token
+    uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@{{.Commit}} # {{.Tag}}

@@ -1,2 +1,0 @@
-# M8: a Renovate option misspelled: Renovate's server would ignore it without a word to the repository.
-renovate/config renovate.json:0 ^Invalid configuration option: minimalReleaseAge$

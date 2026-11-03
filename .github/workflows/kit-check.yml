@@ -1,28 +1,62 @@
 name: kit-check
 
-# The merge check apps run, through a caller pinned by SHA:
+# The merge check apps run, through the caller kit init writes, pinned once
+# by SHA:
 #
 #   jobs:
 #     kit:
-#       uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@<sha>
-#       with:
-#         kit-version: <sha>
+#       uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@<sha> # <tag>
 #
-# The caller runs on pull_request, pull_request_review (submitted) and push
-# to the default branch, so a review re-runs the check.
+# The kit it installs is the commit this workflow runs at, read from the
+# job's OIDC token, so the pin Dependabot moves is the only one.
+#
+# The caller runs on pull_request (opened, synchronize, reopened, edited),
+# pull_request_review (submitted) and push to the default branch, so a review
+# re-runs the check; it grants contents and pull-requests write for the
+# auto-merge, issues write for the label, id-token write for the version. An edit runs the jobs only when it
+# moved the pull request's base, as GitHub does to a stacked pull request
+# once the one below it merged.
 
 on:
   workflow_call:
     inputs:
       kit-version:
-        description: The kit's version or commit, the same as the caller's uses@ pin.
-        required: true
+        description: The kit's commit, to run another than the one this workflow runs at; by default that one.
+        required: false
         type: string
+        default: ""
 
 permissions: {}
 
 jobs:
+  version:
+    if: github.event.action != 'edited' || github.event.changes.base
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      kit: ${{ steps.kit.outputs.version }}
+    steps:
+      - name: Which kit commit is this workflow?
+        id: kit
+        env:
+          PINNED: ${{ inputs.kit-version }}
+        run: |
+          if [ -n "$PINNED" ]; then
+            echo "version=$PINNED" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          token=$(curl -fsSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=go-agent-kit" | jq -r .value)
+          payload=$(printf '%s' "$token" | cut -d. -f2 | tr '_-' '/+')
+          case $(( ${#payload} % 4 )) in 2) payload="$payload==" ;; 3) payload="$payload=" ;; esac
+          sha=$(printf '%s' "$payload" | base64 -d | jq -r .job_workflow_sha)
+          case $sha in
+            [0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) echo "version=$sha" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::the job's token names no workflow commit" && exit 1 ;;
+          esac
+
   kit:
+    needs: version
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,13 +70,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24 # renovate's validator runs through npx
       - name: Install the kit and the tools its proofs ran with
         env:
           GOTOOLCHAIN: auto # a tool may need a newer Go than the app; it builds a separate binary
-          KIT_VERSION: ${{ inputs.kit-version }}
+          KIT_VERSION: ${{ needs.version.outputs.kit }}
         run: |
           go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
           dir=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION" | jq -r .Dir)
@@ -89,10 +120,35 @@ jobs:
           BASE: ${{ github.base_ref }}
         run: kit mutate --base "origin/$BASE"
 
+  automerge:
+    # A pull request into the default branch merges by itself once the
+    # ruleset holds: the kit check green, and the owner's approval where the
+    # harness changed. One stacked on another branch waits to be moved. The
+    # merge is GitHub Actions', so it starts no workflow on the default branch.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch &&
+      (github.event.action != 'edited' || github.event.changes.base)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Turn on auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if ! gh pr merge "$PR" --repo "$REPO" --auto --squash; then
+            echo "::warning::auto-merge didn't turn on: allow it in the repository's settings (General, Pull Requests)"
+          fi
+
   review:
     # The review sheet: one comment on the pull request, updated on each
-    # push, and the kit's labels to match.
+    # push, and the kit's label to match.
     if: github.event_name == 'pull_request'
+    needs: version
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -110,7 +166,7 @@ jobs:
       - name: Install the kit and apidiff
         env:
           GOTOOLCHAIN: auto
-          KIT_VERSION: ${{ inputs.kit-version }}
+          KIT_VERSION: ${{ needs.version.outputs.kit }}
         run: |
           go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
           dir=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION" | jq -r .Dir)

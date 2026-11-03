@@ -1,5 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "go-agent-kit": {
+      "source": { "source": "github", "repo": "McReaper/go-agent-kit" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": { "kit@go-agent-kit": true },
   "permissions": {
     "deny": [
       "Bash(git push --force *)",
@@ -18,19 +25,6 @@
       "Write(./.github/**)",
       "Edit(./.claude/**)",
       "Write(./.claude/**)"
-    ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{ "type": "command", "command": "kit hook post-edit" }]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [{ "type": "command", "command": "kit hook stop --base origin/main" }]
-      }
     ]
   }
 }

@@ -13,17 +13,4 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 - `internal/platform/`: shared by every module: the op binding, the journal, the config. It knows no module.
 - `pkg/slug/`: a library other programs may import: its exported API is a contract.
 
-## Commands
-
-- `go test ./...`: the tests.
-- `kit check`: every gate the merge check runs, the same as CI. Run it before you stop.
-- `kit mutate`: the tests must kill the mutants of the lines you changed.
-- `kit spec`: each built scenario passes alone, and fails once a value its `Then` steps expect is altered (`kit check` runs it).
-- `kit review`: the review sheet the owner reads: the spec's changes and what else is theirs to approve. Read it before you open a pull request.
-
-## Rules no check explains
-
-- The spec comes first, in its own pull request the owner approves; the feature is built on top. A scenario you believe is wrong: never bend the code or the steps to it; the `new-feature` skill says how to change it.
-- Code only tests reach: delete it with its tests.
-- Never silence a check (`//nolint`, `t.Skip`, a build tag): fix the code, or stop and ask.
-- A new operation: load the `new-feature` skill. A new module: the `new-module` skill.
+The kit's commands and the rules no check explains come with its Claude Code plugin, `kit`, which the repository's Claude Code settings, written by `kit init`, turn on.

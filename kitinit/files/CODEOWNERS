@@ -1,0 +1,8 @@
+# The harness: what tells the agent how to work and the merge check how to
+# judge it. GitHub holds a change to any of these for the owner, even if the
+# check broke. The kit check holds the rest that is theirs: the spec, a new
+# dependency, the go line, a library's API. The spec stays out of this file,
+# so that building a scenario, removing its @wip tag, needs no one.
+
+{{range .Harness}}{{.}} @{{$.Owner}}
+{{end}}

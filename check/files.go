@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	"github.com/McReaper/go-agent-kit/internal/platform/git"
 	"github.com/McReaper/go-agent-kit/internal/platform/gitleaks"
 	"github.com/McReaper/go-agent-kit/internal/platform/run"
+	"github.com/McReaper/go-agent-kit/kitinit"
 )
 
 // WHY: workflows, scripts, secrets and the dependency bot's config aren't
@@ -26,7 +29,7 @@ func fileGates() []gate {
 		{"shellcheck", shellcheckGate},
 		{"psscriptanalyzer", psscriptanalyzerGate},
 		{"gitleaks", gitleaksGate},
-		{"renovate", renovateGate},
+		{"kit files", kitFilesGate},
 	}
 }
 
@@ -150,4 +153,24 @@ func gitleaksGate(ctx context.Context, o Options) Result {
 		}
 	}
 	return found(lines)
+}
+
+// WHY: the kit's CI file is the one an app keeps; once a kit version needs
+// it otherwise, the app hears it from its own check.
+func kitFilesGate(_ context.Context, o Options) Result {
+	current, err := os.ReadFile(filepath.Join(o.Dir, ".github", "workflows", "kit.yml"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return Result{}
+	}
+	if err != nil {
+		return failed(err)
+	}
+	want, err := kitinit.WorkflowFor(current)
+	if err != nil {
+		return found([]string{".github/workflows/kit.yml:1: kit-files: T2: " + err.Error()})
+	}
+	if !bytes.Equal(want, current) {
+		return found([]string{".github/workflows/kit.yml:1: kit-files: T2: it differs from the kit.yml this kit version writes: delete it and run kit init, which writes it again"})
+	}
+	return Result{}
 }

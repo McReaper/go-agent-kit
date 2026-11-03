@@ -7,6 +7,10 @@ The anti-drift kit for AI-written Go. `docs/kit.md` is the kit; read it before c
 - `lint/golangci.yml` — the curated golangci-lint config apps run (never their own).
 - `analyzers/<name>/` + `cmd/kitvet` — the kit's go/analysis analyzers, each tested with analysistest; `analyzers/internal/layout` says which part of the architecture a package is.
 - `guard/` + `cmd/kit` — `kit guard`, the diff checks.
+- `spec/` — the spec: Gherkin scenarios under an app's `features/`, what a change does to them, and `kit spec`, which shows each step can fail.
+- `gesture/` — what `kit hook pre-tool` refuses before the agent runs it.
+- `kitinit/` — `kit init`: the four files an app keeps, its GitHub settings, the agent's App; `kitinit/files/` holds them, the app rulesets included.
+- `plugin/` + `.claude-plugin/marketplace.json` — the Claude Code plugin apps turn on: skills, rules, hooks; `plugin/bin/kit` runs kit at the version the app's CI pins.
 - `archtest/` — architecture rules over go/packages.
 - `internal/platform/git` — the one place the kit starts git.
 - `template/` — the app template (`gonew github.com/McReaper/go-agent-kit/template`), its own module, and the trial every proof starts from: passes every gate. `trial/cases/<case>/` — one deliberate violation, the files it adds or replaces, and `want.txt` (`<tool>/<rule> <file>:<line> <regexp>`; `!isolated`, `!delete <file>`, `!expect-none <tool>`).

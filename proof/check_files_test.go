@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/McReaper/go-agent-kit/kitinit"
 )
 
 // WHY: pip installs zizmor outside the PATH on Windows; kit check finds it
@@ -42,5 +44,35 @@ func TestKitCheckFailsOnAWorkflowAScriptAndASecret(t *testing.T) {
 	}
 	if t.Failed() {
 		t.Log(out)
+	}
+}
+
+// WHY: an app keeps kit.yml, pinned to a kit version; once that version
+// needs another kit.yml, a trigger or a permission more, the app's own
+// check says so and kit init writes it again.
+func TestKitCheckFailsOnAKitYMLItsKitVersionWouldNotWrite(t *testing.T) {
+	withZizmor(t)
+	dir := changeOf(t, trialCase{name: "no change"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := kitinit.Write(dir, fs); err != nil {
+		t.Fatal(err)
+	}
+	ci := filepath.Join(dir, ".github", "workflows", "kit.yml")
+	data, err := os.ReadFile(ci)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trimmed := strings.Replace(string(data), "  pull_request_review:\n    types: [submitted]\n", "", 1)
+	if err := os.WriteFile(ci, []byte(trimmed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, dir, "add", "-A")
+	gitIn(t, dir, "commit", "-q", "-m", "kit init, then a trigger dropped")
+	out, code := kitRun(t, dir, "check", "--base", "base", "--race=false")
+	if code != 1 || !strings.Contains(out, "FAIL kit files\n") || !strings.Contains(out, "it differs from the kit.yml this kit version writes") {
+		t.Errorf("exit %d\n%s", code, out)
 	}
 }

@@ -5,11 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/McReaper/go-agent-kit/guard"
+	"github.com/McReaper/go-agent-kit/kitinit"
 )
 
 type ruleset struct {
@@ -74,7 +76,7 @@ func TestTheKitsRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T
 // GitHub's auto-merge can land the change.
 func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 	var r ruleset
-	readJSON(t, "../platform/ruleset.json", &r)
+	readJSON(t, "../kitinit/files/ruleset.json", &r)
 	var types []string
 	for _, rule := range r.Rules {
 		types = append(types, rule.Type)
@@ -103,7 +105,7 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 
 func TestTheTagRulesetLetsOnlyTheOwnerTagARelease(t *testing.T) {
 	var r ruleset
-	readJSON(t, "../platform/ruleset-tags.json", &r)
+	readJSON(t, "../kitinit/files/ruleset-tags.json", &r)
 	if r.Target != "tag" || !slices.Equal(r.Conditions.RefName.Include, []string{"~ALL"}) {
 		t.Errorf("the ruleset must hold every tag: target %q, include %v", r.Target, r.Conditions.RefName.Include)
 	}
@@ -122,7 +124,8 @@ func TestTheTagRulesetLetsOnlyTheOwnerTagARelease(t *testing.T) {
 }
 
 type claudeSettings struct {
-	Permissions struct {
+	EnabledPlugins map[string]bool `json:"enabledPlugins"`
+	Permissions    struct {
 		Deny []string `json:"deny"`
 	} `json:"permissions"`
 	Hooks map[string][]struct {
@@ -133,34 +136,54 @@ type claudeSettings struct {
 	} `json:"hooks"`
 }
 
-func TestTheAgentSettingsDenyBypassesAndRunTheKitHooks(t *testing.T) {
-	var s claudeSettings
-	readJSON(t, "../platform/claude/settings.json", &s)
-	for _, want := range []string{"Bash(git commit --no-verify *)", "Bash(git push --force *)", "Bash(git push --force-with-lease * main)", "Bash(gh pr merge *)", "Edit(./.kit/**)", "Edit(./.github/**)"} {
-		if !slices.Contains(s.Permissions.Deny, want) {
+func initFiles(t *testing.T) map[string]string {
+	t.Helper()
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "OWNER"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]string{}
+	for _, f := range fs {
+		out[f.Path] = string(f.Content)
+	}
+	return out
+}
+
+// WHY: deny rules a plugin can't carry; the repository's settings, written
+// by kit init, hold them and turn the kit's plugin on, managed settings do
+// both where the agent can't undo them, and the plugin's hooks refuse what
+// a deny rule's text misses (git -C . push).
+func TestTheAgentSettingsDenyBypassesAndThePluginRunsTheKitHooks(t *testing.T) {
+	var project, managed, plugin claudeSettings
+	if err := json.Unmarshal([]byte(initFiles(t)[".claude/settings.json"]), &project); err != nil {
+		t.Fatal(err)
+	}
+	readJSON(t, "../platform/claude/managed-settings.json", &managed)
+	readJSON(t, "../plugin/hooks/hooks.json", &plugin)
+	for _, want := range []string{"Bash(git commit --no-verify *)", "Bash(git push --force *)", "Bash(git push --force-with-lease * main)", "Bash(gh pr merge *)", "Edit(./.github/**)"} {
+		if !slices.Contains(project.Permissions.Deny, want) {
 			t.Errorf("deny lacks %s", want)
 		}
 	}
 	// WHY: the agent rebases its own pull request while the owner hasn't
 	// approved it; main's ruleset refuses any force push there anyway.
-	if slices.Contains(s.Permissions.Deny, "Bash(git push --force-with-lease *)") {
+	if slices.Contains(project.Permissions.Deny, "Bash(git push --force-with-lease *)") {
 		t.Error("deny refuses --force-with-lease on the agent's own branches")
 	}
-	for event, command := range map[string]string{"PostToolUse": "kit hook post-edit", "Stop": "kit hook stop"} {
-		groups := s.Hooks[event]
-		if len(groups) == 0 || len(groups[0].Hooks) == 0 || !strings.HasPrefix(groups[0].Hooks[0].Command, command) {
-			t.Errorf("%s hook does not run %s: %+v", event, command, groups)
+	if !slices.Equal(project.Permissions.Deny, managed.Permissions.Deny) || !project.EnabledPlugins["kit@go-agent-kit"] || !managed.EnabledPlugins["kit@go-agent-kit"] {
+		t.Errorf("the repository's and the managed settings differ: %+v, %+v", project, managed)
+	}
+	for event, command := range map[string]string{"PreToolUse": "hook pre-tool", "PostToolUse": "hook post-edit", "Stop": "hook stop"} {
+		groups := plugin.Hooks[event]
+		if len(groups) == 0 || len(groups[0].Hooks) == 0 || !strings.Contains(groups[0].Hooks[0].Command, `"${CLAUDE_PLUGIN_ROOT}/bin/kit" `+command) {
+			t.Errorf("the plugin's %s hook does not run kit %s: %+v", event, command, groups)
 		}
 	}
 }
 
 func TestTheAppCodeOwnersHoldTheHarnessAndLeaveTheSpecToTheCheck(t *testing.T) {
-	data, err := os.ReadFile("../template/.github/CODEOWNERS")
-	if err != nil {
-		t.Fatal(err)
-	}
 	var owned []string
-	for l := range strings.Lines(string(data)) {
+	for l := range strings.Lines(initFiles(t)[".github/CODEOWNERS"]) {
 		if p, ok := strings.CutSuffix(strings.TrimSpace(l), " @OWNER"); ok {
 			owned = append(owned, p)
 		}
@@ -175,6 +198,62 @@ func TestTheAppCodeOwnersHoldTheHarnessAndLeaveTheSpecToTheCheck(t *testing.T) {
 	}
 	if !slices.Equal(owned, want) {
 		t.Errorf("CODEOWNERS owns %q, the guard's harness is %q", owned, want)
+	}
+}
+
+// WHY: what kit init writes is what every app's CI runs; it passes the
+// workflow gates the kit holds an app's workflows to.
+func TestTheCIKitInitWritesPassesTheWorkflowGates(t *testing.T) {
+	withZizmor(t)
+	dir := t.TempDir()
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := kitinit.Write(dir, fs); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, dir, "init", "-q")
+	gitIn(t, dir, "add", "-A")
+	check(t, nil, actionlintFindings(t, dir))
+	check(t, nil, zizmorFindings(t, dir))
+}
+
+// WHY: the plugin is how an app gets the kit's skills, rules and hooks;
+// every file its manifests and hooks name must be there, the wrapper they
+// call executable, and each skill named as Claude Code lists it.
+func TestThePluginShipsWhatItsManifestsAndHooksName(t *testing.T) {
+	var market struct {
+		Plugins []struct {
+			Name   string `json:"name"`
+			Source string `json:"source"`
+		} `json:"plugins"`
+	}
+	readJSON(t, "../.claude-plugin/marketplace.json", &market)
+	if len(market.Plugins) != 1 || market.Plugins[0].Name != "kit" || market.Plugins[0].Source != "./plugin" {
+		t.Fatalf("the marketplace: %+v", market)
+	}
+	var manifest struct {
+		Name string `json:"name"`
+	}
+	readJSON(t, "../plugin/.claude-plugin/plugin.json", &manifest)
+	if manifest.Name != "kit" {
+		t.Errorf("the plugin is named %q", manifest.Name)
+	}
+	mode, err := exec.CommandContext(t.Context(), "git", "ls-files", "-s", "../plugin/bin/kit").Output()
+	if err != nil || !strings.HasPrefix(string(mode), "100755 ") {
+		t.Errorf("plugin/bin/kit is not executable in git: %q, %v", mode, err)
+	}
+	runIn(t, place{dir: ".."}, "shellcheck", "plugin/bin/kit")
+	rules, err := os.ReadFile("../plugin/rules.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range regexp.MustCompile("`kit:([a-z-]+)`").FindAllStringSubmatch(string(rules), -1) {
+		skill, err := os.ReadFile(filepath.Join("../plugin/skills", m[1], "SKILL.md"))
+		if err != nil || !strings.Contains(string(skill), "\nname: "+m[1]+"\n") {
+			t.Errorf("rules.md names kit:%s, which no skill of that name holds: %v", m[1], err)
+		}
 	}
 }
 

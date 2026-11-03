@@ -17,7 +17,7 @@ var (
 // A path ending in / is a directory from the root; GLOSSARY.md is any
 // module's.
 func Harness() []string {
-	return []string{".github/", ".claude/", ".kit/", "AGENTS.md", "CLAUDE.md", "docs/adr/", "renovate.json", "GLOSSARY.md"}
+	return []string{".github/", ".claude/", ".kit/", "AGENTS.md", "CLAUDE.md", "docs/adr/", "GLOSSARY.md"}
 }
 
 func isHarness(p string) bool {
@@ -58,8 +58,6 @@ func harnessKind(p string) string {
 		return "the agent's instructions"
 	case strings.HasPrefix(p, "docs/adr/"):
 		return "a decision record"
-	case p == "renovate.json":
-		return "the dependency bot's rules"
 	}
 	return "a module's glossary"
 }

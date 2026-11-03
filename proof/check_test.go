@@ -27,8 +27,8 @@ func TestKitCheckRunsEveryGateAndFailsOnAny(t *testing.T) {
 	withZizmor(t)
 	gates := []string{
 		"golangci-lint (linux)", "kitvet (linux)", "golangci-lint (windows)", "kitvet (windows)",
-		"archtest", "sweep", "deadcode", "nilaway", "govulncheck", "go test", "guard",
-		"actionlint", "zizmor", "shellcheck", "psscriptanalyzer", "gitleaks", "renovate",
+		"archtest", "sweep", "deadcode", "nilaway", "govulncheck", "go test", "spec", "guard",
+		"actionlint", "zizmor", "shellcheck", "psscriptanalyzer", "gitleaks", "kit files",
 	}
 	out, code := kitRun(t, changeOf(t, trialCase{name: "no change"}), "check", "--base", "base", "--race=false")
 	if code != 0 || !strings.Contains(out, "kit check: every gate passes") {
