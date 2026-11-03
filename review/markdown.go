@@ -13,7 +13,7 @@ const Marker = "<!-- kit review -->"
 
 func words(k spec.ChangeKind) string {
 	if k == spec.Disabled {
-		return "disabled: tagged @wip, it stops running"
+		return "disabled: tagged `@wip`, it stops running"
 	}
 	return string(k)
 }

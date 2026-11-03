@@ -1,6 +1,7 @@
 package review_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -25,7 +26,7 @@ func TestASheetListsTheSpecFirstThenWhatElseNeedsApproval(t *testing.T) {
 	}
 	got := s.Markdown()
 	for _, want := range []string{
-		"- A note is listed, disabled: tagged @wip, it stops running (`features/notes.feature:7`)\n",
+		"- A note is listed, disabled: tagged `@wip`, it stops running (`features/notes.feature:7`)\n",
 		"- a new dependency, example.com/x (`go.mod:9`)\n",
 		"- this change touches 401 production lines, the limit is 400 (`the change`)\n",
 	} {
@@ -38,5 +39,19 @@ func TestASheetListsTheSpecFirstThenWhatElseNeedsApproval(t *testing.T) {
 	}
 	if !s.Labels()["needs-you"] {
 		t.Error("a sheet with items lacks needs-you")
+	}
+}
+
+// WHY: GitHub notifies the account an @name outside code names: a sheet
+// saying a scenario got its @wip tag would ping someone called wip.
+func TestTheSheetMentionsNoOne(t *testing.T) {
+	var changes []spec.Change
+	for _, k := range []spec.ChangeKind{spec.Added, spec.Changed, spec.Removed, spec.Disabled} {
+		changes = append(changes, spec.Change{Kind: k, File: "features/notes.feature", Line: 7, Name: "A note is listed"})
+	}
+	got := review.Sheet{Spec: changes}.Markdown()
+	outside := regexp.MustCompile("`[^`]*`").ReplaceAllString(got, "")
+	if strings.Contains(outside, "@") {
+		t.Errorf("the sheet has an @ outside code:\n%s", got)
 	}
 }
