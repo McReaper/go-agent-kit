@@ -12,7 +12,7 @@ The agent acts as the app through `kit app exec -- <command>`, with `KIT_APP_CLI
 
 `kit init github --repo OWNER/REPO`, as the owner, applies `kitinit/files/ruleset.json` and `ruleset-tags.json` (creating each, or bringing an existing one of the same name to the kit's), allows auto-merge and the deletion of merged branches, and makes releases immutable.
 
-- The default branch: a pull request, squash-merged; no review required but the code owners' on the harness, and every approval stays on record; the `kit` check passing, reported by GitHub Actions only, which holds the spec, a new dependency, the go line and a library's API until the owner approved the content they have; no `update` rule, so GitHub's auto-merge, which `kit-check.yml` turns on, lands the change once both hold.
+- The default branch: a pull request, squash-merged; no review required but the code owners' on the harness, and every approval stays on record; the `kit / kit` check passing, reported by GitHub Actions only, which holds the spec, a new dependency, the go line and a library's API until the owner approved the content they have; no `update` rule, so GitHub's auto-merge, which `kit-check.yml` turns on, lands the change once both hold.
 - Tags and releases: only the owner creates, moves or deletes a tag (the admin role bypasses, and pushes release tags from its own clone); once published, a release's tag and assets can't change.
 
 ## The kit's own default branch: `ruleset-kit.json`

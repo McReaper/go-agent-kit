@@ -85,7 +85,7 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 		case "pull_request":
 			want = []string{`"required_approving_review_count": 0`, `"require_code_owner_review": true`, `"dismiss_stale_reviews_on_push": false`, `"require_last_push_approval": false`}
 		case "required_status_checks":
-			want = []string{`{ "context": "kit", "integration_id": 15368 }`}
+			want = []string{`{ "context": "` + appCheck(t) + `", "integration_id": 15368 }`}
 		}
 		for _, p := range want {
 			if !strings.Contains(string(rule.Parameters), p) {
@@ -101,6 +101,35 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 			t.Errorf("the ruleset lacks a %s rule", want)
 		}
 	}
+}
+
+// WHY: a job of a called workflow reports its check as "<caller's job> /
+// <its job>": a ruleset requiring the merge check's job by its own name
+// waits for a check that never comes, and no change merges.
+func appCheck(t *testing.T) string {
+	t.Helper()
+	caller := jobs(t, "../kitinit/files/kit.yml")
+	if len(caller) != 1 || !slices.Contains(jobs(t, "../.github/workflows/kit-check.yml"), "kit") {
+		t.Fatalf("kit.yml calls the merge check from one job, its kit job reports: %v", caller)
+	}
+	return caller[0] + " / kit"
+}
+
+func jobs(t *testing.T, path string) []string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, body, ok := strings.Cut(string(data), "\njobs:\n")
+	if !ok {
+		t.Fatalf("%s has no jobs", path)
+	}
+	var out []string
+	for _, m := range regexp.MustCompile(`(?m)^  ([a-z][a-z0-9_-]*):\s*$`).FindAllStringSubmatch(body, -1) {
+		out = append(out, m[1])
+	}
+	return out
 }
 
 func TestTheTagRulesetLetsOnlyTheOwnerTagARelease(t *testing.T) {
