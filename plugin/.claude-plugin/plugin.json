@@ -1,0 +1,6 @@
+{
+  "name": "kit",
+  "description": "The anti-drift kit for a Go repository built on it: its skills, its rules, and the hooks that run its checks.",
+  "author": { "name": "McReaper" },
+  "homepage": "https://github.com/McReaper/go-agent-kit"
+}

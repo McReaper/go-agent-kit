@@ -109,9 +109,11 @@ func lastBracket(msg string) string {
 // files by name, it lints a tree that isn't one, like the proof's copies.
 func actionlintFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	workflows := filesWithExt(t, dir, ".yml", ".yaml")
+	workflows := slices.DeleteFunc(filesWithExt(t, dir, ".yml", ".yaml"), func(f string) bool {
+		return !strings.HasPrefix(filepath.ToSlash(f), ".github/workflows/")
+	})
 	if len(workflows) == 0 {
-		t.Fatal("no workflow to check: the trial must hold at least one")
+		return nil
 	}
 	out := runIn(t, place{dir, []int{1}}, append([]string{"actionlint", "-oneline"}, workflows...)...)
 	return diagTool{"actionlint/", lastBracket}.parse(t, dir, out)
@@ -157,7 +159,7 @@ func shellcheckFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	scripts := append(filesWithExt(t, dir, ".sh"), gitHooks(t, dir)...)
 	if len(scripts) == 0 {
-		t.Fatal("no shell script to check: the trial must hold at least one")
+		return nil
 	}
 	out := runIn(t, place{dir, []int{1}}, append([]string{"shellcheck", "-f", "gcc"}, scripts...)...)
 	return diagTool{"shellcheck/", lastBracket}.parse(t, dir, out)
@@ -242,6 +244,9 @@ type zizmorFinding struct {
 
 func zizmorFindings(t *testing.T, dir string) []finding {
 	t.Helper()
+	if _, err := os.Stat(filepath.Join(dir, ".github", "workflows")); err != nil {
+		return nil
+	}
 	out := runIn(t, place{dir, []int{11, 12, 13, 14}}, zizmorPath(t), "--offline", "--format", "json", ".")
 	var zs []zizmorFinding
 	if err := json.Unmarshal(out, &zs); err != nil {

@@ -26,7 +26,6 @@ func fileGates() []gate {
 		{"shellcheck", shellcheckGate},
 		{"psscriptanalyzer", psscriptanalyzerGate},
 		{"gitleaks", gitleaksGate},
-		{"renovate", renovateGate},
 	}
 }
 

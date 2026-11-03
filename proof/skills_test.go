@@ -13,7 +13,7 @@ var goFence = regexp.MustCompile("(?s)```go ([^\n]+)\n(.*?)```")
 // WHY: an agent copies a skill's code as written; it is proven like the
 // template's own, or the agent copies code no gate has seen.
 func TestTheSecretsSkillsCodePassesEveryGate(t *testing.T) {
-	doc, err := os.ReadFile(filepath.Join(cleanDir, ".claude", "skills", "secrets", "SKILL.md"))
+	doc, err := os.ReadFile("../plugin/skills/secrets/SKILL.md")
 	if err != nil {
 		t.Fatal(err)
 	}

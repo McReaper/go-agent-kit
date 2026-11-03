@@ -1,54 +1,40 @@
 package proof_test
 
 import (
+	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
 
-// WHY: the proof builds kit as kit.exe on every system; the hook calls
-// kit, which only Windows resolves to kit.exe. Elsewhere the PATH gets a
-// link named kit.
-func kitOnPath(t *testing.T) {
+func bash(t *testing.T, dir, command string) string {
 	t.Helper()
-	kit := kitCommand(t, "kit")
-	dir := filepath.Dir(kit)
-	if runtime.GOOS != "windows" {
-		dir = t.TempDir()
-		if err := os.Symlink(kit, filepath.Join(dir, "kit")); err != nil {
-			t.Fatal(err)
-		}
+	data, err := json.Marshal(map[string]any{"tool_name": "Bash", "cwd": dir, "tool_input": map[string]string{"command": command}})
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return string(data)
 }
 
-// WHY: the hook is the fastest gate: it stops a secret before it enters
-// the history, where only a rewrite removes it.
-func TestThePreCommitHookStopsAStagedSecret(t *testing.T) {
+// WHY: the plugin asks kit before each command the agent runs. A gesture
+// past the kit is refused before it reaches the platform, and a commit
+// waits until it holds no secret: one committed stays in the history,
+// where only a rewrite removes it.
+func TestThePreToolHookRefusesAGestureAndACommitWithAStagedSecret(t *testing.T) {
 	dir := changeOf(t, trialCase{name: "no change"})
-	kitOnPath(t)
-	t.Setenv("KIT_BASE", "base")
-	hook := func() (string, int) {
-		cmd := exec.CommandContext(t.Context(), "sh", ".githooks/pre-commit")
-		cmd.Dir = dir
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return string(out), exitCode(err)
-		}
-		return string(out), 0
+	if out, code := hookRun(t, bash(t, dir, "git -C . push origin main"), "pre-tool"); code != 2 || !strings.Contains(out, "through a pull request only") {
+		t.Errorf("a push to main: exit %d\n%s", code, out)
 	}
-	if out, code := hook(); code != 0 {
-		t.Fatalf("nothing staged: exit %d\n%s", code, out)
+	if out, code := hookRun(t, bash(t, dir, "git commit -m notes"), "pre-tool"); code != 0 {
+		t.Fatalf("a commit with nothing wrong staged: exit %d\n%s", code, out)
 	}
 	token := "ghp_" + strings.Repeat("a1B2c3D4e5F6", 3)
 	if err := os.WriteFile(filepath.Join(dir, "settings.txt"), []byte("token = \""+token+"\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	gitIn(t, dir, "add", "settings.txt")
-	if out, code := hook(); code != 1 || !strings.Contains(out, "settings.txt:1: github-pat") {
-		t.Errorf("a staged token: exit %d\n%s", code, out)
+	if out, code := hookRun(t, bash(t, dir, "git add -A && git commit -m notes"), "pre-tool"); code != 2 || !strings.Contains(out, "settings.txt:1: github-pat") {
+		t.Errorf("a commit with a staged token: exit %d\n%s", code, out)
 	}
 }

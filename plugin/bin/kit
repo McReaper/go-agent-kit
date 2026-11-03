@@ -1,0 +1,15 @@
+#!/bin/sh
+# kit, at the version the repository pins: the commit its
+# .github/workflows/kit.yml calls kit-check.yml at, so the agent's checks
+# are the merge check's. go run builds it once and caches it.
+set -eu
+root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "kit: not in a git repository" >&2
+  exit 2
+}
+pin=$(sed -n 's|.*go-agent-kit/\.github/workflows/kit-check\.yml@\([0-9a-f]\{40\}\).*|\1|p' "$root/.github/workflows/kit.yml" 2>/dev/null | head -n 1)
+if [ -z "$pin" ]; then
+  echo "kit: $root/.github/workflows/kit.yml pins no kit version: run kit init" >&2
+  exit 2
+fi
+exec go run "github.com/McReaper/go-agent-kit/cmd/kit@$pin" "$@"
