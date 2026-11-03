@@ -2,7 +2,7 @@
 
 ## Decision
 
-The kit's rules run as two tools: golangci-lint with `lint/golangci.yml`, and `kitvet`, a multichecker of the kit's own go/analysis analyzers. Both run once per target GOOS. `kit lint` (milestone 2) will run them together with the config embedded, so an app never reads a config of its own.
+The kit's rules run as two tools: golangci-lint with `lint/golangci.yml`, and `kitvet`, a multichecker of the kit's own go/analysis analyzers. Both run once per target GOOS. `kit check` runs them together with the config embedded, so an app never reads a config of its own.
 
 ## Why not a custom golangci-lint build with module plugins
 
