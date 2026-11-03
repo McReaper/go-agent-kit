@@ -10,12 +10,11 @@ name: kit-check
 # The kit it installs is the commit this workflow runs at, read from the
 # job's OIDC token, so the pin Dependabot moves is the only one.
 #
-# The caller runs on pull_request (opened, synchronize, reopened, edited),
-# pull_request_review (submitted) and push to the default branch, so a review
-# re-runs the check; it grants contents and pull-requests write for the
-# auto-merge, issues write for the label, id-token write for the version. An edit runs the jobs only when it
-# moved the pull request's base, as GitHub does to a stacked pull request
-# once the one below it merged.
+# The caller runs it on pull_request (opened, synchronize, reopened, edited)
+# and pull_request_review (submitted), so a review re-runs the check; it
+# grants contents and pull-requests write for the auto-merge, issues write
+# for the label, id-token write for the version. An edit runs the jobs only
+# when it moved the pull request's base.
 
 on:
   workflow_call:
@@ -111,11 +110,11 @@ jobs:
           echo "approved=$head" >> "$GITHUB_OUTPUT"
       - name: kit check
         env:
-          BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+          BASE: ${{ github.event.pull_request.base.ref }}
           APPROVED: ${{ steps.approval.outputs.approved || 'false' }}
         run: kit check --base "origin/$BASE" --ci --approved="$APPROVED" --approved-trees "$RUNNER_TEMP/approved-trees"
       - name: kit mutate
-        if: ${{ !cancelled() && github.event_name != 'push' }}
+        if: ${{ !cancelled() }}
         env:
           BASE: ${{ github.event.pull_request.base.ref }}
         run: kit mutate --base "origin/$BASE"

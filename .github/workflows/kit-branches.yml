@@ -1,0 +1,50 @@
+name: kit-branches
+
+# Deletes the branch of each merged pull request, through the caller kit
+# init writes, hourly. GitHub's own setting skips a branch an App's token
+# merged, and GitHub's auto-merge merges as the workflow's token. A pull
+# request stacked on that branch moves to the merged one's base first, with
+# auto-merge when that base is the default branch: deleting a base closes
+# the pull requests on it. The check that passed there ran against the
+# merged branch, whose changes the new base now has.
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  branches:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: kit-branches
+    permissions:
+      contents: write # delete a merged branch
+      pull-requests: write # move a pull request stacked on it, its auto-merge
+    steps:
+      - name: move stacked pull requests, delete merged branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+        run: |
+          set -eu
+          gh api "repos/$REPO/pulls?state=closed&sort=updated&direction=desc&per_page=50" \
+            --jq '.[] | select(.merged_at != null and .head.repo.full_name == .base.repo.full_name) | "\(.head.ref) \(.base.ref) \(.head.sha)"' |
+          while read -r head base sha; do
+            if [ "$head" = "$DEFAULT" ]; then continue; fi
+            now=$(gh api "repos/$REPO/git/ref/heads/$head" --jq .object.sha < /dev/null 2> /dev/null || true)
+            # Gone already, or pushed to since it merged: not the kit's to delete.
+            if [ "$now" != "$sha" ]; then continue; fi
+            gh api "repos/$REPO/pulls?state=open&base=$head" --jq '.[].number' < /dev/null |
+            while read -r n; do
+              gh api -X PATCH "repos/$REPO/pulls/$n" -f base="$base" --silent < /dev/null
+              if [ "$base" = "$DEFAULT" ]; then
+                gh pr merge "$n" --repo "$REPO" --auto --squash < /dev/null ||
+                  gh pr merge "$n" --repo "$REPO" --squash < /dev/null ||
+                  echo "::warning::pull request #$n moved to $base; neither auto-merge nor a merge went through"
+              fi
+            done
+            gh api -X DELETE "repos/$REPO/git/refs/heads/$head" --silent < /dev/null
+          done
