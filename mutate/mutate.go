@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/McReaper/go-agent-kit/guard"
+	"github.com/McReaper/go-agent-kit/internal/platform/modcopy"
 	"github.com/McReaper/go-agent-kit/internal/platform/mutesting"
 )
 
@@ -39,7 +40,7 @@ func Run(ctx context.Context, dir, base string) (r Report, err error) {
 	if len(changed) == 0 {
 		return Report{Score: 1}, nil
 	}
-	work, err := copyModule(ctx, dir)
+	work, err := modcopy.Copy(ctx, dir)
 	if err != nil {
 		return Report{}, err
 	}

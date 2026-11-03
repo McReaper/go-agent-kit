@@ -1,4 +1,6 @@
-package mutate
+// Package modcopy copies a module to a temporary directory, for the tools
+// that rewrite or add files: the working tree stays as the agent left it.
+package modcopy
 
 import (
 	"context"
@@ -12,15 +14,17 @@ import (
 	"github.com/McReaper/go-agent-kit/internal/platform/git"
 )
 
-// WHY: the copy holds the files git sees in dir, tracked and new; git's
-// list leaves out what the repository ignores: build outputs,
+// Copy copies the files git sees in dir, tracked and new, to a new
+// temporary directory and returns it; the caller removes it.
+//
+// WHY: git's list leaves out what the repository ignores: build outputs,
 // databases and binaries that can weigh gigabytes and that tests don't read.
-func copyModule(ctx context.Context, dir string) (work string, err error) {
+func Copy(ctx context.Context, dir string) (work string, err error) {
 	out, err := git.Run(ctx, dir, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
 	if err != nil {
 		return "", err
 	}
-	work, err = os.MkdirTemp("", "kit-mutate-*")
+	work, err = os.MkdirTemp("", "kit-copy-*")
 	if err != nil {
 		return "", fmt.Errorf("make the copy's directory: %w", err)
 	}
