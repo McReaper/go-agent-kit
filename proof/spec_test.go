@@ -38,10 +38,10 @@ func TestKitSpecReportsEveryCase(t *testing.T) {
 			continue
 		}
 		t.Run(c.name, func(t *testing.T) {
-			check(t, []trialCase{c}, specTool, specFindings(t, changeOf(t, c)))
+			check(t, wantsOf(specTool, c), specFindings(t, changeOf(t, c)))
 		})
 	}
 	t.Run("template", func(t *testing.T) {
-		check(t, nil, specTool, specFindings(t, changeOf(t, trialCase{name: "no change"})))
+		check(t, wantsOf(specTool), specFindings(t, changeOf(t, trialCase{name: "no change"})))
 	})
 }

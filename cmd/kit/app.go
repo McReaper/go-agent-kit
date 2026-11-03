@@ -99,5 +99,5 @@ func runAsApp(ctx context.Context, o *appOptions, argv []string) error {
 	if id.ID, err = c.UserID(ctx, id.Login); err != nil {
 		return err
 	}
-	return ghapp.Exec(ctx, argv, tok, id)
+	return ghapp.Exec(ctx, argv, ghapp.Bot{Token: tok, Identity: id})
 }

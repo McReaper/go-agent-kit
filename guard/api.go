@@ -33,11 +33,12 @@ func apiChanges(ctx context.Context, dir string, d Diff) (items []Finding, err e
 		return nil, fmt.Errorf("make the base's directory: %w", err)
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(old)) }()
-	if err := extractBase(ctx, dir, d.Base, old); err != nil {
+	t := trees{head: dir, base: old, module: module}
+	if err := t.extractBase(ctx, d.Base); err != nil {
 		return nil, err
 	}
 	for _, p := range pkgs {
-		more, err := packageAPI(ctx, trees{head: dir, base: old}, module, p)
+		more, err := t.packageAPI(ctx, p)
 		if err != nil {
 			return nil, err
 		}
@@ -58,11 +59,13 @@ func libraryPackages(d Diff) []string {
 	return out
 }
 
+// WHY: the change's module at head, its base's tree extracted beside it,
+// and the module's path, which apidiff names packages by.
 type trees struct {
-	head, base string
+	head, base, module string
 }
 
-func packageAPI(ctx context.Context, t trees, module, p string) ([]Finding, error) {
+func (t trees) packageAPI(ctx context.Context, p string) ([]Finding, error) {
 	before, after := hasGo(filepath.Join(t.base, p)), hasGo(filepath.Join(t.head, p))
 	switch {
 	case !before:
@@ -71,10 +74,10 @@ func packageAPI(ctx context.Context, t trees, module, p string) ([]Finding, erro
 		return []Finding{apiBreak(p, "the package is removed")}, nil
 	}
 	export := filepath.Join(t.base, ".kit-api-export")
-	if _, err := output(ctx, t.base, "apidiff", "-w", export, module+"/"+p); err != nil {
+	if _, err := output(ctx, t.base, "apidiff", "-w", export, t.module+"/"+p); err != nil {
 		return nil, err
 	}
-	out, err := output(ctx, t.head, "apidiff", export, module+"/"+p)
+	out, err := output(ctx, t.head, "apidiff", export, t.module+"/"+p)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +117,7 @@ func hasGo(dir string) bool {
 }
 
 func output(ctx context.Context, dir string, argv ...string) (string, error) {
-	out, err := run.Command(ctx, dir, nil, argv...)
+	out, err := run.Command(ctx, dir, argv...)
 	if err != nil {
 		return "", err
 	}
@@ -126,17 +129,17 @@ func output(ctx context.Context, dir string, argv ...string) (string, error) {
 
 // WHY: git archive writes the base's tree without touching the repository:
 // a worktree would add to .git while the agent works in it.
-func extractBase(ctx context.Context, dir, base, to string) (err error) {
-	out, err := run.Command(ctx, dir, nil, "git", "archive", "--format=tar", base)
+func (t trees) extractBase(ctx context.Context, base string) (err error) {
+	out, err := run.Command(ctx, t.head, "git", "archive", "--format=tar", base)
 	if err != nil {
 		return err
 	}
 	if out.Code != 0 {
 		return fmt.Errorf("git archive %s: exit %d: %s", base, out.Code, strings.TrimSpace(string(out.Stderr)))
 	}
-	root, err := os.OpenRoot(to)
+	root, err := os.OpenRoot(t.base)
 	if err != nil {
-		return fmt.Errorf("open %s: %w", to, err)
+		return fmt.Errorf("open %s: %w", t.base, err)
 	}
 	defer func() { err = errors.Join(err, root.Close()) }()
 	tr := tar.NewReader(bytes.NewReader(out.Stdout))

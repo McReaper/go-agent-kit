@@ -35,7 +35,7 @@ type Mutant struct {
 // WHY: go-mutesting exits 1 when a mutant lived; any other failure means it
 // did not run, which must not pass as a perfect score.
 func Run(ctx context.Context, dir string, pkgs []string) ([]Mutant, error) {
-	out, err := run.Command(ctx, dir, nil, append([]string{"go-mutesting"}, pkgs...)...)
+	out, err := run.Command(ctx, dir, append([]string{"go-mutesting"}, pkgs...)...)
 	if err != nil {
 		return nil, err
 	}

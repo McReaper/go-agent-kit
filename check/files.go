@@ -57,8 +57,8 @@ func actionlintGate(ctx context.Context, o Options) Result {
 	if err != nil || len(files) == 0 {
 		return Result{Err: err}
 	}
-	out, err := run.Command(ctx, o.Dir, nil, append([]string{"actionlint", "-oneline"}, files...)...)
-	return fromLines(out, err, 1, out.Stdout)
+	out, err := run.Command(ctx, o.Dir, append([]string{"actionlint", "-oneline"}, files...)...)
+	return ran{out, err}.result(1, out.Stdout)
 }
 
 var zizmorLine = regexp.MustCompile(`^::\w+ file=([^,]+),line=(\d+),title=([^:]+)::[^:]*:\d+: (.*)$`)
@@ -69,7 +69,7 @@ func zizmorGate(ctx context.Context, o Options) Result {
 	if err != nil || len(files) == 0 {
 		return Result{Err: err}
 	}
-	out, err := run.Command(ctx, o.Dir, nil, append([]string{"zizmor", "--offline", "--format", "github"}, files...)...)
+	out, err := run.Command(ctx, o.Dir, append([]string{"zizmor", "--offline", "--format", "github"}, files...)...)
 	if err != nil {
 		return failed(err)
 	}
@@ -94,8 +94,8 @@ func shellcheckGate(ctx context.Context, o Options) Result {
 	if err != nil || len(scripts) == 0 {
 		return Result{Err: err}
 	}
-	out, err := run.Command(ctx, o.Dir, nil, append([]string{"shellcheck", "-f", "gcc"}, scripts...)...)
-	return fromLines(out, err, 1, out.Stdout)
+	out, err := run.Command(ctx, o.Dir, append([]string{"shellcheck", "-f", "gcc"}, scripts...)...)
+	return ran{out, err}.result(1, out.Stdout)
 }
 
 // WHY: a git hook has no extension; its first line says it is a script.

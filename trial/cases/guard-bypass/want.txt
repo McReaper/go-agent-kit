@@ -4,8 +4,6 @@
 !isolated
 guard/bypass-hidden-dir internal/notes/internal/list/_hidden/hidden.go:0 never builds, vets or tests a directory starting with _ or \.
 guard/bypass-generated internal/notes/internal/list/fake_generated.go:1 the generated-code header turns linters off
-guard/bypass-skip internal/notes/internal/list/skip_test.go:6 a skipped test proves nothing
-guard/bypass-skip internal/notes/internal/list/skip_test.go:9 a skipped test proves nothing
 guard/bypass-testmain internal/notes/internal/list/main_test.go:5 a TestMain or init in a test runs before every test of the package and can skip them all
 guard/bypass-directive internal/notes/internal/list/suppress.go:5 //go:linkname, //go:debug and cgo
 guard/bypass-suppression internal/notes/internal/list/suppress.go:8 a finding is fixed, not silenced

@@ -38,10 +38,16 @@ func Env(base []string, tok Token, id Identity) []string {
 	)
 }
 
+// Bot is the app at work: its installation token and its bot user.
+type Bot struct {
+	Token    Token
+	Identity Identity
+}
+
 // Exec runs argv as the app, its standard streams the caller's.
-func Exec(ctx context.Context, argv []string, tok Token, id Identity) error {
+func Exec(ctx context.Context, argv []string, b Bot) error {
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
-	cmd.Env = Env(os.Environ(), tok, id)
+	cmd.Env = Env(os.Environ(), b.Token, b.Identity)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("%s: %w", argv[0], err)

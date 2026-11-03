@@ -55,10 +55,15 @@ func echo(effect op.Effect) op.Op[args, args] {
 	}
 }
 
-func runCommand(t *testing.T, o op.Op[args, args], j op.Journal, flags ...string) (string, error) {
+type bound struct {
+	op      op.Op[args, args]
+	journal op.Journal
+}
+
+func runCommand(t *testing.T, b bound, flags ...string) (string, error) {
 	t.Helper()
 	var out bytes.Buffer
-	cmd, err := op.Command(o, j, &out)
+	cmd, err := op.Command(b.op, b.journal, &out)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +92,7 @@ func TestCommandFlagsAreTheJSONNamesWithHyphens(t *testing.T) {
 }
 
 func TestCommandRunsTheOperationWithItsFlags(t *testing.T) {
-	got, err := runCommand(t, echo(op.ReadOnly), &memJournal{}, "--name", "x", "--max-size", "7", "--dry-run", "--tag", "", "--limit", "0")
+	got, err := runCommand(t, bound{echo(op.ReadOnly), &memJournal{}}, "--name", "x", "--max-size", "7", "--dry-run", "--tag", "", "--limit", "0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +102,7 @@ func TestCommandRunsTheOperationWithItsFlags(t *testing.T) {
 }
 
 func TestAListFlagTakesCommasAndRepeats(t *testing.T) {
-	got, err := runCommand(t, echo(op.ReadOnly), &memJournal{}, "--name", "x", "--labels", "go,cli", "--labels", "mcp")
+	got, err := runCommand(t, bound{echo(op.ReadOnly), &memJournal{}}, "--name", "x", "--labels", "go,cli", "--labels", "mcp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,27 +114,27 @@ func TestAListFlagTakesCommasAndRepeats(t *testing.T) {
 // WHY: an optional argument tells "not given" from its zero value; a flag
 // left out stays nil, so the operation applies its default.
 func TestAnOptionalFlagLeftOutIsNil(t *testing.T) {
-	got, err := runCommand(t, echo(op.ReadOnly), &memJournal{}, "--name", "x")
+	got, err := runCommand(t, bound{echo(op.ReadOnly), &memJournal{}}, "--name", "x")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got != `{"name":"x","dry_run":false}` {
 		t.Errorf("printed %s", got)
 	}
-	if _, err := runCommand(t, echo(op.ReadOnly), &memJournal{}, "--limit", "many"); err == nil {
+	if _, err := runCommand(t, bound{echo(op.ReadOnly), &memJournal{}}, "--limit", "many"); err == nil {
 		t.Error("--limit many accepted")
 	}
 }
 
 func TestAnOperationThatChangesSomethingIsJournaled(t *testing.T) {
 	j := &memJournal{}
-	if _, err := runCommand(t, echo(op.Additive), j, "--name", "x"); err != nil {
+	if _, err := runCommand(t, bound{echo(op.Additive), j}, "--name", "x"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runCommand(t, echo(op.Destructive), j, "--name", "fail"); !errors.Is(err, errBoom) {
+	if _, err := runCommand(t, bound{echo(op.Destructive), j}, "--name", "fail"); !errors.Is(err, errBoom) {
 		t.Fatalf("err = %v, want %v", err, errBoom)
 	}
-	if _, err := runCommand(t, echo(op.ReadOnly), j, "--name", "y"); err != nil {
+	if _, err := runCommand(t, bound{echo(op.ReadOnly), j}, "--name", "y"); err != nil {
 		t.Fatal(err)
 	}
 	want := []entry{{"echo_args", args{Name: "x"}, nil}, {"echo_args", args{Name: "fail"}, errBoom}}
@@ -139,7 +144,7 @@ func TestAnOperationThatChangesSomethingIsJournaled(t *testing.T) {
 }
 
 func TestARunWhoseJournalFailsReportsIt(t *testing.T) {
-	_, err := runCommand(t, echo(op.Additive), &memJournal{err: errors.New("disk full")}, "--name", "x")
+	_, err := runCommand(t, bound{echo(op.Additive), &memJournal{err: errors.New("disk full")}}, "--name", "x")
 	if err == nil || !strings.Contains(err.Error(), "echo_args ran, but its journal entry failed: disk full") {
 		t.Errorf("err = %v", err)
 	}

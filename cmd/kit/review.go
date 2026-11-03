@@ -22,14 +22,7 @@ type reviewOptions struct {
 
 func reviewCommand(out io.Writer) *cobra.Command {
 	var o reviewOptions
-	cmd := &cobra.Command{
-		Use:   "review",
-		Short: "Write the change's review sheet: what the owner reads instead of the diff",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runReview(cmd.Context(), out, o)
-		},
-	}
+	cmd := leaf("review", "Write the change's review sheet: what the owner reads instead of the diff", func(cmd *cobra.Command) error { return runReview(cmd.Context(), out, o) })
 	cmd.Flags().StringVar(&o.base, "base", "origin/main", "the branch the change goes into")
 	cmd.Flags().BoolVar(&o.labels, "labels", false, "print the kit's labels instead, +name to add, -name to remove")
 	cmd.Flags().BoolVar(&o.asJSON, "json", false, "print the sheet's items as JSON")

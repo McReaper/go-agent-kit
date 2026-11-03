@@ -21,10 +21,10 @@ import (
 // registered.
 func TestTheBuiltProgramAnswersEveryToolAndCommandWithItsExample(t *testing.T) {
 	bin := build(t)
-	if r := run(t, bin, t.TempDir(), "--help"); r.code != 0 {
+	if r := (program{bin, t.TempDir()}).run(t, "--help"); r.code != 0 {
 		t.Fatalf("notes --help exited %d:\n%s", r.code, r.stderr)
 	}
-	s := connect(t, bin, t.TempDir())
+	s := program{bin, t.TempDir()}.connect(t)
 	res, err := s.ListTools(t.Context(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +39,7 @@ func TestTheBuiltProgramAnswersEveryToolAndCommandWithItsExample(t *testing.T) {
 			t.Errorf("tool %s with %v: %v", tool.Name, example, err)
 		}
 		args := append([]string{strings.ReplaceAll(tool.Name, "_", "-")}, flagsOf(t, example)...)
-		if r := run(t, bin, dataDir, args...); r.code != 0 && r.code != 1 {
+		if r := (program{bin, dataDir}).run(t, args...); r.code != 0 && r.code != 1 {
 			t.Errorf("notes %s exited %d:\n%s", strings.Join(args, " "), r.code, r.stderr)
 		}
 	}

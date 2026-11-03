@@ -41,12 +41,12 @@ func rules(fs []guard.Finding) []string {
 
 func TestProtectedChangesBlockOnlyAtMergeUntilApprovedAndBypassesAlways(t *testing.T) {
 	d := guard.Diff{Files: []guard.File{
-		{Path: "x_test.go", Status: 'M', Added: []guard.Line{{N: 4, Text: "\tt.Skip()"}}},
+		{Path: "x.go", Status: 'M', Added: []guard.Line{{N: 4, Text: "\tx := 1 //nolint"}}},
 		{Path: "AGENTS.md", Status: 'M'},
 		{Path: "go.mod", Status: 'M', Added: []guard.Line{{N: 3, Text: "go 1.26.0"}}},
 	}}
 	all := guard.Check(d)
-	if diff := cmp.Diff([]string{"bypass-skip", "protected-harness", "protected-gomod"}, rules(all)); diff != "" {
+	if diff := cmp.Diff([]string{"bypass-suppression", "protected-harness", "protected-gomod"}, rules(all)); diff != "" {
 		t.Errorf("Check (-want +got):\n%s", diff)
 	}
 	cases := []struct {
@@ -54,30 +54,17 @@ func TestProtectedChangesBlockOnlyAtMergeUntilApprovedAndBypassesAlways(t *testi
 		ci, approved bool
 		want         []string
 	}{
-		{"locally, only the bypass", false, false, []string{"bypass-skip"}},
-		{"in CI, unapproved, all of them", true, false, []string{"bypass-skip", "protected-harness", "protected-gomod"}},
-		{"in CI, approved, still the bypass", true, true, []string{"bypass-skip"}},
+		{"locally, only the bypass", false, false, []string{"bypass-suppression"}},
+		{"in CI, unapproved, all of them", true, false, []string{"bypass-suppression", "protected-harness", "protected-gomod"}},
+		{"in CI, approved, still the bypass", true, true, []string{"bypass-suppression"}},
 	}
 	for _, c := range cases {
-		covered, err := guard.Covered(t.Context(), ".", all, guard.Approval{Head: c.approved})
+		covered, err := guard.Covered(t.Context(), all, guard.Approval{Dir: ".", Head: c.approved})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if diff := cmp.Diff(c.want, rules(guard.Blocking(all, c.ci, covered))); diff != "" {
 			t.Errorf("%s (-want +got):\n%s", c.name, diff)
-		}
-	}
-}
-
-func TestSensitiveFilesAreRefusedButNotTheirExamplesOrPublicHalves(t *testing.T) {
-	for name, want := range map[string]bool{
-		".env": true, "deploy/.env.production": true, ".env.example": false,
-		"certs/server.pem": true, "a/tls.KEY": true, "store.p12": true,
-		"home/.ssh/id_ed25519": true, "home/.ssh/id_ed25519.pub": false, "key.go": false,
-	} {
-		d := guard.Diff{Files: []guard.File{{Path: name, Status: 'A'}}}
-		if got := len(guard.Check(d)) == 1; got != want {
-			t.Errorf("%s refused = %v, want %v", name, got, want)
 		}
 	}
 }

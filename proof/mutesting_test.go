@@ -18,7 +18,7 @@ func mutestingFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	var findings []finding
 	for _, pkg := range casePackages(t, dir) {
-		out := runIn(t, dir, []int{1}, "go-mutesting", "./"+pkg)
+		out := runIn(t, place{dir, []int{1}}, "go-mutesting", "./"+pkg)
 		findings = append(findings, livedMutants(pkg, string(out))...)
 	}
 	return findings
@@ -28,7 +28,7 @@ func mutestingFindings(t *testing.T, dir string) []finding {
 // case adds, named *case.
 func casePackages(t *testing.T, dir string) []string {
 	t.Helper()
-	out := runIn(t, dir, nil, "go", "list", "-f", "{{.Dir}}", "./...")
+	out := runIn(t, place{dir: dir}, "go", "list", "-f", "{{.Dir}}", "./...")
 	var pkgs []string
 	for line := range strings.Lines(string(out)) {
 		d := strings.TrimSpace(line)

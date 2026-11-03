@@ -10,21 +10,33 @@ import (
 	"github.com/McReaper/go-agent-kit/internal/platform/run"
 )
 
-// Download returns the directory of module at version in the module cache,
-// fetching it first if the cache doesn't hold it.
-func Download(ctx context.Context, module, version string) (string, error) {
-	o, err := run.Command(ctx, ".", nil, "go", "mod", "download", "-json", module+"@"+version)
+// Commit returns the commit module's version names, from the module proxy's
+// record of where the version came from.
+func Commit(ctx context.Context, module, version string) (string, error) {
+	m, err := download(ctx, module, version)
+	if err == nil && len(m.Origin.Hash) != 40 {
+		err = fmt.Errorf("go mod download %s@%s: no commit", module, version)
+	}
+	return m.Origin.Hash, err
+}
+
+type downloaded struct {
+	Origin struct {
+		Hash string `json:"Hash"`
+	} `json:"Origin"`
+}
+
+func download(ctx context.Context, module, version string) (downloaded, error) {
+	o, err := run.Command(ctx, ".", "go", "mod", "download", "-json", module+"@"+version)
 	if err != nil {
-		return "", err
+		return downloaded{}, err
 	}
 	if o.Code != 0 {
-		return "", fmt.Errorf("go mod download %s@%s: %s", module, version, strings.TrimSpace(string(o.Stderr)+string(o.Stdout)))
+		return downloaded{}, fmt.Errorf("go mod download %s@%s: %s", module, version, strings.TrimSpace(string(o.Stderr)+string(o.Stdout)))
 	}
-	var m struct {
-		Dir string `json:"Dir"`
+	var m downloaded
+	if err := json.Unmarshal(o.Stdout, &m); err != nil {
+		return downloaded{}, fmt.Errorf("go mod download %s@%s: %w", module, version, err)
 	}
-	if err := json.Unmarshal(o.Stdout, &m); err != nil || m.Dir == "" {
-		return "", fmt.Errorf("go mod download %s@%s: no directory in %q", module, version, o.Stdout)
-	}
-	return m.Dir, nil
+	return m, nil
 }

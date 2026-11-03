@@ -61,7 +61,7 @@ func TestAToolShowsItsExampleInItsSchema(t *testing.T) {
 // WHY: the program exits 1 when an operation refused or failed and 2 when
 // the command line didn't parse; it tells them apart by this type.
 func TestAnOperationsErrorIsAFailureAndABadFlagIsNot(t *testing.T) {
-	_, err := runCommand(t, echo(op.ReadOnly), &memJournal{}, "--name", "fail")
+	_, err := runCommand(t, bound{echo(op.ReadOnly), &memJournal{}}, "--name", "fail")
 	f, ok := errors.AsType[*op.Failure](err)
 	if !ok || f == nil {
 		t.Fatalf("operation error: err = %v (%T), want a *Failure", err, err)
@@ -69,7 +69,7 @@ func TestAnOperationsErrorIsAFailureAndABadFlagIsNot(t *testing.T) {
 	if f.Op != "echo_args" || !errors.Is(f, errBoom) || f.Error() != errBoom.Error() {
 		t.Errorf("operation error: %+v, want echo_args's, wrapping boom with boom's message", *f)
 	}
-	_, err = runCommand(t, echo(op.ReadOnly), &memJournal{}, "--no-such-flag")
+	_, err = runCommand(t, bound{echo(op.ReadOnly), &memJournal{}}, "--no-such-flag")
 	if err == nil || errors.As(err, new(*op.Failure)) {
 		t.Errorf("bad flag: err = %v (%T), want an error that isn't a *Failure", err, err)
 	}

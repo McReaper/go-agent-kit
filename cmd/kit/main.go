@@ -5,8 +5,8 @@
 //	kit sweep [--json]
 //	kit mutate [--base origin/main] [--min 0.8]
 //	kit review [--base origin/main] [--labels | --json]
-//	kit sync --version <kit commit> [--from template-dir]
 //	kit spec [--json]
+//	kit secrets
 package main
 
 import (
@@ -39,7 +39,7 @@ func main() {
 
 func root(out io.Writer) *cobra.Command {
 	r := &cobra.Command{Use: "kit", Short: "The anti-drift kit's checks", SilenceUsage: true, SilenceErrors: true}
-	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand(), syncCommand(out), specCommand(out))
+	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand(), specCommand(out), secretsCommand(out))
 	return r
 }
 
@@ -53,14 +53,7 @@ type guardOptions struct {
 
 func guardCommand(out io.Writer) *cobra.Command {
 	var o guardOptions
-	cmd := &cobra.Command{
-		Use:   "guard",
-		Short: "Check a change for bypasses, protected files and size",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runGuard(cmd.Context(), out, o)
-		},
-	}
+	cmd := leaf("guard", "Check a change for bypasses, protected files and size", func(cmd *cobra.Command) error { return runGuard(cmd.Context(), out, o) })
 	cmd.Flags().StringVar(&o.base, "base", "origin/main", "the branch the change goes into")
 	cmd.Flags().BoolVar(&o.ci, "ci", false, "the merge check: changes that need approval fail until --approved")
 	cmd.Flags().BoolVar(&o.approved, "approved", false, "a code owner approved the change's latest commit")
@@ -78,7 +71,7 @@ func runGuard(ctx context.Context, out io.Writer, o guardOptions) error {
 	if err != nil {
 		return err
 	}
-	covered, err := guard.Covered(ctx, ".", findings, guard.Approval{Head: o.approved, Trees: trees})
+	covered, err := guard.Covered(ctx, findings, guard.Approval{Dir: ".", Head: o.approved, Trees: trees})
 	if err != nil {
 		return err
 	}
@@ -86,7 +79,7 @@ func runGuard(ctx context.Context, out io.Writer, o guardOptions) error {
 	if o.asJSON {
 		err = writeJSON(out, findings)
 	} else {
-		err = report(out, findings, len(d.Files), o.base)
+		err = o.report(out, findings, len(d.Files))
 	}
 	if err != nil {
 		return err
@@ -97,7 +90,7 @@ func runGuard(ctx context.Context, out io.Writer, o guardOptions) error {
 	return nil
 }
 
-func report(out io.Writer, findings []guard.Finding, files int, base string) error {
+func (o guardOptions) report(out io.Writer, findings []guard.Finding, files int) error {
 	var broken, approval []guard.Finding
 	for _, f := range findings {
 		if f.NeedsApproval() {
@@ -110,7 +103,7 @@ func report(out io.Writer, findings []guard.Finding, files int, base string) err
 	section(&b, "Blocking: fix these", broken)
 	section(&b, "Needs the owner's approval before merge (CI holds the change until then)", approval)
 	fmt.Fprintf(&b, "kit guard: %d files changed since %s (commits, edits and new files): %d blocking, %d for the owner to approve\n",
-		files, base, len(broken), len(approval))
+		files, o.base, len(broken), len(approval))
 	if _, err := io.WriteString(out, b.String()); err != nil {
 		return fmt.Errorf("print findings: %w", err)
 	}
@@ -143,4 +136,9 @@ func writeJSON(out io.Writer, findings []guard.Finding) error {
 		return fmt.Errorf("print findings: %w", err)
 	}
 	return nil
+}
+
+// WHY: every kit command takes flags and no argument; one helper builds them.
+func leaf(use, short string, run func(*cobra.Command) error) *cobra.Command {
+	return &cobra.Command{Use: use, Short: short, Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error { return run(cmd) }}
 }

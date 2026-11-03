@@ -89,7 +89,7 @@ linters:
         - name: function-length
           arguments: [0, 30]
         - name: argument-limit
-          arguments: [4]
+          arguments: [3]
         - name: file-length-limit
           arguments:
             - max: 300
@@ -171,6 +171,10 @@ linters:
           msg: "M7: recover only at the process boundary, in platform code"
         - pattern: InsecureSkipVerify
           msg: "S5: TLS verification is never turned off"
+        - pattern: ^testing\.(T|B|F|TB)\.Skip(f|Now)?$
+          msg: "T2: a skipped test proves nothing: make it pass, or delete it"
+        - pattern: ^testing\.Short$
+          msg: "T2: a test that skips itself in short mode proves nothing: make it fast, or move the slow part out"
     testpackage:
       # Its default skips export_test.go and internal_test.go: a door to any
       # package's internals, open to every test.
@@ -180,7 +184,7 @@ linters:
         rules:
           json: snake
     dupl:
-      threshold: 100
+      threshold: 35
     interfacebloat:
       max: 5
     sloglint:

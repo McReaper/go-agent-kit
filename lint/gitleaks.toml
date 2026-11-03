@@ -1,0 +1,14 @@
+# The kit's gitleaks config, embedded in kit and passed to every scan: an
+# app's own .gitleaks.toml, which could allow a secret, is never read.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "sensitive-file"
+description = "S1: keys, certificates and env files are never committed: load them at run time from the environment or a secret store"
+path = '''(?i)(^|/)(\.env(\.[^/]*)?|id_(rsa|dsa|ecdsa|ed25519)[^/]*|[^/]+\.(pem|key|pfx|p12|jks|keystore|ppk))$'''
+
+[[rules.allowlists]]
+description = "an env file's example and a public key are meant to be shared"
+paths = ['''(?i)(^|/)\.env\.example$''', '''(?i)\.pub$''']

@@ -14,14 +14,7 @@ import (
 
 func specCommand(out io.Writer) *cobra.Command {
 	var asJSON bool
-	cmd := &cobra.Command{
-		Use:   "spec",
-		Short: "Prove the spec: each scenario passes alone, and fails when a value a Then step expects is altered",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runSpec(cmd.Context(), out, asJSON)
-		},
-	}
+	cmd := leaf("spec", "Prove the spec: each scenario passes alone, and fails when a value a Then step expects is altered", func(cmd *cobra.Command) error { return runSpec(cmd.Context(), out, asJSON) })
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the findings as JSON")
 	return cmd
 }

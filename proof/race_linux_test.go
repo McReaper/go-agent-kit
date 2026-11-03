@@ -12,7 +12,7 @@ import (
 // on Linux, where both are present, so this proof is built for Linux only.
 func raceFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	out := runIn(t, dir, []int{1}, "go", "test", "-race", "-count=1", "./...")
+	out := runIn(t, place{dir, []int{1}}, "go", "test", "-race", "-count=1", "./...")
 	return raceFrames(t, dir, string(out))
 }
 

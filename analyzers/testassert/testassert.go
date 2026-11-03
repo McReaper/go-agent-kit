@@ -116,13 +116,15 @@ func isNilComparison(pass *analysis.Pass, cond ast.Expr) bool {
 	if !ok {
 		return false
 	}
+	other := b.X
 	switch {
 	case isNil(pass, b.Y):
-		return b.Op == token.NEQ && isError(pass, b.X) || !isError(pass, b.X) && (b.Op == token.EQL || b.Op == token.NEQ)
 	case isNil(pass, b.X):
-		return b.Op == token.NEQ && isError(pass, b.Y) || !isError(pass, b.Y) && (b.Op == token.EQL || b.Op == token.NEQ)
+		other = b.Y
+	default:
+		return false
 	}
-	return false
+	return b.Op == token.NEQ && isError(pass, other) || !isError(pass, other) && (b.Op == token.EQL || b.Op == token.NEQ)
 }
 
 func isNil(pass *analysis.Pass, e ast.Expr) bool {

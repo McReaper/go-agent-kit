@@ -11,6 +11,9 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/McReaper/go-agent-kit/archtest"
+	"github.com/McReaper/go-agent-kit/sweep"
 )
 
 // Options says what to check and how strictly.
@@ -78,7 +81,7 @@ func perSystem(o Options, pattern string) []gate {
 func gates(o Options) []gate {
 	gs := perSystem(o, "./...")
 	gs = append(gs,
-		gate{"archtest", archGate}, gate{"sweep", sweepGate}, gate{"deadcode", deadcodeGate},
+		gate{"archtest", listGate(archtest.Check, archLine)}, gate{"sweep", listGate(sweep.Check, sweepLine)}, gate{"deadcode", deadcodeGate},
 		gate{"nilaway", nilawayGate}, gate{"govulncheck", vulnGate}, gate{"go test", testGate}, gate{"spec", specGate}, gate{"guard", guardGate})
 	return append(gs, fileGates()...)
 }
@@ -99,6 +102,11 @@ func rel(dir, file string) string {
 	return file
 }
 
-func position(dir, file string, line int, msg string) string {
-	return fmt.Sprintf("%s:%d: %s", rel(dir, file), line, msg)
+type at struct {
+	file string
+	line int
+}
+
+func position(dir string, p at, msg string) string {
+	return fmt.Sprintf("%s:%d: %s", rel(dir, p.file), p.line, msg)
 }

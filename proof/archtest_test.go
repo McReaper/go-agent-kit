@@ -22,7 +22,7 @@ func archFindings(t *testing.T, dir string) []finding {
 }
 
 func TestArchtestFindsNothingInTheCleanTrial(t *testing.T) {
-	check(t, nil, archTool, archFindings(t, cleanDir))
+	check(t, wantsOf(archTool), archFindings(t, cleanDir))
 }
 
 func TestArchtestReportsEveryCase(t *testing.T) {

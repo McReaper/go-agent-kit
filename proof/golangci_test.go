@@ -94,7 +94,7 @@ func golangciFindings(t *testing.T, dir string) []finding {
 }
 
 func TestGolangciFindsNothingInTheCleanTrial(t *testing.T) {
-	check(t, nil, golangciTool, golangciFindings(t, cleanDir))
+	check(t, wantsOf(golangciTool), golangciFindings(t, cleanDir))
 }
 
 func TestGolangciReportsEveryCase(t *testing.T) {

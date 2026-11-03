@@ -23,14 +23,14 @@ const (
 	MaxModules         = 1
 )
 
-// Check returns every rule d breaks that its lines show: bypasses and
-// sensitive files, which block everywhere, and protected changes and size,
-// which need a code owner's approval before merge (see NeedsApproval).
+// Check returns every rule d breaks that its lines show: bypasses, which
+// block everywhere, and protected changes and size, which need a code
+// owner's approval before merge (see NeedsApproval). A key or an env file
+// committed is gitleaks', with the kit's rules.
 func Check(d Diff) []Finding {
 	var out []Finding
 	for _, f := range d.Files {
 		out = append(out, bypasses(f)...)
-		out = append(out, sensitive(f)...)
 		out = append(out, protected(f)...)
 	}
 	return append(out, size(d)...)
@@ -91,7 +91,6 @@ var (
 	suppression = regexp.MustCompile(`//\s*nolint\b|#nosec\b|//lint:(file-)?ignore\b`)
 	hidingDir   = regexp.MustCompile(`(^|/)[_.][^/]*/`)
 	generated   = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
-	skipCall    = regexp.MustCompile(`\.Skip(Now|f)?\(|testing\.Short\(\)`)
 )
 
 func bypasses(f File) []Finding {
@@ -123,9 +122,6 @@ func lineBypasses(file string, l Line) []Finding {
 	}
 	if strings.HasPrefix(text, "//go:linkname") || strings.HasPrefix(text, "//go:debug") || text == `import "C"` {
 		add("bypass-directive", "T2: //go:linkname, //go:debug and cgo reach past the type system and the checks: remove it")
-	}
-	if strings.HasSuffix(file, "_test.go") && skipCall.MatchString(text) {
-		add("bypass-skip", "T2: a skipped test proves nothing: make it pass, or delete it in a change a code owner approves")
 	}
 	if generated.MatchString(text) && !isGeneratedPath(file) {
 		add("bypass-generated", "T2: the generated-code header turns linters off: only files under gen/ or named *_gen.go may carry it")

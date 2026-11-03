@@ -37,14 +37,7 @@ func readHookInput(in io.Reader) (hookInput, error) {
 func hookCommand() *cobra.Command {
 	hook := &cobra.Command{Use: "hook", Short: "Claude Code hooks: feedback after each edit, the full check before stopping"}
 	var base string
-	stop := &cobra.Command{
-		Use:   "stop",
-		Short: "Run kit check before the agent stops; a failing gate keeps it working, once",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return stopHook(cmd, base)
-		},
-	}
+	stop := leaf("stop", "Run kit check before the agent stops; a failing gate keeps it working, once", func(cmd *cobra.Command) error { return stopHook(cmd, base) })
 	stop.Flags().StringVar(&base, "base", "origin/main", "the branch the change goes into")
 	hook.AddCommand(&cobra.Command{
 		Use:   "post-edit",

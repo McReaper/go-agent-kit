@@ -48,7 +48,7 @@ func TestThePreCommitHookStopsAStagedSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitIn(t, dir, "add", "settings.txt")
-	if out, code := hook(); code != 1 || !strings.Contains(out, "leaks found: 1") {
+	if out, code := hook(); code != 1 || !strings.Contains(out, "settings.txt:1: github-pat") {
 		t.Errorf("a staged token: exit %d\n%s", code, out)
 	}
 }

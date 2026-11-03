@@ -32,9 +32,10 @@ func lintFor(goos, pattern string) func(context.Context, Options) Result {
 				r.Err = fmt.Errorf("remove the lint config: %w", err)
 			}
 		}()
-		out, err := run.Command(ctx, o.Dir, []string{"GOOS=" + goos}, "golangci-lint", "run", "--config", config,
-			"--output.text.print-issued-lines=false", "--show-stats=false", pattern)
-		return fromLines(out, err, 1, out.Stdout)
+		out, err := run.Run(ctx, run.Cmd{Dir: o.Dir, Env: []string{"GOOS=" + goos}, Argv: []string{
+			"golangci-lint", "run", "--config", config, "--output.text.print-issued-lines=false", "--show-stats=false", pattern,
+		}})
+		return ran{out, err}.result(1, out.Stdout)
 	}
 }
 
@@ -76,34 +77,33 @@ func diagnostics(dir string, act *checker.Action) []string {
 	var lines []string
 	for _, d := range act.Diagnostics {
 		p := act.Package.Fset.Position(d.Pos)
-		lines = append(lines, position(dir, p.Filename, p.Line, act.Analyzer.Name+": "+d.Message))
+		lines = append(lines, position(dir, at{p.Filename, p.Line}, act.Analyzer.Name+": "+d.Message))
 	}
 	return lines
 }
 
-func archGate(_ context.Context, o Options) Result {
-	vs, err := archtest.Check(o.Dir)
-	if err != nil {
-		return failed(err)
+// WHY: archtest and sweep both list what they find with a file, a line, a
+// rule and a message; one gate prints either.
+func listGate[T any](check func(string) ([]T, error), line func(T) (at, string)) func(context.Context, Options) Result {
+	return func(_ context.Context, o Options) Result {
+		fs, err := check(o.Dir)
+		if err != nil {
+			return failed(err)
+		}
+		lines := make([]string, 0, len(fs))
+		for _, f := range fs {
+			p, msg := line(f)
+			lines = append(lines, position(o.Dir, p, msg))
+		}
+		return found(lines)
 	}
-	lines := make([]string, 0, len(vs))
-	for _, v := range vs {
-		lines = append(lines, position(o.Dir, v.File, v.Line, v.Rule+": "+v.Message))
-	}
-	return found(lines)
 }
 
-func sweepGate(_ context.Context, o Options) Result {
-	fs, err := sweep.Check(o.Dir)
-	if err != nil {
-		return failed(err)
-	}
-	lines := make([]string, 0, len(fs))
-	for _, f := range fs {
-		lines = append(lines, position(o.Dir, f.File, f.Line, f.Rule+": "+f.Message))
-	}
-	return found(lines)
+func archLine(v archtest.Violation) (at, string) {
+	return at{v.File, v.Line}, v.Rule + ": " + v.Message
 }
+
+func sweepLine(f sweep.Finding) (at, string) { return at{f.File, f.Line}, f.Rule + ": " + f.Message }
 
 func guardGate(ctx context.Context, o Options) Result {
 	_, all, err := guard.Run(ctx, o.Dir, o.Base)
@@ -114,7 +114,7 @@ func guardGate(ctx context.Context, o Options) Result {
 	if err != nil {
 		return failed(err)
 	}
-	covered, err := guard.Covered(ctx, o.Dir, all, guard.Approval{Head: o.Approved, Trees: trees})
+	covered, err := guard.Covered(ctx, all, guard.Approval{Dir: o.Dir, Head: o.Approved, Trees: trees})
 	if err != nil {
 		return failed(err)
 	}
