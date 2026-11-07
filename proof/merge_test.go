@@ -38,7 +38,7 @@ func TestTheMergeJobMergesThroughTheAsynchronousMergeAndSaysWhyGitHubRefused(t *
 }
 sleep() { :; }
 `
-			out, code, log := runStep(t, fake, script, "PR=7", "HEAD=h1", "STATE="+c.state, "RESULT="+c.result)
+			out, code, log := runStep(t, fake+script, "PR=7", "HEAD=h1", "STATE="+c.state, "RESULT="+c.result)
 			writes := gestures(log)
 			if code != c.code || !strings.Contains(out, c.says) {
 				t.Errorf("exit %d, want %d; output lacks %q:\n%s", code, c.code, c.says, out)
@@ -58,11 +58,11 @@ func TestAPullRequestOnAnotherBranchIsInAStackOrTheCheckSaysHow(t *testing.T) {
 	fake := `gh() { echo "$*" >> "$LOG"; echo "$STACK"; }
 sleep() { :; }
 `
-	out, code, _ := runStep(t, fake, script, "PR=9", "BASE_PR=spec/x", "STACK=3")
+	out, code, _ := runStep(t, fake+script, "PR=9", "BASE_PR=spec/x", "STACK=3")
 	if code != 0 {
 		t.Errorf("in a stack: exit %d\n%s", code, out)
 	}
-	out, code, _ = runStep(t, fake, script, "PR=9", "BASE_PR=spec/x", "STACK=")
+	out, code, _ = runStep(t, fake+script, "PR=9", "BASE_PR=spec/x", "STACK=")
 	if code != 1 || !strings.Contains(out, "gh api -X POST repos/o/r/stacks") || !strings.Contains(out, "pull_requests[]=9") {
 		t.Errorf("in no stack: exit %d\n%s", code, out)
 	}
@@ -86,7 +86,7 @@ func TestAnApprovalReRunsTheMergeCheckThatFailedOnTheApprovedCommit(t *testing.T
   esac
 }
 `
-	out, code, log := runStep(t, fake, script, "HEAD=h1", "CALLER=o/r/.github/workflows/kit.yml@refs/pull/6/merge")
+	out, code, log := runStep(t, fake+script, "HEAD=h1", "CALLER=o/r/.github/workflows/kit.yml@refs/pull/6/merge")
 	if code != 0 {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
@@ -99,21 +99,18 @@ func TestAnApprovalReRunsTheMergeCheckThatFailedOnTheApprovedCommit(t *testing.T
 	}
 }
 
-func runStep(t *testing.T, fake, script string, env ...string) (string, int, string) {
+func runStep(t *testing.T, script string, env ...string) (string, int, string) {
 	t.Helper()
 	dir := t.TempDir()
-	fakePath, scriptPath, log := filepath.Join(dir, "gh.sh"), filepath.Join(dir, "step.sh"), filepath.Join(dir, "log")
-	for path, text := range map[string]string{fakePath: fake, scriptPath: script} {
-		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
-			t.Fatal(err)
-		}
+	path, log := filepath.Join(dir, "step.sh"), filepath.Join(dir, "log")
+	if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "sh", "-c", `. "$1" && . "$2"`, "sh", fakePath, scriptPath)
+	cmd := exec.CommandContext(t.Context(), "sh", "-c", `. "$1"`, "sh", path)
 	cmd.Env = append(append(os.Environ(), "LOG="+log, "REPO=o/r", "GH_TOKEN=x"), env...)
 	out, err := cmd.CombinedOutput()
 	code := 0
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		code = exit.ExitCode()
 	} else if err != nil {
 		t.Fatal(err)
