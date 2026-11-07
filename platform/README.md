@@ -21,7 +21,7 @@ The kit judges every app, so its owner merges each change to it: a code owner (`
 
 ## The merge check: `kit-check.yml`
 
-An app's `.github/workflows/kit.yml`, written by `kit init`, calls `.github/workflows/kit-check.yml` of this repository at the commit its one `uses` line pins; Dependabot moves that pin to each new release tag. It runs on `pull_request` (an edit counts when it moved the base) and `pull_request_review`: `kit check --ci` with the trees of the commits a code owner approved, so a change that is the owner's passes once approved, and stays approved while its files hold the content approved; it posts the review sheet, and turns GitHub's auto-merge on for every pull request into the default branch. Hourly, its `branches` job calls `kit-branches.yml`, at the same pin: GitHub's own deletion of merged branches skips those an App's token merged, auto-merge's among them, so it deletes them, first moving a pull request stacked on one to that one's base, with auto-merge.
+An app's `.github/workflows/kit.yml`, written by `kit init`, calls `.github/workflows/kit-check.yml` of this repository at the commit its one `uses` line pins; Dependabot moves that pin to each new release tag. It runs on `pull_request` (an edit counts when it moved the base) and `pull_request_review`: `kit check --ci` with the trees of the commits a code owner approved, so a change that is the owner's passes once approved, and stays approved while its files hold the content approved; it posts the review sheet, and turns GitHub's auto-merge on for every pull request into the default branch.
 
 ## Claude Code: `claude/managed-settings.json`
 

@@ -20,7 +20,7 @@ Open the pull request with the spec alone. Its description says in one line what
 
 ## 2. Build it on top
 
-Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits: once the spec merges, the kit moves it to the default branch within the hour, and it merges by itself once green.
+Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits: once the spec merges, GitHub moves it to the default branch.
 
 - Remove the `@wip` tag of each scenario you build: that is free. Any other change to the spec is a spec change the owner approves again.
 - Write the steps in `features/*_test.go`, like the ones there: one method per step, bound by a pattern that takes any value (`"([^"]*)"`, `(\d+)`), driving the built program from the command line or over MCP.
