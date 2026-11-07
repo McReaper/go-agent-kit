@@ -1,9 +1,8 @@
 name: kit
 
 # The kit's merge check, review sheet and auto-merge, at the kit commit the
-# uses lines pin: kit-check.yml reads it from the job's token, so this is
-# the one pin, and Dependabot moves it. Hourly, kit-branches.yml deletes
-# the merged pull requests' branches.
+# uses line pins: kit-check.yml reads it from the job's token, so this is
+# the one pin, and Dependabot moves it.
 
 on:
   pull_request:
@@ -11,24 +10,14 @@ on:
     types: [opened, synchronize, reopened, edited]
   pull_request_review:
     types: [submitted]
-  schedule:
-    - cron: "17 * * * *"
-  workflow_dispatch:
 
 permissions: {}
 
 jobs:
   kit:
-    if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
     permissions:
       contents: write # auto-merge
       pull-requests: write # the review sheet's comment, auto-merge
       issues: write # the review sheet's label
       id-token: write # the kit's version, read from the job's token
     uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@{{.Commit}} # {{.Tag}}
-  branches:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write # delete a merged branch
-      pull-requests: write # move a pull request stacked on it, its auto-merge
-    uses: McReaper/go-agent-kit/.github/workflows/kit-branches.yml@{{.Commit}} # {{.Tag}}
