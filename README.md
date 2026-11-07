@@ -10,7 +10,7 @@ An app keeps four files for the kit and installs one GitHub App; the rest ships 
 
 ```sh
 go run github.com/McReaper/go-agent-kit/cmd/kit@<kit version> init --owner <your login>   # kit.yml, CODEOWNERS, dependabot.yml, .claude/settings.json
-kit init github --repo <owner>/<repo>   # as the owner: the rulesets, auto-merge, immutable releases
+kit init github --repo <owner>/<repo>   # as the owner: the rulesets, merged branches deleted, immutable releases
 kit init app --name <name>              # once: the agent's GitHub App, from the kit's manifest
 ```
 
@@ -20,7 +20,7 @@ A new app starts from the [template](template) (`gonew`), which `kit init` then 
 
 - [`plugin/`](plugin) — the Claude Code plugin the repository's settings turn on: the skills (a feature spec first, a module, a secret), the kit's rules in every session, and the hooks: a gesture past the kit refused before it runs, each edit's package checked, the full check before the agent stops.
 - `cmd/kit` — one CLI: `check` (every gate, the same on the agent's machine and in CI), `spec` (each step of the spec can fail), `guard` (bypasses, what is the owner's to approve, size), `review` (the short sheet the owner reads), `mutate` (the tests must kill the change's mutants), `sweep` (what only the whole module shows), `secrets` (the staged lines), `init`, `app` (acts as the agent's GitHub App), `hook` (Claude Code's hooks).
-- `.github/workflows/kit-check.yml` — the merge check, review sheet and auto-merge apps call.
+- `.github/workflows/kit-check.yml` — the merge check, review sheet and merge apps call; `kit-approval.yml` re-runs it on the owner's approval.
 - `lint/` — the curated golangci-lint and gitleaks configs; an app's own are never read. `cmd/kitvet` — eleven analyzers for rules no linter has. `archtest` — the layout rules the compiler can't see.
 - [`platform/`](platform) — what the owner applies by hand: the kit repository's own ruleset, the agent's managed settings.
 

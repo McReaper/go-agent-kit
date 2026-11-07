@@ -81,13 +81,13 @@ func initReport(r kitinit.Report) string {
 	for _, p := range r.Kept {
 		fmt.Fprintf(&b, "kept, it differs from the kit's: %s (delete it and run kit init again to take the kit's)\n", p)
 	}
-	b.WriteString("\nThen, as the owner, once: kit init github --repo OWNER/REPO (the rulesets and auto-merge), and kit init app if the agent has no GitHub App yet.\n")
+	b.WriteString("\nThen, as the owner, once: kit init github --repo OWNER/REPO (the rulesets and the repository's settings), and kit init app if the agent has no GitHub App yet.\n")
 	return b.String()
 }
 
 func initGitHubCommand(out io.Writer) *cobra.Command {
 	var repo string
-	cmd := leaf("github", "As the owner: the rulesets that make the kit check the arbiter, auto-merge, immutable releases", func(cmd *cobra.Command) error {
+	cmd := leaf("github", "As the owner: the rulesets that make the kit check the arbiter, merged branches deleted, immutable releases", func(cmd *cobra.Command) error {
 		lines, err := kitinit.Protect(cmd.Context(), kitinit.GH{}, repo)
 		for _, l := range lines {
 			if _, werr := fmt.Fprintln(out, l); werr != nil {

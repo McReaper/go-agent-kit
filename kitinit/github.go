@@ -53,8 +53,8 @@ func (GH) Call(ctx context.Context, r Request) (out []byte, err error) {
 
 // Protect makes the kit the arbiter of repo ("owner/name"): the default
 // branch's ruleset and the tags', each created or brought to the kit's;
-// auto-merge and the deletion of merged branches allowed; releases
-// immutable. It returns what it did, a line each.
+// merged branches deleted and squash merges allowed; releases immutable.
+// It returns what it did, a line each.
 func Protect(ctx context.Context, api API, repo string) ([]string, error) {
 	existing, err := rulesets(ctx, api, repo)
 	if err != nil {
@@ -68,11 +68,11 @@ func Protect(ctx context.Context, api API, repo string) ([]string, error) {
 		}
 		done = append(done, line)
 	}
-	settings := []byte(`{"allow_auto_merge": true, "delete_branch_on_merge": true, "allow_squash_merge": true}`)
+	settings := []byte(`{"delete_branch_on_merge": true, "allow_squash_merge": true}`)
 	if _, err := api.Call(ctx, Request{"PATCH", "repos/" + repo, settings}); err != nil {
 		return done, err
 	}
-	done = append(done, "auto-merge and the deletion of merged branches allowed")
+	done = append(done, "merged branches deleted, squash merges allowed")
 	if _, err := api.Call(ctx, Request{"PUT", "repos/" + repo + "/immutable-releases", nil}); err != nil {
 		return done, err
 	}

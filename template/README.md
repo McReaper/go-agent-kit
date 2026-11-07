@@ -12,7 +12,7 @@ go run github.com/McReaper/go-agent-kit/cmd/kit@<kit version> init --owner <your
 
 `kit init` writes the four files the repository keeps for the kit: the CI that calls its merge check, the code owners of the harness, Dependabot's settings, and the Claude Code settings that turn the kit's plugin on. Then, as the owner, once:
 
-1. Push the repository to GitHub, and run `kit init github --repo <owner>/<repo>`: the rulesets, auto-merge, immutable releases.
+1. Push the repository to GitHub, and run `kit init github --repo <owner>/<repo>`: the rulesets, merged branches deleted, immutable releases.
 2. If the agent has no GitHub App yet, `kit init app --name <name>`, and install the App on the repository.
 3. Replace `LICENSE`: gonew copies the kit's.
 4. Rename the notes module, or keep it as the reference while you build your first one, then delete it.

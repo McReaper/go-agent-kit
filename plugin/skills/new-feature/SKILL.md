@@ -20,7 +20,13 @@ Open the pull request with the spec alone. Its description says in one line what
 
 ## 2. Build it on top
 
-Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits: once the spec merges, GitHub moves it to the default branch.
+Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits. Right after, make the two pull requests one stack, the spec's first:
+
+```sh
+gh api -X POST 'repos/{owner}/{repo}/stacks' -H 'X-GitHub-Api-Version: 2026-03-10' -F 'pull_requests[]=<spec number>' -F 'pull_requests[]=<build number>'
+```
+
+The check fails a pull request on another branch that is in no stack. Once the spec merges, GitHub rebases the build onto the default branch, and its check runs again.
 
 - Remove the `@wip` tag of each scenario you build: that is free. Any other change to the spec is a spec change the owner approves again.
 - Write the steps in `features/*_test.go`, like the ones there: one method per step, bound by a pattern that takes any value (`"([^"]*)"`, `(\d+)`), driving the built program from the command line or over MCP.
