@@ -1,8 +1,9 @@
 name: kit
 
-# The kit's merge check, review sheet and auto-merge, at the kit commit the
-# uses line pins: kit-check.yml reads it from the job's token, so this is
-# the one pin, and Dependabot moves it.
+# The kit's merge check, review sheet and merge, at the kit commit the uses
+# lines pin: kit-check.yml reads it from the job's token, so this is the
+# one pin, and Dependabot moves it. The owner's approval re-runs the check
+# through kit-approval.yml.
 
 on:
   pull_request:
@@ -15,9 +16,15 @@ permissions: {}
 
 jobs:
   kit:
+    if: github.event_name == 'pull_request'
     permissions:
-      contents: write # auto-merge
-      pull-requests: write # the review sheet's comment, auto-merge
+      contents: write # the merge
+      pull-requests: write # the review sheet's comment, the merge
       issues: write # the review sheet's label
       id-token: write # the kit's version, read from the job's token
     uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@{{.Commit}} # {{.Tag}}
+  approval:
+    if: github.event_name == 'pull_request_review'
+    permissions:
+      actions: write # re-run the merge check
+    uses: McReaper/go-agent-kit/.github/workflows/kit-approval.yml@{{.Commit}} # {{.Tag}}

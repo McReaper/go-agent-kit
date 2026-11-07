@@ -2,7 +2,7 @@
 
 ## Decision
 
-Every repository the kit protects keeps a linear history (`required_linear_history`). An app's ruleset allows squash merges only, and the auto-merge `kit-check.yml` turns on squashes. The kit's own ruleset allows a rebase or a squash: its owner merges by hand and picks. No rule caps a pull request's commits.
+Every repository the kit protects keeps a linear history (`required_linear_history`). An app's ruleset allows squash merges only, and the merge job of `kit-check.yml` squashes. The kit's own ruleset allows a rebase or a squash: its owner merges by hand and picks. No rule caps a pull request's commits.
 
 ## Why
 

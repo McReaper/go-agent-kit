@@ -10,9 +10,9 @@ The agent acts as the app through `kit app exec -- <command>`, with `KIT_APP_CLI
 
 ## An app's GitHub settings: `kit init github`
 
-`kit init github --repo OWNER/REPO`, as the owner, applies `kitinit/files/ruleset.json` and `ruleset-tags.json` (creating each, or bringing an existing one of the same name to the kit's), allows auto-merge and the deletion of merged branches, and makes releases immutable.
+`kit init github --repo OWNER/REPO`, as the owner, applies `kitinit/files/ruleset.json` and `ruleset-tags.json` (creating each, or bringing an existing one of the same name to the kit's), deletes merged branches, allows squash merges, and makes releases immutable.
 
-- The default branch: a pull request, squash-merged; no review required but the code owners' on the harness, and every approval stays on record; the `kit / kit` check passing, reported by GitHub Actions only, which holds the spec, a new dependency, the go line and a library's API until the owner approved the content they have; no `update` rule, so GitHub's auto-merge, which `kit-check.yml` turns on, lands the change once both hold.
+- The default branch: a pull request, squash-merged; no review required but the code owners' on the harness, and every approval stays on record; the `kit / kit` check passing, reported by GitHub Actions only, which holds the spec, a new dependency, the go line and a library's API until the owner approved the content they have; no `update` rule, so the kit's merge job lands the change once both hold.
 - Tags and releases: only the owner creates, moves or deletes a tag (the admin role bypasses, and pushes release tags from its own clone); once published, a release's tag and assets can't change. A release of the kit tags one commit twice, `vX` and `template/vX`: the template is a module of its own, and `gonew` finds it at a version only through its tag.
 
 ## The kit's own default branch: `ruleset-kit.json`
@@ -21,7 +21,7 @@ The kit judges every app, so its owner merges each change to it: a code owner (`
 
 ## The merge check: `kit-check.yml`
 
-An app's `.github/workflows/kit.yml`, written by `kit init`, calls `.github/workflows/kit-check.yml` of this repository at the commit its one `uses` line pins; Dependabot moves that pin to each new release tag. It runs on `pull_request` (an edit counts when it moved the base) and `pull_request_review`: `kit check --ci` with the trees of the commits a code owner approved, so a change that is the owner's passes once approved, and stays approved while its files hold the content approved; it posts the review sheet, and turns GitHub's auto-merge on for every pull request into the default branch.
+An app's `.github/workflows/kit.yml`, written by `kit init`, calls `.github/workflows/kit-check.yml` and `kit-approval.yml` of this repository at the commit its `uses` lines pin; Dependabot moves that pin to each new release tag. It runs on `pull_request` (an edit counts when it moved the base): `kit check --ci` with the trees of the commits a code owner approved, so a change that is the owner's passes once approved, and stays approved while its files hold the content approved; it posts the review sheet. Its merge job merges a pull request into the default branch once the check passed, through GitHub's asynchronous merge: GitHub's auto-merge takes no pull request of a stack. A pull request on another branch must be in a stack, whose next pull request GitHub rebases onto the default branch once the one below merged. The owner's approval runs `kit-approval.yml`, which re-runs the check that failed for want of it: GitHub holds the merge on a failed run even once another one passes.
 
 ## Claude Code: `claude/managed-settings.json`
 

@@ -102,8 +102,8 @@ type fakeAPI struct {
 
 func (f *fakeAPI) Call(_ context.Context, r kitinit.Request) ([]byte, error) {
 	f.calls = append(f.calls, r.Method+" "+r.Path)
-	if r.Method == "PATCH" && !strings.Contains(string(r.Body), `"allow_auto_merge": true`) {
-		return nil, errors.New("auto-merge not asked")
+	if r.Method == "PATCH" && !strings.Contains(string(r.Body), `"delete_branch_on_merge": true`) {
+		return nil, errors.New("the deletion of merged branches not asked")
 	}
 	return []byte(f.reply[r.Method+" "+r.Path]), nil
 }

@@ -10,11 +10,11 @@ name: kit-check
 # The kit it installs is the commit this workflow runs at, read from the
 # job's OIDC token, so the pin Dependabot moves is the only one.
 #
-# The caller runs it on pull_request (opened, synchronize, reopened, edited)
-# and pull_request_review (submitted), so a review re-runs the check; it
-# grants contents and pull-requests write for the auto-merge, issues write
-# for the label, id-token write for the version. An edit runs the jobs only
-# when it moved the pull request's base.
+# The caller runs it on pull_request (opened, synchronize, reopened, edited);
+# an approval re-runs it through kit-approval.yml. The caller grants
+# contents and pull-requests write for the merge and the sheet, issues
+# write for the label, id-token write for the version. An edit runs the
+# jobs only when it moved the pull request's base.
 
 on:
   workflow_call:
@@ -61,6 +61,28 @@ jobs:
       contents: read
       pull-requests: read
     steps:
+      - name: Is a pull request on another branch than the default one in a stack?
+        # GitHub rebases a stack's pull request onto the default branch once
+        # the one below it merged; one outside a stack stays on a merged
+        # branch. The agent stacks it right after opening it: the check
+        # waits a minute for that.
+        if: github.event.pull_request.base.ref != github.event.repository.default_branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE_PR: ${{ github.event.pull_request.base.ref }}
+        run: |
+          for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            stack=$(gh api "repos/$REPO/pulls/$PR" -H "X-GitHub-Api-Version: 2026-03-10" --jq '.stack.number // empty')
+            if [ -n "$stack" ]; then
+              echo "in stack $stack"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::pull request #$PR is on $BASE_PR but in no stack: make it one with the pull request of $BASE_PR, bottom first: gh api -X POST repos/$REPO/stacks -H 'X-GitHub-Api-Version: 2026-03-10' -F 'pull_requests[]=<the pull request of $BASE_PR>' -F 'pull_requests[]=$PR'"
+          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -90,7 +112,6 @@ jobs:
         # commit a rebase left behind still counts: a protected file whose
         # content is the one approved stays approved.
         id: approval
-        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -119,29 +140,52 @@ jobs:
           BASE: ${{ github.event.pull_request.base.ref }}
         run: kit mutate --base "origin/$BASE"
 
-  automerge:
-    # A pull request into the default branch merges by itself once the
-    # ruleset holds: the kit check green, and the owner's approval where the
-    # harness changed. One stacked on another branch waits to be moved. The
-    # merge is GitHub Actions', so it starts no workflow on the default branch.
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.base.ref == github.event.repository.default_branch &&
-      (github.event.action != 'edited' || github.event.changes.base)
+  merge:
+    # A pull request into the default branch merges once the kit check
+    # passed, through GitHub's asynchronous merge: its auto-merge takes no
+    # pull request of a stack. The ruleset still decides, and a merge it
+    # refuses fails here with its reason. A stack's next pull request is
+    # rebased onto the default branch by GitHub, which runs this again.
+    needs: kit
+    if: github.event.pull_request.base.ref == github.event.repository.default_branch
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: kit-merge-${{ github.event.pull_request.number }}
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Turn on auto-merge
+      - name: Merge
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          if ! gh pr merge "$PR" --repo "$REPO" --auto --squash; then
-            echo "::warning::auto-merge didn't turn on: allow it in the repository's settings (General, Pull Requests)"
+          set -eu
+          api() { gh api -H "X-GitHub-Api-Version: 2026-03-10" "$@"; }
+          state=$(api "repos/$REPO/pulls/$PR" --jq '"\(.state) \(.merged) \(.head.sha)"')
+          case $state in
+            "closed true "*) echo "already merged"; exit 0 ;;
+            "open false $HEAD") ;;
+            *) echo "pull request #$PR moved on ($state): its own run merges it"; exit 0 ;;
+          esac
+          uuid=$(api -X PUT "repos/$REPO/pulls/$PR/merge-async" -f merge_method=squash -f sha="$HEAD" --jq '.details.uuid // empty')
+          if [ -z "$uuid" ]; then
+            echo "already merged or queued"
+            exit 0
           fi
+          for _ in $(seq 1 60); do
+            result=$(api "repos/$REPO/pulls/$PR/merge-async/$uuid" --jq '"\(.status) \(.details.message // "")"')
+            case $result in
+              merged*|enqueued*) echo "$result"; exit 0 ;;
+              failed*) echo "::error::GitHub refused the merge: ${result#failed }"; exit 1 ;;
+            esac
+            sleep 5
+          done
+          echo "::error::the merge of #$PR is still pending after five minutes"
+          exit 1
 
   review:
     # The review sheet: one comment on the pull request, updated on each

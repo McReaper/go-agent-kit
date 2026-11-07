@@ -1,0 +1,46 @@
+name: kit-approval
+
+# Re-runs the merge check when the owner approves a pull request, through
+# the caller kit init writes. The check that failed for want of that
+# approval stays on the commit, and GitHub holds the merge on it even once
+# another run passes: re-running that same run replaces it, and its merge
+# job then merges.
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  recheck:
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: write # re-run the merge check
+    steps:
+      - name: Re-run the merge check that failed on the approved commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          CALLER: ${{ github.workflow_ref }}
+        run: |
+          set -eu
+          caller=${CALLER#*/*/}
+          caller=${caller%%@*}
+          runs() {
+            gh api "repos/$REPO/actions/runs?head_sha=$HEAD&event=pull_request" \
+              --jq ".workflow_runs[] | select(.path == \"$caller\") | \"\(.id) \(.status) \(.conclusion)\""
+          }
+          runs | while read -r id status _; do
+            if [ "$status" != completed ]; then
+              gh run watch "$id" --repo "$REPO" > /dev/null || true
+            fi
+          done
+          runs | while read -r id _ conclusion; do
+            if [ "$conclusion" = failure ]; then
+              echo "re-running run $id"
+              gh run rerun "$id" --repo "$REPO" --failed
+            fi
+          done

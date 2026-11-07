@@ -2,6 +2,7 @@ package proof_test
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -73,7 +74,7 @@ func TestTheKitsRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T
 // but the code owners' on the harness and keeps every approval on record;
 // the kit check, which only GitHub Actions may report, holds the rest that
 // is the owner's against the content they approved. No update rule, so
-// GitHub's auto-merge can land the change.
+// the kit's merge job can land the change.
 func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 	var r ruleset
 	readJSON(t, "../kitinit/files/ruleset.json", &r)
@@ -94,7 +95,7 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 		}
 	}
 	if slices.Contains(types, "update") {
-		t.Error("an update rule stops GitHub's auto-merge")
+		t.Error("an update rule stops the kit's merge job")
 	}
 	for _, want := range []string{"pull_request", "required_status_checks", "non_fast_forward", "deletion"} {
 		if !slices.Contains(types, want) {
@@ -144,21 +145,23 @@ func jobs(t *testing.T, path string) map[string]string {
 	return out
 }
 
-// WHY: GitHub fills github.base_ref on pull_request events only; the merge
-// check also runs on the owner's approval (pull_request_review), where a
-// step reading it would compare with "origin/" and fail the approved change.
-func TestTheMergeCheckFindsThePullRequestsBaseOnAnApprovalToo(t *testing.T) {
-	for path, want := range map[string]string{"../kitinit/files/kit.yml": "pull_request_review:", "../.github/workflows/kit-check.yml": "github.event.pull_request.base.ref"} {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
+// WHY: a check run apart from the one that failed for want of the owner's
+// approval leaves that one on the commit, and GitHub holds the merge on it:
+// the merge check runs on pull requests only, and the approval re-runs it.
+func TestTheOwnersApprovalReRunsTheMergeCheckAndRunsNoOther(t *testing.T) {
+	js := jobs(t, "../kitinit/files/kit.yml")
+	for id, want := range map[string][]string{
+		"kit":      {"if: github.event_name == 'pull_request'\n", "/kit-check.yml@"},
+		"approval": {"if: github.event_name == 'pull_request_review'\n", "/kit-approval.yml@", "actions: write"},
+	} {
+		for _, w := range want {
+			if !strings.Contains(js[id], w) {
+				t.Errorf("kit.yml's %s job lacks %q:\n%s", id, w, js[id])
+			}
 		}
-		if !strings.Contains(string(data), want) {
-			t.Errorf("%s lacks %s", path, want)
-		}
-		if strings.Contains(string(data), "github.base_ref") {
-			t.Errorf("%s reads github.base_ref, empty on an approval: read github.event.pull_request.base.ref", path)
-		}
+	}
+	if len(js) != 2 {
+		t.Errorf("kit.yml has jobs %v, want kit and approval", slices.Sorted(maps.Keys(js)))
 	}
 }
 
