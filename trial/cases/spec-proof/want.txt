@@ -4,5 +4,5 @@
 !isolated
 spec/spec-vacuous features/notes.feature:10 `Then it is refused with "the limit is 80"` still passes when it expects "the limit is 81"
 spec/spec-pattern features/notes.feature:14 with "3" instead of "2", `Then it exits with code 2` matches no step definition
-spec/spec-novalue features/notes.feature:28 `Then the list is empty` expects no value the kit can alter
-spec/spec-alone features/notes.feature:30 "The last note added is remembered" fails: .+ if it passes with the other scenarios, make it set up all it needs, since the kit runs each alone
+spec/spec-novalue features/notes.feature:28 `Then the list is empty` expects no value Rumblestrip can alter
+spec/spec-alone features/notes.feature:30 "The last note added is remembered" fails: .+ if it passes with the other scenarios, make it set up all it needs, since Rumblestrip runs each alone

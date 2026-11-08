@@ -1,4 +1,4 @@
-module github.com/McReaper/go-agent-kit
+module github.com/McReaper/rumblestrip-go
 
 go 1.26.0
 

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-notes keeps short notes for people and agents, served as MCP tools (`notes mcp`) and as CLI commands. It is built on the anti-drift kit, github.com/McReaper/go-agent-kit: the kit's checks judge every change, and only the owner can change them.
+notes keeps short notes for people and agents, served as MCP tools (`notes mcp`) and as CLI commands. It is built on Rumblestrip, github.com/McReaper/rumblestrip-go: Rumblestrip's checks judge every change, and only the owner can change them.
 
 ## Where code goes
 
@@ -13,4 +13,4 @@ notes keeps short notes for people and agents, served as MCP tools (`notes mcp`)
 - `internal/platform/`: shared by every module: the op binding, the journal, the config. It knows no module.
 - `pkg/slug/`: a library other programs may import: its exported API is a contract.
 
-The kit's commands and the rules no check explains come with its Claude Code plugin, `kit`, which the repository's Claude Code settings, written by `kit init`, turn on.
+Rumblestrip's commands and the rules no check explains come with its Claude Code plugin, `rumblestrip`, which the repository's Claude Code settings, written by `rumblestrip init`, turn on.

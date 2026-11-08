@@ -1,5 +1,5 @@
 # S1: an env file and a certificate committed. Not refused: .env.example and a public key. gitleaks finds them
-# with the kit's own config, which every scan passes; an app's .gitleaks.toml is never read.
+# with Rumblestrip's own config, which every scan passes; an app's .gitleaks.toml is never read.
 !isolated
 gitleaks/sensitive-file .env:0 keys, certificates and env files are never committed
 gitleaks/sensitive-file deploy/server.pem:0 keys, certificates and env files are never committed

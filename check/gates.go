@@ -9,18 +9,18 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/McReaper/go-agent-kit/analyzers/all"
-	"github.com/McReaper/go-agent-kit/archtest"
-	"github.com/McReaper/go-agent-kit/guard"
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
-	"github.com/McReaper/go-agent-kit/lint"
-	"github.com/McReaper/go-agent-kit/spec"
-	"github.com/McReaper/go-agent-kit/sweep"
+	"github.com/McReaper/rumblestrip-go/analyzers/all"
+	"github.com/McReaper/rumblestrip-go/archtest"
+	"github.com/McReaper/rumblestrip-go/guard"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/lint"
+	"github.com/McReaper/rumblestrip-go/spec"
+	"github.com/McReaper/rumblestrip-go/sweep"
 	"golang.org/x/tools/go/analysis/checker"
 	"golang.org/x/tools/go/packages"
 )
 
-// WHY: the config is the kit's, embedded, written for each run: an app's
+// WHY: the config is Rumblestrip's, embedded, written for each run: an app's
 // own copy, which an agent could weaken, is never read.
 func lintFor(goos, pattern string) func(context.Context, Options) Result {
 	return func(ctx context.Context, o Options) (r Result) {
@@ -41,7 +41,7 @@ func lintFor(goos, pattern string) func(context.Context, Options) Result {
 }
 
 func writeConfig() (string, error) {
-	f, err := os.CreateTemp("", "kit-golangci-*.yml")
+	f, err := os.CreateTemp("", "rumblestrip-golangci-*.yml")
 	if err != nil {
 		return "", fmt.Errorf("write the lint config: %w", err)
 	}

@@ -1,13 +1,13 @@
 // Package nesting reports control flow nested deeper than two levels
 // (criterion M1). Every control statement counts: if, for, range, switch,
 // type switch and select; an else-if stays at its if's level. Test files
-// are exempt, like the kit's other size rules.
+// are exempt, like Rumblestrip's other size rules.
 package nesting
 
 import (
 	"go/ast"
 
-	"github.com/McReaper/go-agent-kit/analyzers/internal/layout"
+	"github.com/McReaper/rumblestrip-go/analyzers/internal/layout"
 	"golang.org/x/tools/go/analysis"
 )
 

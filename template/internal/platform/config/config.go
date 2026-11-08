@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/template/internal/platform/paths"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/paths"
 )
 
 // Config is the app's checked settings.

@@ -1,5 +1,5 @@
-# The kit's golangci-lint config. Apps run this file through `kit lint`, never
-# a config of their own. Each linter is here for a criterion of docs/kit.md,
+# Rumblestrip's golangci-lint config. Apps run this file through `rumblestrip lint`, never
+# a config of their own. Each linter is here for a criterion of docs/rumblestrip.md,
 # and each has a proof case under trial/cases.
 version: "2"
 

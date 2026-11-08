@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/McReaper/go-agent-kit/mutate"
+	"github.com/McReaper/rumblestrip-go/mutate"
 )
 
 func TestAMutantThatOnlyDropsAnErrorReturnIsNotCounted(t *testing.T) {

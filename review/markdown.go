@@ -4,23 +4,23 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/spec"
+	"github.com/McReaper/rumblestrip-go/spec"
 )
 
 // Marker starts every sheet, so a CI job can find and update its own
 // comment on the pull request.
-const Marker = "<!-- kit review -->"
+const Marker = "<!-- rumblestrip -->"
 
 // StatusStart and StatusEnd hold the sheet's status line: the jobs that
 // run after the sheet's, the check and the merge, rewrite what is between
 // them as the pull request moves on.
 const (
-	StatusStart = "<!-- kit status -->"
-	StatusEnd   = "<!-- /kit status -->"
+	StatusStart = "<!-- rumblestrip status -->"
+	StatusEnd   = "<!-- /rumblestrip status -->"
 )
 
-// Repository is the kit's home, which the sheet's footer links to.
-const Repository = "https://github.com/McReaper/go-agent-kit"
+// Repository is Rumblestrip's home, which the sheet's footer links to.
+const Repository = "https://github.com/McReaper/rumblestrip-go"
 
 func words(k spec.ChangeKind) string {
 	if k == spec.Disabled {
@@ -36,14 +36,14 @@ func (s Sheet) Status() string {
 	case Waiting:
 		return "⏳ The gates are running. **Waiting for you:** read what is below, then approve the pull request."
 	case Approved:
-		return "⏳ The gates are running. You approved what is yours: the kit merges it once they pass."
+		return "⏳ The gates are running. You approved what is yours: Rumblestrip merges it once they pass."
 	case NothingToApprove:
 	}
-	return "⏳ The gates are running. Nothing for you: the kit merges it once they pass."
+	return "⏳ The gates are running. Nothing for you: Rumblestrip merges it once they pass."
 }
 
 // Markdown writes the sheet for a pull request comment; version is the
-// kit's release, empty when unknown.
+// Rumblestrip's release, empty when unknown.
 func (s Sheet) Markdown(version string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s\n%s\n%s\n%s\n", Marker, StatusStart, s.Status(), StatusEnd)
@@ -65,7 +65,7 @@ func (s Sheet) Markdown(version string) string {
 	if !s.Empty() {
 		b.WriteString("\nApproving the pull request approves these; touch one again and it needs approving again.\n")
 	}
-	fmt.Fprintf(&b, "\n<sub>%s</sub>\n", strings.TrimSpace("[go-agent-kit]("+Repository+") "+version))
+	fmt.Fprintf(&b, "\n<sub>%s</sub>\n", strings.TrimSpace("[Rumblestrip]("+Repository+") "+version))
 	return b.String()
 }
 

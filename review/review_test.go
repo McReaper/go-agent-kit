@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/review"
-	"github.com/McReaper/go-agent-kit/spec"
+	"github.com/McReaper/rumblestrip-go/review"
+	"github.com/McReaper/rumblestrip-go/spec"
 )
 
 func TestASheetWithNothingForTheOwnerSaysTheChangeMergesByItself(t *testing.T) {
 	s := review.Sheet{State: review.NothingToApprove}
-	want := review.Marker + "\n" + review.StatusStart + "\n⏳ The gates are running. Nothing for you: the kit merges it once they pass.\n" + review.StatusEnd + "\n" +
-		"\n<sub>[go-agent-kit](https://github.com/McReaper/go-agent-kit) v1.2.3</sub>\n"
+	want := review.Marker + "\n" + review.StatusStart + "\n⏳ The gates are running. Nothing for you: Rumblestrip merges it once they pass.\n" + review.StatusEnd + "\n" +
+		"\n<sub>[Rumblestrip](https://github.com/McReaper/rumblestrip-go) v1.2.3</sub>\n"
 	if got := s.Markdown("v1.2.3"); got != want {
 		t.Errorf("Markdown() = %q, want %q", got, want)
 	}
@@ -33,7 +33,7 @@ func TestASheetListsTheSpecFirstThenWhatElseNeedsApproval(t *testing.T) {
 		"- A note is listed, disabled: tagged `@wip`, it stops running (`features/notes.feature:7`)\n",
 		"- a new dependency, example.com/x (`go.mod:9`)\n",
 		"- this change touches 401 production lines, the limit is 400 (`the change`)\n",
-		"<sub>[go-agent-kit](https://github.com/McReaper/go-agent-kit)</sub>\n",
+		"<sub>[Rumblestrip](https://github.com/McReaper/rumblestrip-go)</sub>\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the sheet lacks %q:\n%s", want, got)
@@ -55,9 +55,9 @@ func TestTheStatusAndTheLabelFollowTheOwnersApproval(t *testing.T) {
 		says        string
 		humanReview bool
 	}{
-		{review.NothingToApprove, "Nothing for you: the kit merges it once they pass.", false},
+		{review.NothingToApprove, "Nothing for you: Rumblestrip merges it once they pass.", false},
 		{review.Waiting, "**Waiting for you:**", true},
-		{review.Approved, "You approved what is yours: the kit merges it once they pass.", false},
+		{review.Approved, "You approved what is yours: Rumblestrip merges it once they pass.", false},
 	} {
 		s := review.Sheet{State: c.state}
 		if !strings.Contains(s.Status(), c.says) || s.Labels()["human-review"] != c.humanReview {

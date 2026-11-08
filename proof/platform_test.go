@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/guard"
-	"github.com/McReaper/go-agent-kit/kitinit"
+	"github.com/McReaper/rumblestrip-go/guard"
+	"github.com/McReaper/rumblestrip-go/setup"
 )
 
 type ruleset struct {
@@ -45,7 +45,7 @@ func readJSON(t *testing.T, path string, v any) {
 
 func TestTheKitsRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T) {
 	var r ruleset
-	readJSON(t, "../platform/ruleset-kit.json", &r)
+	readJSON(t, "../platform/ruleset-rumblestrip.json", &r)
 	var types []string
 	for _, rule := range r.Rules {
 		types = append(types, rule.Type)
@@ -72,12 +72,12 @@ func TestTheKitsRulesetLetsOnlyTheOwnerMergeAnApprovedCheckedChange(t *testing.T
 
 // WHY: an app's change merges by itself once green. GitHub asks no review
 // but the code owners' on the harness and keeps every approval on record;
-// the kit check, which only GitHub Actions may report, holds the rest that
+// Rumblestrip's checks, which only GitHub Actions may report, holds the rest that
 // is the owner's against the content they approved. No update rule, so
-// the kit's merge job can land the change.
+// Rumblestrip's merge job can land the change.
 func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 	var r ruleset
-	readJSON(t, "../kitinit/files/ruleset.json", &r)
+	readJSON(t, "../setup/files/ruleset.json", &r)
 	var types []string
 	for _, rule := range r.Rules {
 		types = append(types, rule.Type)
@@ -95,7 +95,7 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 		}
 	}
 	if slices.Contains(types, "update") {
-		t.Error("an update rule stops the kit's merge job")
+		t.Error("an update rule stops Rumblestrip's merge job")
 	}
 	for _, want := range []string{"pull_request", "required_status_checks", "non_fast_forward", "deletion"} {
 		if !slices.Contains(types, want) {
@@ -110,14 +110,14 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 func appCheck(t *testing.T) string {
 	t.Helper()
 	var caller []string
-	for _, body := range jobs(t, "../kitinit/files/kit.yml") {
-		if strings.Contains(body, "/kit-check.yml@") {
+	for _, body := range jobs(t, "../setup/files/rumblestrip.yml") {
+		if strings.Contains(body, "/rumblestrip-check.yml@") {
 			caller = append(caller, jobName(t, body))
 		}
 	}
-	check, ok := jobs(t, "../.github/workflows/kit-check.yml")["check"]
+	check, ok := jobs(t, "../.github/workflows/rumblestrip-check.yml")["check"]
 	if len(caller) != 1 || !ok {
-		t.Fatalf("kit.yml calls the merge check from one job, its check job reports: %v", caller)
+		t.Fatalf("rumblestrip.yml calls the merge check from one job, its check job reports: %v", caller)
 	}
 	return caller[0] + " / " + jobName(t, check)
 }
@@ -133,7 +133,7 @@ func jobName(t *testing.T, body string) string {
 
 // WHY: the ruleset requires the status by this context, and the review
 // sheet's job posts it under the same one.
-const approvalStatus = "Kit / Owner approval"
+const approvalStatus = "Rumblestrip / Owner approval"
 
 func jobs(t *testing.T, path string) map[string]string {
 	t.Helper()
@@ -165,8 +165,8 @@ func jobs(t *testing.T, path string) map[string]string {
 // show as skipped on the pull request.
 func TestTheOwnersApprovalReRunsTheMergeCheckFromAWorkflowOfItsOwn(t *testing.T) {
 	for path, want := range map[string][]string{
-		"../kitinit/files/kit.yml":          {"/kit-check.yml@", "    name: Pull request\n"},
-		"../kitinit/files/kit-approval.yml": {"/kit-approval.yml@", "actions: write", "statuses: read"},
+		"../setup/files/rumblestrip.yml":          {"/rumblestrip-check.yml@", "    name: Pull request\n"},
+		"../setup/files/rumblestrip-approval.yml": {"/rumblestrip-approval.yml@", "actions: write", "statuses: read"},
 	} {
 		js := jobs(t, path)
 		if len(js) != 1 {
@@ -180,7 +180,7 @@ func TestTheOwnersApprovalReRunsTheMergeCheckFromAWorkflowOfItsOwn(t *testing.T)
 			}
 		}
 	}
-	for path, trigger := range map[string]string{"../kitinit/files/kit.yml": "\n  pull_request:\n", "../kitinit/files/kit-approval.yml": "\n  pull_request_review:\n"} {
+	for path, trigger := range map[string]string{"../setup/files/rumblestrip.yml": "\n  pull_request:\n", "../setup/files/rumblestrip-approval.yml": "\n  pull_request_review:\n"} {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -197,17 +197,17 @@ func TestTheOwnersApprovalReRunsTheMergeCheckFromAWorkflowOfItsOwn(t *testing.T)
 // whose Check skips; and Check runs whatever the jobs before it did, so it
 // fails rather than skips.
 func TestTheRequiredCheckNeverSkips(t *testing.T) {
-	pr := jobs(t, "../kitinit/files/kit.yml")["pr"]
+	pr := jobs(t, "../setup/files/rumblestrip.yml")["pr"]
 	if !strings.Contains(pr, "    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base\n") {
-		t.Errorf("kit.yml's job runs on every edit:\n%s", pr)
+		t.Errorf("rumblestrip.yml's job runs on every edit:\n%s", pr)
 	}
-	called := jobs(t, "../.github/workflows/kit-check.yml")
+	called := jobs(t, "../.github/workflows/rumblestrip-check.yml")
 	if !strings.Contains(called["check"], "    if: ${{ !cancelled() }}\n") {
 		t.Errorf("Check skips when a job before it failed:\n%s", called["check"])
 	}
 	for id, body := range called {
 		if id != "check" && id != "merge" && strings.Contains(body, "\n    if:") {
-			t.Errorf("kit-check.yml's %s job has a condition: a job it skips makes Check pass", id)
+			t.Errorf("rumblestrip-check.yml's %s job has a condition: a job it skips makes Check pass", id)
 		}
 	}
 }
@@ -216,21 +216,21 @@ func TestTheRequiredCheckNeverSkips(t *testing.T) {
 // none of the change's code may post it: code under test could read the
 // job's token. The review sheet's job alone writes statuses.
 func TestOnlyTheReviewSheetsJobPostsTheOwnersApproval(t *testing.T) {
-	for id, body := range jobs(t, "../.github/workflows/kit-check.yml") {
+	for id, body := range jobs(t, "../.github/workflows/rumblestrip-check.yml") {
 		writes := strings.Contains(body, "statuses: write")
 		if writes != (id == "review") {
 			t.Errorf("job %s writes statuses: %v", id, writes)
 		}
 	}
-	review := jobs(t, "../.github/workflows/kit-check.yml")["review"]
-	if !strings.Contains(review, `-f context="`+approvalStatus+`"`) || strings.Contains(review, "go test") || strings.Contains(review, "kit check") {
+	review := jobs(t, "../.github/workflows/rumblestrip-check.yml")["review"]
+	if !strings.Contains(review, `-f context="`+approvalStatus+`"`) || strings.Contains(review, "go test") || strings.Contains(review, "rumblestrip check") {
 		t.Errorf("the review sheet's job doesn't post %q, or runs the change's code:\n%s", approvalStatus, review)
 	}
 }
 
 func TestTheTagRulesetLetsOnlyTheOwnerTagARelease(t *testing.T) {
 	var r ruleset
-	readJSON(t, "../kitinit/files/ruleset-tags.json", &r)
+	readJSON(t, "../setup/files/ruleset-tags.json", &r)
 	if r.Target != "tag" || !slices.Equal(r.Conditions.RefName.Include, []string{"~ALL"}) {
 		t.Errorf("the ruleset must hold every tag: target %q, include %v", r.Target, r.Conditions.RefName.Include)
 	}
@@ -263,7 +263,7 @@ type claudeSettings struct {
 
 func initFiles(t *testing.T) map[string]string {
 	t.Helper()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "OWNER", OwnerEmail: "1+OWNER@users.noreply.github.com"})
+	fs, err := setup.Files(setup.Options{Version: setup.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "OWNER", OwnerEmail: "1+OWNER@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func initFiles(t *testing.T) map[string]string {
 }
 
 // WHY: deny rules a plugin can't carry; the repository's settings, written
-// by kit init, hold them and turn the kit's plugin on, managed settings do
+// by rumblestrip init, hold them and turn Rumblestrip's plugin on, managed settings do
 // both where the agent can't undo them, and the plugin's hooks refuse what
 // a deny rule's text misses (git -C . push).
 func TestTheAgentSettingsDenyBypassesAndThePluginRunsTheKitHooks(t *testing.T) {
@@ -295,19 +295,19 @@ func TestTheAgentSettingsDenyBypassesAndThePluginRunsTheKitHooks(t *testing.T) {
 	if slices.Contains(project.Permissions.Deny, "Bash(git push --force-with-lease *)") {
 		t.Error("deny refuses --force-with-lease on the agent's own branches")
 	}
-	if !slices.Equal(project.Permissions.Deny, managed.Permissions.Deny) || !project.EnabledPlugins["kit@go-agent-kit"] || !managed.EnabledPlugins["kit@go-agent-kit"] {
+	if !slices.Equal(project.Permissions.Deny, managed.Permissions.Deny) || !project.EnabledPlugins["rumblestrip@rumblestrip-go"] || !managed.EnabledPlugins["rumblestrip@rumblestrip-go"] {
 		t.Errorf("the repository's and the managed settings differ: %+v, %+v", project, managed)
 	}
 	for event, command := range map[string]string{"PreToolUse": "hook pre-tool", "PostToolUse": "hook post-edit", "Stop": "hook stop"} {
 		groups := plugin.Hooks[event]
-		if len(groups) == 0 || len(groups[0].Hooks) == 0 || !strings.Contains(groups[0].Hooks[0].Command, `"${CLAUDE_PLUGIN_ROOT}/bin/kit" `+command) {
-			t.Errorf("the plugin's %s hook does not run kit %s: %+v", event, command, groups)
+		if len(groups) == 0 || len(groups[0].Hooks) == 0 || !strings.Contains(groups[0].Hooks[0].Command, `"${CLAUDE_PLUGIN_ROOT}/bin/rumblestrip" `+command) {
+			t.Errorf("the plugin's %s hook does not run rumblestrip %s: %+v", event, command, groups)
 		}
 	}
 }
 
-// WHY: the commit on the default branch is the kit's merge job's; the
-// agent's own commits and pull requests name the kit, not Claude, without
+// WHY: the commit on the default branch is Rumblestrip's merge job's; the
+// agent's own commits and pull requests name Rumblestrip, not Claude, without
 // a prompt saying so.
 func TestTheSettingsNameTheKitInTheAgentsCommitsAndPullRequests(t *testing.T) {
 	var settings struct {
@@ -321,10 +321,42 @@ func TestTheSettingsNameTheKitInTheAgentsCommitsAndPullRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := settings.Attribution
-	if a.Commit != "Co-authored-by: OWNER <1+OWNER@users.noreply.github.com>\nBuilt-with: go-agent-kit <https://github.com/McReaper/go-agent-kit>" ||
-		!strings.HasSuffix(a.PR, "Built with [go-agent-kit](https://github.com/McReaper/go-agent-kit)") ||
+	if a.Commit != "Co-authored-by: OWNER <1+OWNER@users.noreply.github.com>\nBuilt-with: Rumblestrip <https://github.com/McReaper/rumblestrip-go>" ||
+		!strings.HasSuffix(a.PR, "Built with [Rumblestrip](https://github.com/McReaper/rumblestrip-go)") ||
 		a.SessionURL == nil || *a.SessionURL {
 		t.Errorf("attribution = %+v", a)
+	}
+}
+
+// WHY: the plugin's hooks run rumblestrip at the commit the repository's
+// workflow pins, so the agent's checks are the merge check's; a launcher
+// that misreads the pin runs nothing, and every hook fails.
+func launcherRunsThePinnedVersion(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	commit := strings.Repeat("ab", 20)
+	fs, err := setup.Files(setup.Options{Version: setup.Version{Tag: "v0.3.0", Commit: commit}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := setup.Write(dir, fs); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, dir, "init", "-q")
+	fake := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fake, "go"), []byte("#!/bin/sh\necho \"go $*\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runIn(t, place{dir: fake}, "chmod", "+x", "go")
+	launcher, err := filepath.Abs("../plugin/bin/rumblestrip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "sh", "-c", `PATH="$(cd "$1" && pwd):$PATH" "$2" check`, "sh", filepath.ToSlash(fake), filepath.ToSlash(launcher))
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if want := "go run github.com/McReaper/rumblestrip-go/cmd/rumblestrip@" + commit + " check\n"; err != nil || string(out) != want {
+		t.Errorf("the launcher in a repository rumblestrip init set up: %v\n%s\nwant %s", err, out, want)
 	}
 }
 
@@ -348,16 +380,16 @@ func TestTheAppCodeOwnersHoldTheHarnessAndLeaveTheSpecToTheCheck(t *testing.T) {
 	}
 }
 
-// WHY: what kit init writes is what every app's CI runs; it passes the
-// workflow gates the kit holds an app's workflows to.
+// WHY: what rumblestrip init writes is what every app's CI runs; it passes the
+// workflow gates Rumblestrip holds an app's workflows to.
 func TestTheCIKitInitWritesPassesTheWorkflowGates(t *testing.T) {
 	withZizmor(t)
 	dir := t.TempDir()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
+	fs, err := setup.Files(setup.Options{Version: setup.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kitinit.Write(dir, fs); err != nil {
+	if _, err := setup.Write(dir, fs); err != nil {
 		t.Fatal(err)
 	}
 	gitIn(t, dir, "init", "-q")
@@ -366,7 +398,7 @@ func TestTheCIKitInitWritesPassesTheWorkflowGates(t *testing.T) {
 	check(t, nil, zizmorFindings(t, dir))
 }
 
-// WHY: the plugin is how an app gets the kit's skills, rules and hooks;
+// WHY: the plugin is how an app gets Rumblestrip's skills, rules and hooks;
 // every file its manifests and hooks name must be there, the wrapper they
 // call executable, and each skill named as Claude Code lists it.
 func TestThePluginShipsWhatItsManifestsAndHooksName(t *testing.T) {
@@ -377,36 +409,37 @@ func TestThePluginShipsWhatItsManifestsAndHooksName(t *testing.T) {
 		} `json:"plugins"`
 	}
 	readJSON(t, "../.claude-plugin/marketplace.json", &market)
-	if len(market.Plugins) != 1 || market.Plugins[0].Name != "kit" || market.Plugins[0].Source != "./plugin" {
+	if len(market.Plugins) != 1 || market.Plugins[0].Name != "rumblestrip" || market.Plugins[0].Source != "./plugin" {
 		t.Fatalf("the marketplace: %+v", market)
 	}
 	var manifest struct {
 		Name string `json:"name"`
 	}
 	readJSON(t, "../plugin/.claude-plugin/plugin.json", &manifest)
-	if manifest.Name != "kit" {
+	if manifest.Name != "rumblestrip" {
 		t.Errorf("the plugin is named %q", manifest.Name)
 	}
-	mode, err := exec.CommandContext(t.Context(), "git", "ls-files", "-s", "../plugin/bin/kit").Output()
+	mode, err := exec.CommandContext(t.Context(), "git", "ls-files", "-s", "../plugin/bin/rumblestrip").Output()
 	if err != nil || !strings.HasPrefix(string(mode), "100755 ") {
-		t.Errorf("plugin/bin/kit is not executable in git: %q, %v", mode, err)
+		t.Errorf("plugin/bin/rumblestrip is not executable in git: %q, %v", mode, err)
 	}
-	runIn(t, place{dir: ".."}, "shellcheck", "plugin/bin/kit")
+	runIn(t, place{dir: ".."}, "shellcheck", "plugin/bin/rumblestrip")
+	launcherRunsThePinnedVersion(t)
 	rules, err := os.ReadFile("../plugin/rules.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range regexp.MustCompile("`kit:([a-z-]+)`").FindAllStringSubmatch(string(rules), -1) {
+	for _, m := range regexp.MustCompile("`rumblestrip:([a-z-]+)`").FindAllStringSubmatch(string(rules), -1) {
 		skill, err := os.ReadFile(filepath.Join("../plugin/skills", m[1], "SKILL.md"))
 		if err != nil || !strings.Contains(string(skill), "\nname: "+m[1]+"\n") {
-			t.Errorf("rules.md names kit:%s, which no skill of that name holds: %v", m[1], err)
+			t.Errorf("rules.md names rumblestrip:%s, which no skill of that name holds: %v", m[1], err)
 		}
 	}
 }
 
 func hookRun(t *testing.T, input string, args ...string) (string, int) {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), kitCommand(t, "kit"), append([]string{"hook"}, args...)...)
+	cmd := exec.CommandContext(t.Context(), kitCommand(t, "rumblestrip"), append([]string{"hook"}, args...)...)
 	cmd.Stdin = strings.NewReader(input)
 	out, err := cmd.CombinedOutput()
 	if err == nil {

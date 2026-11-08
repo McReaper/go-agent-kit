@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 )
 
 // Mutant is one mutation: where it starts, the mutator, the first line it

@@ -8,14 +8,14 @@ import (
 
 func guardRun(t *testing.T, dir string, args ...string) (string, int) {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), kitCommand(t, "kit"), append([]string{"guard", "--base", "base"}, args...)...)
+	cmd := exec.CommandContext(t.Context(), kitCommand(t, "rumblestrip"), append([]string{"guard", "--base", "base"}, args...)...)
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err == nil {
 		return string(out), 0
 	}
 	if exitCode(err) != 1 {
-		t.Fatalf("kit guard %v: %v\n%s", args, err, stderrOf(err))
+		t.Fatalf("rumblestrip guard %v: %v\n%s", args, err, stderrOf(err))
 	}
 	return string(out), 1
 }

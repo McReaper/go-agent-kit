@@ -1,22 +1,22 @@
-// Package all lists the kit's analyzers, for kitvet and kit check alike.
+// Package all lists Rumblestrip's analyzers, for rumblestrip-vet and rumblestrip check alike.
 package all
 
 import (
-	"github.com/McReaper/go-agent-kit/analyzers/boundedlist"
-	"github.com/McReaper/go-agent-kit/analyzers/comments"
-	"github.com/McReaper/go-agent-kit/analyzers/ctxroot"
-	"github.com/McReaper/go-agent-kit/analyzers/domainconv"
-	"github.com/McReaper/go-agent-kit/analyzers/goroutine"
-	"github.com/McReaper/go-agent-kit/analyzers/logreturn"
-	"github.com/McReaper/go-agent-kit/analyzers/nesting"
-	"github.com/McReaper/go-agent-kit/analyzers/pkgname"
-	"github.com/McReaper/go-agent-kit/analyzers/sqlconst"
-	"github.com/McReaper/go-agent-kit/analyzers/testassert"
-	"github.com/McReaper/go-agent-kit/analyzers/typedid"
+	"github.com/McReaper/rumblestrip-go/analyzers/boundedlist"
+	"github.com/McReaper/rumblestrip-go/analyzers/comments"
+	"github.com/McReaper/rumblestrip-go/analyzers/ctxroot"
+	"github.com/McReaper/rumblestrip-go/analyzers/domainconv"
+	"github.com/McReaper/rumblestrip-go/analyzers/goroutine"
+	"github.com/McReaper/rumblestrip-go/analyzers/logreturn"
+	"github.com/McReaper/rumblestrip-go/analyzers/nesting"
+	"github.com/McReaper/rumblestrip-go/analyzers/pkgname"
+	"github.com/McReaper/rumblestrip-go/analyzers/sqlconst"
+	"github.com/McReaper/rumblestrip-go/analyzers/testassert"
+	"github.com/McReaper/rumblestrip-go/analyzers/typedid"
 	"golang.org/x/tools/go/analysis"
 )
 
-// Analyzers returns a new instance of every analyzer of the kit.
+// Analyzers returns a new instance of every analyzer of Rumblestrip.
 func Analyzers() []*analysis.Analyzer {
 	return []*analysis.Analyzer{
 		boundedlist.New(),

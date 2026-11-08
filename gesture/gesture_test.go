@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/gesture"
+	"github.com/McReaper/rumblestrip-go/gesture"
 )
 
 func TestTheGesturesPastTheKitsJudgementAreRefused(t *testing.T) {
@@ -32,7 +32,7 @@ func TestTheAgentsOwnWorkFlowsFreely(t *testing.T) {
 		"git push -u origin spec/export",
 		"git commit -m 'feat: export'",
 		"gh pr create --base spec/export --fill",
-		"kit check",
+		"rumblestrip check",
 		"git log --oneline main",
 	} {
 		if r := gesture.Check(gesture.Tool{Name: "Bash", Command: line}); r != "" {
@@ -44,12 +44,12 @@ func TestTheAgentsOwnWorkFlowsFreely(t *testing.T) {
 func TestAnEditOfWhatRunsTheChecksIsRefusedButNotOfTheCodeOrItsInstructions(t *testing.T) {
 	dir := t.TempDir()
 	for file, refused := range map[string]bool{
-		".github/workflows/kit.yml": true,
-		".claude/settings.json":     true,
-		".kit/sync":                 true,
-		"AGENTS.md":                 false,
-		"internal/notes/notes.go":   false,
-		"features/notes.feature":    false,
+		".github/workflows/rumblestrip.yml": true,
+		".claude/settings.json":             true,
+		".rumblestrip/sync":                 true,
+		"AGENTS.md":                         false,
+		"internal/notes/notes.go":           false,
+		"features/notes.feature":            false,
 	} {
 		got := gesture.Check(gesture.Tool{Name: "Edit", FilePath: filepath.Join(dir, filepath.FromSlash(file)), Dir: dir}) != ""
 		if got != refused {

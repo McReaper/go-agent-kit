@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/template/internal/platform/config"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/config"
 )
 
 func env(vars map[string]string) func(string) string {

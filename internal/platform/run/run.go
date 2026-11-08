@@ -1,4 +1,4 @@
-// Package run starts the external tools the kit drives.
+// Package run starts the external tools Rumblestrip drives.
 package run
 
 import (

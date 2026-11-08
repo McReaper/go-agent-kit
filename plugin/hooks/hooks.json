@@ -1,5 +1,5 @@
 {
-  "description": "The kit's rules in every session; a gesture past the kit refused before it runs; each edit's package checked; the full check before the agent stops.",
+  "description": "Rumblestrip's rules in every session; a gesture past Rumblestrip refused before it runs; each edit's package checked; the full check before the agent stops.",
   "hooks": {
     "SessionStart": [
       {
@@ -10,18 +10,18 @@
     "PreToolUse": [
       {
         "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit",
-        "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/kit\" hook pre-tool" }]
+        "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/rumblestrip\" hook pre-tool" }]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/kit\" hook post-edit" }]
+        "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/rumblestrip\" hook post-edit" }]
       }
     ],
     "Stop": [
       {
-        "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/kit\" hook stop --base origin/main" }]
+        "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/rumblestrip\" hook stop --base origin/main" }]
       }
     ]
   }

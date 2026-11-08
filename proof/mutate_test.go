@@ -26,7 +26,7 @@ func kitMutateFindings(t *testing.T, out string) []finding {
 	return findings
 }
 
-// WHY: mutation is too slow for every package on every change; kit mutate
+// WHY: mutation is too slow for every package on every change; rumblestrip mutate
 // scores only the lines a change touched, so a weak test of new code fails
 // the change while old code's survivors don't.
 func TestKitMutateFailsAChangeItsTestsDontPin(t *testing.T) {

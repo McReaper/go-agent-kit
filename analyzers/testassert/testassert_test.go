@@ -3,7 +3,7 @@ package testassert_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/testassert"
+	"github.com/McReaper/rumblestrip-go/analyzers/testassert"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

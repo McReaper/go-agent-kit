@@ -10,15 +10,15 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	kitcheck "github.com/McReaper/go-agent-kit/check"
+	kitcheck "github.com/McReaper/rumblestrip-go/check"
 )
 
 // WHY: CI runs each gate in a job of its own, which the checks list names
-// for the owner; a gate kit check runs and CI lists under no job, or under
+// for the owner; a gate rumblestrip check runs and CI lists under no job, or under
 // another name, never runs on a pull request, or reads differently on the
 // owner's page and in the log.
 func TestCIRunsEachGateOfKitCheckInAJobOfItsOwn(t *testing.T) {
-	data, err := os.ReadFile("../.github/workflows/kit-check.yml")
+	data, err := os.ReadFile("../.github/workflows/rumblestrip-check.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestCIRunsEachGateOfKitCheckInAJobOfItsOwn(t *testing.T) {
 	}
 	want = append(want, kitcheck.Gate{ID: "mutate", Title: "Mutation"})
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("kit-check.yml's gate jobs (-kit check's +the workflow's):\n%s", diff)
+		t.Errorf("rumblestrip-check.yml's gate jobs (-rumblestrip check's +the workflow's):\n%s", diff)
 	}
 }
 
@@ -48,7 +48,7 @@ func TestKitCheckAnnotatesEachFindingsLineAndWritesTheOwnersSummary(t *testing.T
 		t.Fatalf("exit %d\n%s", code, out)
 	}
 	annotation := regexp.MustCompile(`(?m)^::error file=internal/[^,]+\.go,line=\d+,title=Sweep::only-tests: .*Oldest is reached by tests only.*$`)
-	if !annotation.MatchString(out) || !strings.Contains(out, "FAIL sweep\n") || !strings.Contains(out, "kit check: 1 gate fails: sweep\n") {
+	if !annotation.MatchString(out) || !strings.Contains(out, "FAIL sweep\n") || !strings.Contains(out, "rumblestrip check: 1 gate fails: sweep\n") {
 		t.Errorf("the log lacks the annotation or the agent's lines:\n%s", out)
 	}
 	for file, want := range map[string]string{
@@ -118,10 +118,10 @@ func TestTheTitleGateWantsAShortConventionalCommit(t *testing.T) {
 }
 
 func TestKitCheckNamesTheGatesWhenAskedForOneItLacks(t *testing.T) {
-	cmd := exec.CommandContext(t.Context(), kitCommand(t, "kit"), "check", "--only", "lint")
+	cmd := exec.CommandContext(t.Context(), kitCommand(t, "rumblestrip"), "check", "--only", "lint")
 	cmd.Dir = t.TempDir()
 	out, err := cmd.CombinedOutput()
-	if err == nil || !strings.Contains(string(out), `no gate "lint"; the gates are golangci-lint-linux, kitvet-linux,`) {
+	if err == nil || !strings.Contains(string(out), `no gate "lint"; the gates are golangci-lint-linux, rumblestrip-vet-linux,`) {
 		t.Errorf("err %v\n%s", err, out)
 	}
 }

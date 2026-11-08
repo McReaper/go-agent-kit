@@ -7,7 +7,7 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/McReaper/go-agent-kit/analyzers/internal/layout"
+	"github.com/McReaper/rumblestrip-go/analyzers/internal/layout"
 	"golang.org/x/tools/go/analysis"
 )
 

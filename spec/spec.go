@@ -18,7 +18,7 @@ import (
 	gherkin "github.com/cucumber/gherkin/go/v42"
 	messages "github.com/cucumber/messages/go/v34"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/git"
+	"github.com/McReaper/rumblestrip-go/internal/platform/git"
 )
 
 // Dir is where an app keeps its spec, from the module's root.

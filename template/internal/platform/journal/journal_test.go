@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/McReaper/go-agent-kit/template/internal/platform/journal"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/journal"
 	"github.com/google/go-cmp/cmp"
 )
 

@@ -6,7 +6,7 @@ import (
 	"path"
 	"slices"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/psscriptanalyzer"
+	"github.com/McReaper/rumblestrip-go/internal/platform/psscriptanalyzer"
 )
 
 func psscriptanalyzerGate(ctx context.Context, o Options) Result {

@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/McReaper/go-agent-kit/template/pkg/slug"
+	"github.com/McReaper/rumblestrip-go/template/pkg/slug"
 )
 
 const MaxTitleRunes = 80

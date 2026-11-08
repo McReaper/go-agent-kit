@@ -1,8 +1,8 @@
-// Package gesture refuses the agent's gestures that reach past the kit's
+// Package gesture refuses the agent's gestures that reach past Rumblestrip's
 // judgement: merging, pushing to the default branch, a force push that
 // could rewrite it, a commit that skips its hooks, a change to the rules,
 // and an edit of what runs or configures the checks. Claude Code asks it
-// before each command and edit (kit hook pre-tool); the platform still
+// before each command and edit (rumblestrip hook pre-tool); the platform still
 // refuses what slips past, this only says so before the agent tries.
 package gesture
 
@@ -102,7 +102,7 @@ func push(args []string) Refusal {
 }
 
 // WHY: what runs the checks and configures the agent is the owner's: CI,
-// the kit's settings, the agent's settings. A change to AGENTS.md or an ADR
+// Rumblestrip's settings, the agent's settings. A change to AGENTS.md or an ADR
 // goes through a pull request the owner approves, so those stay editable.
 func edit(dir, file string) Refusal {
 	rel := file
@@ -114,7 +114,7 @@ func edit(dir, file string) Refusal {
 		rel = r
 	}
 	rel = filepath.ToSlash(rel)
-	for _, p := range []string{".github/", ".kit/", ".claude/"} {
+	for _, p := range []string{".github/", ".rumblestrip/", ".claude/"} {
 		if strings.HasPrefix(rel, p) {
 			return Refusal("T2: " + p + " is what runs the checks or configures the agent, the owner's to change: say in your report what should change there and why")
 		}

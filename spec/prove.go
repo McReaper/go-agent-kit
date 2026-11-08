@@ -13,8 +13,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/modcopy"
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/internal/platform/modcopy"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 )
 
 // Finding is a scenario that proves less than it says.
@@ -83,7 +83,7 @@ func plan(s Scenario) ([]Finding, []job) {
 		vs := values(st)
 		if len(vs) == 0 {
 			out = append(out, Finding{"spec-novalue", s.File, st.Line, fmt.Sprintf(
-				"T2: `%s` expects no value the kit can alter, so nothing shows it can fail: say what it expects, a quoted text or a number (Then it is refused with \"the limit is 80\")", "Then "+st.Text)})
+				"T2: `%s` expects no value Rumblestrip can alter, so nothing shows it can fail: say what it expects, a quoted text or a number (Then it is refused with \"the limit is 80\")", "Then "+st.Text)})
 		}
 		for _, v := range vs {
 			m := s
@@ -103,7 +103,7 @@ type outcome struct {
 }
 
 func buildSpec(ctx context.Context, work string) (string, error) {
-	bin := filepath.Join(work, "kit-spec.test")
+	bin := filepath.Join(work, "rumblestrip-spec.test")
 	if runtime.GOOS == "windows" {
 		bin += ".exe"
 	}
@@ -136,7 +136,7 @@ func (r runner) all(ctx context.Context, jobs []job) []outcome {
 	for range max(1, runtime.NumCPU()/2) {
 		wg.Go(func() {
 			for i := range next {
-				out[i] = r.one(ctx, filepath.Join(r.work, fmt.Sprintf(".kit-spec-%d", i)), jobs[i].run)
+				out[i] = r.one(ctx, filepath.Join(r.work, fmt.Sprintf(".rumblestrip-spec-%d", i)), jobs[i].run)
 			}
 		})
 	}
@@ -218,7 +218,7 @@ func verdicts(jobs []job, outs []outcome) []Finding {
 				"Then "+j.of.Steps[j.step].Text, altered(j.value), j.value)})
 		case o.undefined:
 			out = append(out, Finding{"spec-pattern", j.of.File, j.of.Steps[j.step].Line, fmt.Sprintf(
-				"T2: with %q instead of %q, `%s` matches no step definition, so the kit can't show the step checks it: match the value with a pattern that takes any value, like \"([^\"]*)\" or (\\d+)",
+				"T2: with %q instead of %q, `%s` matches no step definition, so Rumblestrip can't show the step checks it: match the value with a pattern that takes any value, like \"([^\"]*)\" or (\\d+)",
 				altered(j.value), j.value, "Then "+j.of.Steps[j.step].Text)})
 		}
 	}
@@ -232,10 +232,10 @@ func aloneMessage(name, reason string) string {
 	if reason == "" {
 		reason = "godog named no failed step"
 	}
-	return fmt.Sprintf("T2: %q fails: %s. Make the program do what it says; if it passes with the other scenarios, make it set up all it needs, since the kit runs each alone", name, reason)
+	return fmt.Sprintf("T2: %q fails: %s. Make the program do what it says; if it passes with the other scenarios, make it set up all it needs, since Rumblestrip runs each alone", name, reason)
 }
 
-// Lines writes findings the way the kit prints them, file:line: rule: message.
+// Lines writes findings the way Rumblestrip prints them, file:line: rule: message.
 func Lines(fs []Finding) []string {
 	out := make([]string, 0, len(fs))
 	for _, f := range fs {

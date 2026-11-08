@@ -1,16 +1,16 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "extraKnownMarketplaces": {
-    "go-agent-kit": {
+    "rumblestrip-go": {
       "source": {
         "source": "github",
-        "repo": "McReaper/go-agent-kit"
+        "repo": "McReaper/rumblestrip-go"
       },
       "autoUpdate": true
     }
   },
   "enabledPlugins": {
-    "kit@go-agent-kit": true
+    "rumblestrip@rumblestrip-go": true
   },
   "permissions": {
     "deny": [
@@ -24,8 +24,8 @@
       "Bash(git commit -n *)",
       "Bash(gh pr merge *)",
       "Bash(gh api * rulesets *)",
-      "Edit(./.kit/**)",
-      "Write(./.kit/**)",
+      "Edit(./.rumblestrip/**)",
+      "Write(./.rumblestrip/**)",
       "Edit(./.github/**)",
       "Write(./.github/**)",
       "Edit(./.claude/**)",

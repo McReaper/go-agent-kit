@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/McReaper/go-agent-kit/guard"
-	"github.com/McReaper/go-agent-kit/mutate"
+	"github.com/McReaper/rumblestrip-go/guard"
+	"github.com/McReaper/rumblestrip-go/mutate"
 )
 
 func TestChangedLinesAreTheProductionGoLinesAChangeAdds(t *testing.T) {

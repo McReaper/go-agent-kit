@@ -1,4 +1,4 @@
-# The kit's gitleaks config, embedded in kit and passed to every scan: an
+# Rumblestrip's gitleaks config, embedded in rumblestrip and passed to every scan: an
 # app's own .gitleaks.toml, which could allow a secret, is never read.
 
 [extend]

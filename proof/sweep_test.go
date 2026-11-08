@@ -9,10 +9,10 @@ const sweepTool = "sweep/"
 
 func sweepFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	out := runIn(t, place{dir, []int{1}}, kitCommand(t, "kit"), "sweep", "--json")
+	out := runIn(t, place{dir, []int{1}}, kitCommand(t, "rumblestrip"), "sweep", "--json")
 	var rows []guardRow
 	if err := json.Unmarshal(out, &rows); err != nil {
-		t.Fatalf("kit sweep: %v\n%s", err, out)
+		t.Fatalf("rumblestrip sweep: %v\n%s", err, out)
 	}
 	findings := make([]finding, 0, len(rows))
 	for _, r := range rows {

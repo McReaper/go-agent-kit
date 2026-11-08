@@ -138,7 +138,7 @@ func filesWithExt(t *testing.T, dir string, exts ...string) []string {
 
 var shellShebang = regexp.MustCompile(`^#!\s*(/bin/|/usr/bin/env\s+)(ba|da|k)?sh\b`)
 
-// WHY: a git hook has no extension; like kit check, the proof knows it by
+// WHY: a git hook has no extension; like rumblestrip check, the proof knows it by
 // its shebang.
 func gitHooks(t *testing.T, dir string) []string {
 	t.Helper()
@@ -336,8 +336,8 @@ func atoi(t *testing.T, s string) int {
 	return n
 }
 
-// WHY: the proof runs gitleaks with the config kit embeds, as every scan
-// the kit makes does.
+// WHY: the proof runs gitleaks with the config rumblestrip embeds, as every scan
+// Rumblestrip makes does.
 func kitGitleaksConfig(t *testing.T) string {
 	t.Helper()
 	p, err := filepath.Abs("../lint/gitleaks.toml")

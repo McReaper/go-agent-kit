@@ -11,13 +11,13 @@ A module owns a part of the app's domain: its words, its rules, its data. Other 
 
 - The request brings words the existing glossaries don't define, and rules that don't touch theirs.
 - Its data is its own: a separate directory, table or file.
-- Otherwise it is a feature of an existing module: load the `kit:new-feature` skill.
+- Otherwise it is a feature of an existing module: load the `rumblestrip:new-feature` skill.
 
 When unsure, ask: a module is costly to merge back.
 
 ## The skeleton, in its own pull request
 
-One module per pull request: the skeleton first, its features after, each with the `kit:new-feature` skill.
+One module per pull request: the skeleton first, its features after, each with the `rumblestrip:new-feature` skill.
 
 ```
 internal/<m>/<m>.go            the contract: Open, Close, Register(s, j), Commands(j, out)

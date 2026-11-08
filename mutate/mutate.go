@@ -12,9 +12,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/guard"
-	"github.com/McReaper/go-agent-kit/internal/platform/modcopy"
-	"github.com/McReaper/go-agent-kit/internal/platform/mutesting"
+	"github.com/McReaper/rumblestrip-go/guard"
+	"github.com/McReaper/rumblestrip-go/internal/platform/modcopy"
+	"github.com/McReaper/rumblestrip-go/internal/platform/mutesting"
 )
 
 // Mutant is one mutation of a changed line.

@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 )
 
 // WHY: each tool says "found something" with its own exit code (1 for

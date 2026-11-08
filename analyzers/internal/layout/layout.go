@@ -1,5 +1,5 @@
 // Package layout tells, from a package's import path, which part of the
-// kit's architecture it belongs to:
+// Rumblestrip's architecture it belongs to:
 //
 //	cmd/<app>                        main: wiring only
 //	internal/<m>                     a module's contract

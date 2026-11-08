@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/McReaper/go-agent-kit/template/internal/notes"
-	"github.com/McReaper/go-agent-kit/template/internal/platform/config"
-	"github.com/McReaper/go-agent-kit/template/internal/platform/journal"
-	"github.com/McReaper/go-agent-kit/template/internal/platform/op"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/config"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/journal"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/op"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 )

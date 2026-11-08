@@ -1,4 +1,4 @@
-// Package proof runs every tool the kit names on the trial project and
+// Package proof runs every tool Rumblestrip names on the trial project and
 // checks each one reports exactly what the trial's cases expect: nothing on
 // the template, and each case's annotated findings on its violation.
 //

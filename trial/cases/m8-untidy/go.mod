@@ -1,4 +1,4 @@
-module github.com/McReaper/go-agent-kit/template
+module github.com/McReaper/rumblestrip-go/template
 
 go 1.26.0
 

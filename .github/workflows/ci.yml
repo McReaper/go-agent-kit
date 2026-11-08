@@ -35,12 +35,12 @@ jobs:
           tar -xJf shellcheck.tar.xz
           sudo mv "shellcheck-v$v/shellcheck" /usr/local/bin/
       - run: go vet ./...
-      - name: Lint the kit with its own rules, for every target system
+      - name: Lint Rumblestrip with its own rules, for every target system
         run: |
-          go build -o "$RUNNER_TEMP/kitvet" ./cmd/kitvet
+          go build -o "$RUNNER_TEMP/rumblestrip-vet" ./cmd/rumblestrip-vet
           for goos in linux windows; do
             GOOS=$goos golangci-lint run --config lint/golangci.yml ./...
-            GOOS=$goos "$RUNNER_TEMP/kitvet" ./...
+            GOOS=$goos "$RUNNER_TEMP/rumblestrip-vet" ./...
           done
       - name: Prove every rule on the trial
         run: go test -race -count=1 ./...
@@ -48,7 +48,7 @@ jobs:
         run: |
           go test -race -count=1 -run '^TestRaceDetectorReportsEveryCase$' -v ./proof/ | grep -- '--- PASS: TestRaceDetectorReportsEveryCase'
 
-      - name: Check the kit's own workflows and history
+      - name: Check Rumblestrip's own workflows and history
         run: |
           actionlint
           zizmor --offline .github/workflows

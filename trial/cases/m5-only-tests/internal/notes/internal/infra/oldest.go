@@ -3,7 +3,7 @@ package infra
 import (
 	"context"
 
-	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes/internal/domain"
 )
 
 func (s *FileStore) Oldest(ctx context.Context) (domain.Note, error) {

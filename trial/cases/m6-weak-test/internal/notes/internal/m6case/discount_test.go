@@ -3,7 +3,7 @@ package m6case_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/m6case"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes/internal/m6case"
 )
 
 func TestDiscountTakesTenOffALargeTotal(t *testing.T) {

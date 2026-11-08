@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/McReaper/go-agent-kit/spec"
+	"github.com/McReaper/rumblestrip-go/spec"
 )
 
 // SpecChanges returns what the change from base to the working tree of the
