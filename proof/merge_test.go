@@ -87,7 +87,7 @@ const mergeFake = `gh() {
   *users/octo*) echo "1+octo@users.noreply.github.com" ;;
   *base=feat/x*) echo "#9" ;;
   *issues/7/comments*) echo 55 ;;
-  *"comments/55 --jq .body") printf '%s\n' "<!-- rumblestrip -->" "<!-- rumblestrip status -->" "⏳ The gates are running." "<!-- /rumblestrip status -->" "" "## For you" ;;
+  *"comments/55 --jq .body") printf '%s\n' "<!-- rumblestrip -->" "<!-- rumblestrip status -->" "⏳ The checks are running." "<!-- /rumblestrip status -->" "" "## For you" ;;
   esac
 }
 `
@@ -215,7 +215,7 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
   case "$*" in
   *runs/5/jobs*) printf '%b' "$JOBS" ;;
   *issues/7/comments*) echo 55 ;;
-  *"comments/55 --jq .body") printf '%s\n' "<!-- rumblestrip -->" "<!-- rumblestrip status -->" "⏳ The gates are running." "<!-- /rumblestrip status -->" "" "## For you" ;;
+  *"comments/55 --jq .body") printf '%s\n' "<!-- rumblestrip -->" "<!-- rumblestrip status -->" "⏳ The checks are running." "<!-- /rumblestrip status -->" "" "## For you" ;;
   esac
 }
 `

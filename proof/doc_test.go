@@ -69,6 +69,34 @@ func TestTheDocNamesEveryPinnedTool(t *testing.T) {
 	}
 }
 
+// WHY: a diagram and the page's HTML frame (the logo, the badges) are not
+// read as prose: only the words between them count.
+var (
+	mermaidBlock = regexp.MustCompile("(?s)```mermaid.*?```")
+	htmlTag      = regexp.MustCompile(`<[^>]+>`)
+)
+
+// WHY: the owner reads these, and stops reading a page that grows: each
+// stays within its budget, the criteria's detail going to
+// docs/rumblestrip.md.
+func TestTheHumanDocsStayShort(t *testing.T) {
+	for file, budget := range map[string]int{
+		"../README.md":          550,
+		"../docs/guide.md":      600,
+		"../docs/setup.md":      500,
+		"../template/README.md": 150,
+	} {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		prose := htmlTag.ReplaceAllString(mermaidBlock.ReplaceAllString(string(data), ""), "")
+		if words := len(strings.Fields(prose)); words > budget {
+			t.Errorf("%s has %d words, its budget is %d: say less, or move the detail to docs/rumblestrip.md", file, words, budget)
+		}
+	}
+}
+
 func TestTheDocsProofTestsExist(t *testing.T) {
 	doc := readDoc(t)
 	tests := regexp.MustCompile("`(Test[A-Za-z]+)`").FindAllStringSubmatch(doc, -1)

@@ -9,7 +9,8 @@ Rumblestrip: the rails AI-written Go stays on. `docs/rumblestrip.md` holds every
 - `guard/` + `cmd/rumblestrip` — `rumblestrip guard`, the diff checks.
 - `spec/` — the spec: Gherkin scenarios under an app's `features/`, what a change does to them, and `rumblestrip spec`, which shows each step can fail.
 - `gesture/` — what `rumblestrip hook pre-tool` refuses before the agent runs it.
-- `setup/` — `rumblestrip init`: the four files an app keeps, its GitHub settings, the agent's App; `setup/files/` holds them, the app rulesets included.
+- `setup/` — `rumblestrip init`: the files an app keeps, its GitHub settings, the agent's App; `setup/files/` holds them, the app rulesets included.
+- `.github/workflows/rumblestrip-check.yml` and `rumblestrip-approval.yml` — the checks an app's workflows call: one job per check, the review sheet, Check, the merge; their header comments say how they run.
 - `plugin/` + `.claude-plugin/marketplace.json` — the Claude Code plugin apps turn on: skills, rules, hooks; `plugin/bin/rumblestrip` runs rumblestrip at the version the app's CI pins.
 - `archtest/` — architecture rules over go/packages.
 - `internal/platform/git` — the one place Rumblestrip starts git.
@@ -25,6 +26,8 @@ Rumblestrip: the rails AI-written Go stays on. `docs/rumblestrip.md` holds every
 - Rumblestrip passes its own rules: `golangci-lint run --config lint/golangci.yml ./...` and rumblestrip-vet, for GOOS linux and windows.
 - Moving the `go` or `toolchain` line follows ADR 1; `go get x@latest` can move it silently, so check go.mod after any `go get`.
 - Everything in English. Conventional commits. Checks are Go, not scripts in another language.
+- People read `README.md`, `docs/guide.md` and `docs/setup.md`: plain words, no criterion IDs, within the word budgets `TestTheHumanDocsStayShort` enforces. The criteria go in `docs/rumblestrip.md`.
+- This repository's own ruleset is `platform/ruleset-rumblestrip.json`, applied by hand: `gh api repos/McReaper/rumblestrip-go/rulesets --method POST --input platform/ruleset-rumblestrip.json`. Its CI job stays `kit`, the context it requires.
 
 ## Commands
 

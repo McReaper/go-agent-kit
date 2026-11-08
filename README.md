@@ -1,30 +1,82 @@
-# Rumblestrip
+<div align="center">
+    <img src="docs/media/logo.svg" alt="Rumblestrip logo" width="160" height="160"/>
+    <h1>Rumblestrip</h1>
+    <h3><em>Your AI agent writes the Go. Rumblestrip keeps it on the road.</em></h3>
+</div>
 
-Rumblestrip keeps Go code written by AI agents on the road: the rules that keep a codebase maintainable, evolvable and safe are enforced by machines. The owner reads the spec, Gherkin scenarios of what the app does, and a few lines per pull request; never the diff.
+<p align="center">
+    <a href="https://github.com/McReaper/rumblestrip-go/tags"><img src="https://img.shields.io/github/v/tag/McReaper/rumblestrip-go?sort=semver&filter=v*&label=version" alt="Latest version"/></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"/></a>
+    <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26"/>
+    <img src="https://img.shields.io/badge/Claude_Code-plugin-D97757" alt="Claude Code plugin"/>
+</p>
 
-Target: Go CLIs, MCP servers and libraries.
+<p align="center">
+    <a href="#-what-you-get">What you get</a> ·
+    <a href="#%EF%B8%8F-how-a-change-goes">How a change goes</a> ·
+    <a href="#-set-it-up">Set it up</a> ·
+    <a href="#-docs">Docs</a> ·
+    <a href="#-license">License</a>
+</p>
 
-## Use it in a repository
+A rumble strip is the grooved edge of a road: drift onto it and it rumbles, so you steer back. Rumblestrip does that for an AI agent writing Go: every rule it crosses rumbles with an error that says the fix, and nothing merges until every check passes. You read one thing: what the app should do.
 
-An app keeps four files for Rumblestrip and installs one GitHub App; the rest ships with Rumblestrip.
+## ✨ What you get
+
+- **You approve the what, never the how** — the agent writes the spec first, short scenarios in plain English. You read and approve those; the code is the checks' to judge.
+- **About twenty checks the agent can't switch off** — tests, the spec, lint, architecture, dead code, nil safety, known vulnerabilities, secrets, the workflows. They live in Rumblestrip, pinned by version, out of the agent's reach.
+- **A rumble before CI** — in Claude Code, Rumblestrip checks each package the agent edits, refuses a gesture past the rules (a force push, editing CI, skipping hooks), and runs every check before the agent stops.
+- **One line that says where things stand** — on each pull request: the checks running, the ones that fail, waiting for you, merged.
+- **Merges by itself** — once every check passes and you've approved what's yours, Rumblestrip merges the spec, then the build, and credits you as co-author.
+
+## 🛣️ How a change goes
+
+1. **The spec.** The agent writes what the app will do and opens a pull request, labelled `human-review`.
+2. **Your approval.** You read the scenarios and approve. That's all you read.
+3. **The build.** The agent writes the code in a second pull request, stacked on the spec, and the checks run on it. If one fails, the agent fixes it.
+4. **The merge.** Once every check passes, Rumblestrip merges both.
+
+> [!NOTE]
+> <details>
+> <summary><b>🔍 Click to see the whole path</b>: who does what, and where the checks stand</summary>
+>
+> ```mermaid
+> flowchart LR
+>     you(["You"]) -->|"ask for a feature"| agent["AI agent"]
+>     agent -->|"1 · writes"| spec["Spec pull request<br/>scenarios in plain English"]
+>     you -.->|"2 · read and approve"| spec
+>     agent -->|"3 · writes"| build["Build pull request<br/>the code, stacked on the spec"]
+>     spec --> checks{{"~20 checks<br/>tests, spec, lint, security…"}}
+>     build --> checks
+>     checks -->|"one fails: the error says the fix"| agent
+>     checks -->|"4 · all pass, you approved"| merge["Rumblestrip merges<br/>the spec, then the build"]
+>     merge --> main[("main")]
+> ```
+>
+> The agent never merges, and can't change the checks or the rules GitHub enforces: only you can.
+>
+> </details>
+
+## 📥 Set it up
+
+In a Go repository on GitHub, with Go and the `gh` CLI:
 
 ```sh
-go run github.com/McReaper/rumblestrip-go/cmd/rumblestrip@<Rumblestrip version> init --owner <your login>   # rumblestrip.yml, rumblestrip-approval.yml, CODEOWNERS, dependabot.yml, .claude/settings.json
-rumblestrip init app --name <name>              # once, if no GitHub App acts for the agent yet: one from Rumblestrip's manifest
-rumblestrip init github --repo <owner>/<repo>   # as the owner, with the App's RUMBLESTRIP_APP_CLIENT_ID and RUMBLESTRIP_APP_KEY: the rulesets, merged branches deleted, immutable releases, the App Rumblestrip merges as
+go install github.com/McReaper/rumblestrip-go/cmd/rumblestrip@latest
+rumblestrip init --owner <your GitHub login>   # the workflows and settings: commit and push them
+rumblestrip init app --name <agent name>       # once: the agent's GitHub App; install it on the repository
+rumblestrip init github --repo <you>/<repo>    # the rules GitHub enforces, with the App's RUMBLESTRIP_APP_CLIENT_ID and RUMBLESTRIP_APP_KEY
 ```
 
-A new app starts from the [template](template) (`gonew`), which `rumblestrip init` then sets up.
+Then open Claude Code in the repository and ask for a feature. A new app can start from the [template](template).
 
-## What it ships
+## 📚 Docs
 
-- [`plugin/`](plugin) — the Claude Code plugin the repository's settings turn on: the skills (a feature spec first, a module, a secret), Rumblestrip's rules in every session, and the hooks: a gesture past Rumblestrip refused before it runs, each edit's package checked, the full check before the agent stops.
-- `cmd/rumblestrip` — one CLI: `check` (every gate, the same on the agent's machine and in CI), `spec` (each step of the spec can fail), `guard` (bypasses, what is the owner's to approve, size), `review` (the short sheet the owner reads), `mutate` (the tests must kill the change's mutants), `sweep` (what only the whole module shows), `secrets` (the staged lines), `init`, `app` (acts as the agent's GitHub App), `hook` (Claude Code's hooks).
-- `.github/workflows/rumblestrip-check.yml` — the merge check apps call: a job per gate, the review sheet and the owner's approval status, Check, the merge; `rumblestrip-approval.yml` re-runs the review sheet on the owner's approval.
-- `lint/` — the curated golangci-lint and gitleaks configs; an app's own are never read. `cmd/rumblestrip-vet` — eleven analyzers for rules no linter has. `archtest` — the layout rules the compiler can't see.
-- [`platform/`](platform) — what the owner applies by hand: Rumblestrip repository's own ruleset, the agent's managed settings.
+- [The guide](docs/guide.md) — reading a pull request, approving, when something is stuck.
+- [Setup in detail](docs/setup.md) — what each command sets, and what the agent can't do.
+- [The rules](docs/rumblestrip.md) — every criterion, the check that holds it, and its proof.
+- [Contributing](CLAUDE.md).
 
-## How it is proven
+## 📄 License
 
-- [`docs/rumblestrip.md`](docs/rumblestrip.md) — Rumblestrip: the constraints, the criteria, the solution for each, the coverage check and what stays uncovered. [`docs/adr/`](docs/adr) — its decisions: supported Go only, one library per need, the lint runner, mutation on a copy, a tool before Rumblestrip's code.
-- Every rule is proven on the template: it passes every tool, and each case under `trial/cases` holds one deliberate violation with the exact findings it must produce. [`proof/`](proof) reruns them all; `go test ./...` fails if a rule stops firing. `tools.txt` pins every tool at the version the proofs ran with.
+MIT — see [`LICENSE`](LICENSE).
