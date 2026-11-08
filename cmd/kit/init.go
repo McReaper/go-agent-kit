@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -23,8 +24,9 @@ import (
 const kitModule = "github.com/McReaper/go-agent-kit"
 
 type initOptions struct {
-	owner   string
-	version string
+	owner      string
+	ownerEmail string
+	version    string
 }
 
 func initCommand(out io.Writer) *cobra.Command {
@@ -34,6 +36,7 @@ func initCommand(out io.Writer) *cobra.Command {
 	})
 	cmd.Flags().StringVar(&o.owner, "owner", "", "the owner's GitHub login, the code owner of the harness")
 	cmd.Flags().StringVar(&o.version, "version", "", "the kit release to pin, a tag (default: this kit's own version)")
+	cmd.Flags().StringVar(&o.ownerEmail, "owner-email", "", "the owner's address the agent's commits name them co-author by (default: their GitHub no-reply address)")
 	cmd.AddCommand(initGitHubCommand(out), initAppCommand(out))
 	return cmd
 }
@@ -50,7 +53,12 @@ func runInit(ctx context.Context, out io.Writer, o initOptions) error {
 	if err != nil {
 		return fmt.Errorf("kit init: %w", err)
 	}
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: tag, Commit: commit}, Owner: o.owner})
+	if o.ownerEmail == "" && o.owner != "" {
+		if o.ownerEmail, err = noReply(ctx, ghapp.NewClient(), o.owner); err != nil {
+			return fmt.Errorf("kit init: %w", err)
+		}
+	}
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: tag, Commit: commit}, Owner: o.owner, OwnerEmail: o.ownerEmail})
 	if err != nil {
 		return err
 	}
@@ -62,6 +70,17 @@ func runInit(ctx context.Context, out io.Writer, o initOptions) error {
 	return err
 }
 
+// WHY: GitHub credits a commit to the account its address belongs to; the
+// no-reply one, id+login@users.noreply.github.com, always does, whatever
+// the owner made public.
+func noReply(ctx context.Context, c ghapp.Client, login string) (string, error) {
+	id, err := c.UserID(ctx, login)
+	if err != nil {
+		return "", fmt.Errorf("the owner's GitHub id: %w", err)
+	}
+	return ghapp.Identity{Login: login, ID: id}.Email(), nil
+}
+
 // WHY: go install and go run record the version they built; a checkout's
 // build says (devel), and names no release to pin.
 func ownVersion() string {
@@ -69,6 +88,18 @@ func ownVersion() string {
 		return info.Main.Version
 	}
 	return ""
+}
+
+var pseudoVersion = regexp.MustCompile(`^v\d+\.\d+\.\d+-(?:.*\.)?\d{14}-([0-9a-f]{7})[0-9a-f]{5}$`)
+
+// WHY: a kit pinned at a commit no release tags installs as a pseudo-version
+// (v0.2.8-0.20261108130046-03876d889681), which says no more to the owner
+// than its commit does.
+func shortVersion(v string) string {
+	if m := pseudoVersion.FindStringSubmatch(v); m != nil {
+		return m[1]
+	}
+	return v
 }
 
 func initReport(r kitinit.Report) string {

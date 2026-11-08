@@ -16,11 +16,11 @@ On a branch from the default branch, `spec/<feature>`, add or change scenarios i
 - every `Then` says what it expects with a value, a quoted text or a number: `Then it is refused with "the limit is 80"`. The kit alters each value and checks the scenario then fails; a `Then` with no value is refused;
 - a new scenario is tagged `@wip`: approved, not built yet. The spec's test leaves it out.
 
-Open the pull request with the spec alone. Its description says in one line what the feature is for. If the request leaves something open, a limit or what is refused, write the scenario you would choose and say so there: the owner decides. Write `@wip` in backticks there, as any `@name`: GitHub notifies the account a bare one names. Once they approve it, the pull request merges by itself.
+Open the pull request with the spec alone, titled `spec(<module>): <the behaviour, in the user's words>`. Its description says in one line what the feature is for. If the request leaves something open, a limit or what is refused, write the scenario you would choose and say so there: the owner decides. Write `@wip` in backticks there, as any `@name`: GitHub notifies the account a bare one names. Once they approve it, the pull request merges by itself.
 
 ## 2. Build it on top
 
-Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits. Right after, make the two pull requests one stack, the spec's first:
+Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits, titled `feat(<module>): …` as the spec's. Right after, make the two pull requests one stack, the spec's first:
 
 ```sh
 gh api -X POST 'repos/{owner}/{repo}/stacks' -H 'X-GitHub-Api-Version: 2026-03-10' -F 'pull_requests[]=<spec number>' -F 'pull_requests[]=<build number>'

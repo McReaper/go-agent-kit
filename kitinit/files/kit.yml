@@ -1,35 +1,39 @@
-name: kit
+name: Kit
 
 # The kit's merge check, review sheet and merge, at the kit commit the uses
-# lines pin: kit-check.yml reads it from the job's token, so this is the
-# one pin, and Dependabot moves it. The owner's approval re-runs the check
-# through kit-approval.yml. The merge is the App's whose Client ID and key
-# kit init github stored as the repository's secrets.
+# line pins: kit-check.yml reads it from the job's token, so this is the
+# one pin, with kit-approval.yml's, and Dependabot moves both. The merge is
+# the App's whose Client ID and key kit init github stored as the
+# repository's secrets.
 
 on:
   pull_request:
-    # edited: a pull request moved to another base.
+    # edited: the title or the base changed (the job's condition).
     types: [opened, synchronize, reopened, edited]
-  pull_request_review:
-    types: [submitted]
 
 permissions: {}
 
 jobs:
-  kit:
-    if: github.event_name == 'pull_request'
+  pr:
+    # WHY: an edit of the description alone runs nothing. The condition is
+    # this job's, not the called jobs': a skipped called job reports a
+    # skipped Check, which GitHub counts as passed.
+    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base
+    name: Pull request
+    concurrency:
+      group: kit-${{"{{"}} github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       contents: read
-      pull-requests: write # the review sheet's comment
-      issues: write # the review sheet's label
+      pull-requests: write # the kit's comment
+      issues: write # the kit's label
+      statuses: write # the owner's approval
+      actions: read # the gates' results
       id-token: write # the kit's version, read from the job's token
     uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@{{.Commit}} # {{.Tag}}
+    with:
+      owner: {{.Owner}}
     secrets:
       # The App the kit merges as, which kit init github gives the repository.
       KIT_APP_CLIENT_ID: ${{"{{"}} secrets.KIT_APP_CLIENT_ID }}
       KIT_APP_KEY: ${{"{{"}} secrets.KIT_APP_KEY }}
-  approval:
-    if: github.event_name == 'pull_request_review'
-    permissions:
-      actions: write # re-run the merge check
-    uses: McReaper/go-agent-kit/.github/workflows/kit-approval.yml@{{.Commit}} # {{.Tag}}

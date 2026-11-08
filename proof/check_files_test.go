@@ -47,32 +47,52 @@ func TestKitCheckFailsOnAWorkflowAScriptAndASecret(t *testing.T) {
 	}
 }
 
-// WHY: an app keeps kit.yml, pinned to a kit version; once that version
-// needs another kit.yml, a trigger or a permission more, the app's own
-// check says so and kit init writes it again.
-func TestKitCheckFailsOnAKitYMLItsKitVersionWouldNotWrite(t *testing.T) {
+// WHY: an app keeps kit.yml and kit-approval.yml, pinned to a kit
+// version; once that version needs them otherwise, a permission more or a
+// file more, the app's own check says so and kit init writes them again.
+func TestKitCheckFailsOnAKitWorkflowItsKitVersionWouldNotWrite(t *testing.T) {
 	withZizmor(t)
-	dir := changeOf(t, trialCase{name: "no change"})
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := kitinit.Write(dir, fs); err != nil {
-		t.Fatal(err)
-	}
-	ci := filepath.Join(dir, ".github", "workflows", "kit.yml")
-	data, err := os.ReadFile(ci)
-	if err != nil {
-		t.Fatal(err)
-	}
-	trimmed := strings.Replace(string(data), "  pull_request_review:\n    types: [submitted]\n", "", 1)
-	if err := os.WriteFile(ci, []byte(trimmed), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	gitIn(t, dir, "add", "-A")
-	gitIn(t, dir, "commit", "-q", "-m", "kit init, then a trigger dropped")
-	out, code := kitRun(t, dir, "check", "--base", "base", "--race=false")
-	if code != 1 || !strings.Contains(out, "FAIL kit files\n") || !strings.Contains(out, "it differs from the kit.yml this kit version writes") {
-		t.Errorf("exit %d\n%s", code, out)
+	for _, c := range []struct {
+		name string
+		edit func(t *testing.T, dir string)
+		says string
+	}{
+		{"a permission dropped", func(t *testing.T, dir string) {
+			t.Helper()
+			ci := filepath.Join(dir, ".github", "workflows", "kit.yml")
+			data, err := os.ReadFile(ci)
+			if err != nil {
+				t.Fatal(err)
+			}
+			trimmed := strings.Replace(string(data), "      statuses: write # the owner's approval\n", "", 1)
+			if err := os.WriteFile(ci, []byte(trimmed), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, ".github/workflows/kit.yml:1: kit-files: T2: it differs from the one this kit version writes"},
+		{"the approval's workflow gone", func(t *testing.T, dir string) {
+			t.Helper()
+			if err := os.Remove(filepath.Join(dir, ".github", "workflows", "kit-approval.yml")); err != nil {
+				t.Fatal(err)
+			}
+		}, ".github/workflows/kit-approval.yml:1: kit-files: T2: this kit version writes it and the repository has none"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := changeOf(t, trialCase{name: "no change"})
+			fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := kitinit.Write(dir, fs); err != nil {
+				t.Fatal(err)
+			}
+			if out, code := kitRun(t, dir, "check", "--only", "kit-files,actionlint,zizmor"); code != 0 {
+				t.Fatalf("what kit init wrote: exit %d\n%s", code, out)
+			}
+			c.edit(t, dir)
+			out, code := kitRun(t, dir, "check", "--only", "kit-files")
+			if code != 1 || !strings.Contains(out, "FAIL kit files\n") || !strings.Contains(out, c.says) {
+				t.Errorf("exit %d\n%s", code, out)
+			}
+		})
 	}
 }

@@ -98,6 +98,7 @@ func plan(s Scenario) ([]Finding, []job) {
 type outcome struct {
 	passed    bool
 	undefined bool
+	reason    string
 	err       error
 }
 
@@ -150,7 +151,21 @@ func (r runner) all(ctx context.Context, jobs []job) []outcome {
 var (
 	ansi      = regexp.MustCompile("\x1b\\[[0-9;]*m")
 	undefined = regexp.MustCompile(`\b\d+ undefined\b`)
+	stepError = regexp.MustCompile(`(?m)^\s+Error: (.+)$`)
 )
+
+// WHY: godog lists each failed step again under "--- Failed steps:", with
+// its error: the first one is why the scenario failed.
+func failedStep(text string) string {
+	_, failed, ok := strings.Cut(text, "--- Failed steps:")
+	if !ok {
+		return ""
+	}
+	if m := stepError.FindStringSubmatch(failed); m != nil {
+		return strings.TrimSpace(m[1])
+	}
+	return ""
+}
 
 func (r runner) one(ctx context.Context, dir string, s Scenario) outcome {
 	if err := os.CopyFS(dir, os.DirFS(filepath.Join(filepath.Dir(dir), Dir))); err != nil {
@@ -167,7 +182,7 @@ func (r runner) one(ctx context.Context, dir string, s Scenario) outcome {
 		return outcome{err: err}
 	}
 	text := ansi.ReplaceAllString(string(res.Stdout)+string(res.Stderr), "")
-	return outcome{passed: res.Code == 0, undefined: res.Code != 0 && undefined.MatchString(text)}
+	return outcome{passed: res.Code == 0, undefined: res.Code != 0 && undefined.MatchString(text), reason: failedStep(text)}
 }
 
 func removeFeatures(dir string) (err error) {
@@ -195,8 +210,7 @@ func verdicts(jobs []job, outs []outcome) []Finding {
 			out = append(out, Finding{"spec-run", j.of.File, j.of.Line, "T2: " + o.err.Error()})
 		case j.step < 0 && !o.passed:
 			alone[key] = true
-			out = append(out, Finding{"spec-alone", j.of.File, j.of.Line, fmt.Sprintf(
-				"T2: %q fails when it runs alone, so the kit can't show its steps check anything: make the scenario set up all it needs", j.of.Name)})
+			out = append(out, Finding{"spec-alone", j.of.File, j.of.Line, aloneMessage(j.of.Name, o.reason)})
 		case j.step < 0 || alone[key]:
 		case o.passed:
 			out = append(out, Finding{"spec-vacuous", j.of.File, j.of.Steps[j.step].Line, fmt.Sprintf(
@@ -209,6 +223,16 @@ func verdicts(jobs []job, outs []outcome) []Finding {
 		}
 	}
 	return out
+}
+
+// WHY: a scenario fails alone either because the program doesn't do what it
+// says yet, or because it leans on what another scenario left behind; the
+// step's error tells which, so it comes first.
+func aloneMessage(name, reason string) string {
+	if reason == "" {
+		reason = "godog named no failed step"
+	}
+	return fmt.Sprintf("T2: %q fails: %s. Make the program do what it says; if it passes with the other scenarios, make it set up all it needs, since the kit runs each alone", name, reason)
 }
 
 // Lines writes findings the way the kit prints them, file:line: rule: message.

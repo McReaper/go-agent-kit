@@ -52,9 +52,13 @@ func steps(sc *godog.ScenarioContext, bin string) {
 		w.dataDir = dir
 		return ctx, err
 	})
-	sc.After(func(ctx context.Context, _ *godog.Scenario, err error) (context.Context, error) {
+	// WHY: godog hands the hook the failed step's error and reports it
+	// already; the hook returns only its own, or the step's error is said
+	// twice, as the hook's failure.
+	sc.After(func(ctx context.Context, _ *godog.Scenario, _ error) (context.Context, error) {
+		var err error
 		if w.agent != nil {
-			err = errors.Join(err, w.agent.Close())
+			err = w.agent.Close()
 		}
 		return ctx, errors.Join(err, os.RemoveAll(w.dataDir))
 	})

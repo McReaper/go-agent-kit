@@ -31,10 +31,12 @@ type Version struct {
 	Commit string
 }
 
-// Options say what the files name: the kit version and the owner's login.
+// Options say what the files name: the kit version, the owner's login, and
+// the owner's address the agent's commits name them co-author by.
 type Options struct {
-	Version Version
-	Owner   string
+	Version    Version
+	Owner      string
+	OwnerEmail string
 }
 
 // File is one file of the repository: its path from the root, its content.
@@ -45,21 +47,29 @@ type File struct {
 
 // Files returns the files a repository keeps for the kit, for o.
 func Files(o Options) ([]File, error) {
-	if o.Owner == "" || len(o.Version.Commit) != 40 {
-		return nil, errors.New("kit init needs the owner's login and the kit's full commit id")
+	if o.Owner == "" || o.OwnerEmail == "" || len(o.Version.Commit) != 40 {
+		return nil, errors.New("kit init needs the owner's login and address and the kit's full commit id")
 	}
-	data := struct {
-		Version
-		Owner   string
-		Harness []string
-	}{o.Version, o.Owner, codeOwned()}
-	var out []File
-	for _, f := range []struct{ path, from string }{
+	return renderAll(o, []struct{ path, from string }{
 		{".github/workflows/kit.yml", "kit.yml"},
+		{".github/workflows/kit-approval.yml", "kit-approval.yml"},
 		{".github/CODEOWNERS", "CODEOWNERS"},
 		{".github/dependabot.yml", "dependabot.yml"},
 		{".claude/settings.json", "settings.json"},
-	} {
+	})
+}
+
+type templateData struct {
+	Version
+	Owner      string
+	OwnerEmail string
+	Harness    []string
+}
+
+func renderAll(o Options, fs []struct{ path, from string }) ([]File, error) {
+	data := templateData{o.Version, o.Owner, o.OwnerEmail, codeOwned()}
+	var out []File
+	for _, f := range fs {
 		content, err := render(f.from, data)
 		if err != nil {
 			return nil, err
@@ -146,17 +156,28 @@ func (r *Report) write(root *os.Root, f File) error {
 	return nil
 }
 
-var pin = regexp.MustCompile(`kit-check\.yml@([0-9a-f]{40}) # (\S+)`)
+var (
+	pin       = regexp.MustCompile(`kit-check\.yml@([0-9a-f]{40}) # (\S+)`)
+	ownerLine = regexp.MustCompile(`(?m)^      owner: (\S+)$`)
+)
 
-// WorkflowFor returns the kit.yml kit init writes for the pin current
-// holds: what a repository's kit.yml must be, its pin aside.
+// WorkflowsFor returns the workflows kit init writes for the pin and the
+// owner kitYML, a repository's kit.yml, holds: what its kit.yml and
+// kit-approval.yml must be.
 //
-// WHY: a kit version may need another kit.yml, a trigger or a permission
+// WHY: a kit version may need other workflows, a trigger or a permission
 // more; the repository's, pinned to that version, can't say so itself.
-func WorkflowFor(current []byte) ([]byte, error) {
-	m := pin.FindSubmatch(current)
+func WorkflowsFor(kitYML []byte) ([]File, error) {
+	m := pin.FindSubmatch(kitYML)
 	if m == nil {
 		return nil, errors.New("kit.yml pins no kit commit and release (kit-check.yml@<commit> # <tag>)")
 	}
-	return render("kit.yml", Version{Tag: string(m[2]), Commit: string(m[1])})
+	owner := ownerLine.FindSubmatch(kitYML)
+	if owner == nil {
+		return nil, errors.New("kit.yml names no owner (owner: <login>, under with:)")
+	}
+	return renderAll(Options{Version: Version{Tag: string(m[2]), Commit: string(m[1])}, Owner: string(owner[1])}, []struct{ path, from string }{
+		{".github/workflows/kit.yml", "kit.yml"},
+		{".github/workflows/kit-approval.yml", "kit-approval.yml"},
+	})
 }

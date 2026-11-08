@@ -86,7 +86,7 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 		case "pull_request":
 			want = []string{`"required_approving_review_count": 0`, `"require_code_owner_review": true`, `"dismiss_stale_reviews_on_push": false`, `"require_last_push_approval": false`}
 		case "required_status_checks":
-			want = []string{`{ "context": "` + appCheck(t) + `", "integration_id": 15368 }`}
+			want = []string{`{ "context": "` + appCheck(t) + `", "integration_id": 15368 }`, `{ "context": "` + approvalStatus + `", "integration_id": 15368 }`}
 		}
 		for _, p := range want {
 			if !strings.Contains(string(rule.Parameters), p) {
@@ -104,22 +104,36 @@ func TestTheAppsRulesetMergesAGreenChangeAndHoldsWhatIsTheOwners(t *testing.T) {
 	}
 }
 
-// WHY: a job of a called workflow reports its check as "<caller's job> /
-// <its job>": a ruleset requiring the merge check's job by its own name
-// waits for a check that never comes, and no change merges.
+// WHY: a job of a called workflow reports its check as "<caller's job's
+// name> / <its name>": a ruleset requiring the merge check's job by its
+// own name waits for a check that never comes, and no change merges.
 func appCheck(t *testing.T) string {
 	t.Helper()
 	var caller []string
-	for id, body := range jobs(t, "../kitinit/files/kit.yml") {
+	for _, body := range jobs(t, "../kitinit/files/kit.yml") {
 		if strings.Contains(body, "/kit-check.yml@") {
-			caller = append(caller, id)
+			caller = append(caller, jobName(t, body))
 		}
 	}
-	if _, ok := jobs(t, "../.github/workflows/kit-check.yml")["kit"]; len(caller) != 1 || !ok {
-		t.Fatalf("kit.yml calls the merge check from one job, its kit job reports: %v", caller)
+	check, ok := jobs(t, "../.github/workflows/kit-check.yml")["check"]
+	if len(caller) != 1 || !ok {
+		t.Fatalf("kit.yml calls the merge check from one job, its check job reports: %v", caller)
 	}
-	return caller[0] + " / kit"
+	return caller[0] + " / " + jobName(t, check)
 }
+
+func jobName(t *testing.T, body string) string {
+	t.Helper()
+	m := regexp.MustCompile(`(?m)^    name: (.+)$`).FindStringSubmatch(body)
+	if m == nil {
+		t.Fatalf("a job has no name:\n%s", body)
+	}
+	return m[1]
+}
+
+// WHY: the ruleset requires the status by this context, and the review
+// sheet's job posts it under the same one.
+const approvalStatus = "Kit / Owner approval"
 
 func jobs(t *testing.T, path string) map[string]string {
 	t.Helper()
@@ -145,23 +159,72 @@ func jobs(t *testing.T, path string) map[string]string {
 	return out
 }
 
-// WHY: a check run apart from the one that failed for want of the owner's
-// approval leaves that one on the commit, and GitHub holds the merge on it:
-// the merge check runs on pull requests only, and the approval re-runs it.
-func TestTheOwnersApprovalReRunsTheMergeCheckAndRunsNoOther(t *testing.T) {
-	js := jobs(t, "../kitinit/files/kit.yml")
-	for id, want := range map[string][]string{
-		"kit":      {"if: github.event_name == 'pull_request'\n", "/kit-check.yml@"},
-		"approval": {"if: github.event_name == 'pull_request_review'\n", "/kit-approval.yml@", "actions: write"},
+// WHY: the merge check runs on pull requests only, so every check it
+// reports counts for the ruleset; the owner's approval re-runs the review
+// sheet's job of that run, from a workflow of its own, whose jobs never
+// show as skipped on the pull request.
+func TestTheOwnersApprovalReRunsTheMergeCheckFromAWorkflowOfItsOwn(t *testing.T) {
+	for path, want := range map[string][]string{
+		"../kitinit/files/kit.yml":          {"/kit-check.yml@", "    name: Pull request\n"},
+		"../kitinit/files/kit-approval.yml": {"/kit-approval.yml@", "actions: write", "statuses: read"},
 	} {
-		for _, w := range want {
-			if !strings.Contains(js[id], w) {
-				t.Errorf("kit.yml's %s job lacks %q:\n%s", id, w, js[id])
+		js := jobs(t, path)
+		if len(js) != 1 {
+			t.Errorf("%s has jobs %v, want one", path, slices.Sorted(maps.Keys(js)))
+		}
+		for _, body := range js {
+			for _, w := range want {
+				if !strings.Contains(body, w) {
+					t.Errorf("%s's job lacks %q:\n%s", path, w, body)
+				}
 			}
 		}
 	}
-	if len(js) != 2 {
-		t.Errorf("kit.yml has jobs %v, want kit and approval", slices.Sorted(maps.Keys(js)))
+	for path, trigger := range map[string]string{"../kitinit/files/kit.yml": "\n  pull_request:\n", "../kitinit/files/kit-approval.yml": "\n  pull_request_review:\n"} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		on, _, _ := strings.Cut(string(data), "\njobs:\n")
+		if strings.Count(on, "\n  pull_request") != 1 || !strings.Contains(on, trigger) {
+			t.Errorf("%s runs on more or other than%s", path, trigger)
+		}
+	}
+}
+
+// WHY: GitHub counts a skipped check as passed. An edit of the description
+// alone runs nothing at all, by the caller's condition, rather than a run
+// whose Check skips; and Check runs whatever the jobs before it did, so it
+// fails rather than skips.
+func TestTheRequiredCheckNeverSkips(t *testing.T) {
+	pr := jobs(t, "../kitinit/files/kit.yml")["pr"]
+	if !strings.Contains(pr, "    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base\n") {
+		t.Errorf("kit.yml's job runs on every edit:\n%s", pr)
+	}
+	called := jobs(t, "../.github/workflows/kit-check.yml")
+	if !strings.Contains(called["check"], "    if: ${{ !cancelled() }}\n") {
+		t.Errorf("Check skips when a job before it failed:\n%s", called["check"])
+	}
+	for id, body := range called {
+		if id != "check" && id != "merge" && strings.Contains(body, "\n    if:") {
+			t.Errorf("kit-check.yml's %s job has a condition: a job it skips makes Check pass", id)
+		}
+	}
+}
+
+// WHY: the owner's approval status is required, and only a job that runs
+// none of the change's code may post it: code under test could read the
+// job's token. The review sheet's job alone writes statuses.
+func TestOnlyTheReviewSheetsJobPostsTheOwnersApproval(t *testing.T) {
+	for id, body := range jobs(t, "../.github/workflows/kit-check.yml") {
+		writes := strings.Contains(body, "statuses: write")
+		if writes != (id == "review") {
+			t.Errorf("job %s writes statuses: %v", id, writes)
+		}
+	}
+	review := jobs(t, "../.github/workflows/kit-check.yml")["review"]
+	if !strings.Contains(review, `-f context="`+approvalStatus+`"`) || strings.Contains(review, "go test") || strings.Contains(review, "kit check") {
+		t.Errorf("the review sheet's job doesn't post %q, or runs the change's code:\n%s", approvalStatus, review)
 	}
 }
 
@@ -200,7 +263,7 @@ type claudeSettings struct {
 
 func initFiles(t *testing.T) map[string]string {
 	t.Helper()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "OWNER"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "OWNER", OwnerEmail: "1+OWNER@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,6 +306,28 @@ func TestTheAgentSettingsDenyBypassesAndThePluginRunsTheKitHooks(t *testing.T) {
 	}
 }
 
+// WHY: the commit on the default branch is the kit's merge job's; the
+// agent's own commits and pull requests name the kit, not Claude, without
+// a prompt saying so.
+func TestTheSettingsNameTheKitInTheAgentsCommitsAndPullRequests(t *testing.T) {
+	var settings struct {
+		Attribution struct {
+			Commit     string `json:"commit"`
+			PR         string `json:"pr"`
+			SessionURL *bool  `json:"sessionUrl"`
+		} `json:"attribution"`
+	}
+	if err := json.Unmarshal([]byte(initFiles(t)[".claude/settings.json"]), &settings); err != nil {
+		t.Fatal(err)
+	}
+	a := settings.Attribution
+	if a.Commit != "Co-authored-by: OWNER <1+OWNER@users.noreply.github.com>\nBuilt-with: go-agent-kit <https://github.com/McReaper/go-agent-kit>" ||
+		!strings.HasSuffix(a.PR, "Built with [go-agent-kit](https://github.com/McReaper/go-agent-kit)") ||
+		a.SessionURL == nil || *a.SessionURL {
+		t.Errorf("attribution = %+v", a)
+	}
+}
+
 func TestTheAppCodeOwnersHoldTheHarnessAndLeaveTheSpecToTheCheck(t *testing.T) {
 	var owned []string
 	for l := range strings.Lines(initFiles(t)[".github/CODEOWNERS"]) {
@@ -268,7 +353,7 @@ func TestTheAppCodeOwnersHoldTheHarnessAndLeaveTheSpecToTheCheck(t *testing.T) {
 func TestTheCIKitInitWritesPassesTheWorkflowGates(t *testing.T) {
 	withZizmor(t)
 	dir := t.TempDir()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}

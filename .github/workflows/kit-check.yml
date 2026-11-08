@@ -4,22 +4,35 @@ name: kit-check
 # by SHA:
 #
 #   jobs:
-#     kit:
+#     pr:
+#       name: Pull request
 #       uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@<sha> # <tag>
+#
+# Each gate runs in a job of its own, named for the owner, and Check, the
+# job the ruleset requires, passes once every one did. The review sheet's
+# job posts the kit's comment and the owner's approval status, which the
+# ruleset requires too: it runs none of the change's code, so the change
+# can't post that status itself. Merge lands the pull request once both
+# hold. Check and Merge rewrite the comment's status line as it moves on.
 #
 # The kit it installs is the commit this workflow runs at, read from the
 # job's OIDC token, so the pin Dependabot moves is the only one.
 #
-# The caller runs it on pull_request (opened, synchronize, reopened, edited);
-# an approval re-runs it through kit-approval.yml. The caller grants
-# contents read, pull-requests write for the sheet, issues write for the
-# label, id-token write for the version, and passes the secrets of the App
-# the merge job merges as. An edit runs the jobs only when it moved the
-# pull request's base.
+# The caller runs it on pull_request (opened, synchronize, reopened, and
+# edited when the title or the base changed); the owner's approval re-runs
+# the review sheet's job through kit-approval.yml. It grants contents read,
+# pull-requests write for the comment, issues write for the label,
+# statuses write for the approval status, actions read for the gates'
+# results, id-token write for the version, and passes the secrets of the
+# App the merge job merges as.
 
 on:
   workflow_call:
     inputs:
+      owner:
+        description: The owner's GitHub login, who approves what is theirs and co-authors each change the kit merges.
+        required: true
+        type: string
       kit-version:
         description: The kit's commit, to run another than the one this workflow runs at; by default that one.
         required: false
@@ -37,10 +50,10 @@ permissions: {}
 
 jobs:
   version:
-    if: github.event.action != 'edited' || github.event.changes.base
-    runs-on: ubuntu-latest
+    name: Kit version
+    runs-on: ubuntu-24.04
     permissions:
-      id-token: write
+      id-token: write # the kit's version, read from the job's token
     outputs:
       kit: ${{ steps.kit.outputs.version }}
     steps:
@@ -62,35 +75,42 @@ jobs:
             *) echo "::error::the job's token names no workflow commit" && exit 1 ;;
           esac
 
-  kit:
+  gate:
+    # One job a gate, all at once: the checks list says which one failed.
+    # A failing gate's section of the run's summary, what it wants and what
+    # it found, goes to Check, which writes the run's one summary. Its token
+    # reads the code and nothing else: the change's own code runs here.
+    name: ${{ matrix.gate.title }}
     needs: version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: read
-      pull-requests: read
+    strategy:
+      fail-fast: false
+      matrix:
+        gate:
+          - { id: golangci-lint-linux, title: Lint (Linux) }
+          - { id: kitvet-linux, title: Kit analyzers (Linux) }
+          - { id: golangci-lint-windows, title: Lint (Windows) }
+          - { id: kitvet-windows, title: Kit analyzers (Windows) }
+          - { id: archtest, title: Architecture }
+          - { id: sweep, title: Sweep }
+          - { id: deadcode, title: Dead code }
+          - { id: nilaway, title: Nil safety }
+          - { id: govulncheck, title: Known vulnerabilities }
+          - { id: go-test, title: Tests }
+          - { id: spec, title: Spec }
+          - { id: guard, title: Guard }
+          - { id: actionlint, title: Workflows }
+          - { id: zizmor, title: Workflow security }
+          - { id: shellcheck, title: Shell scripts }
+          - { id: psscriptanalyzer, title: PowerShell scripts }
+          - { id: gitleaks, title: Secrets }
+          - { id: kit-files, title: Kit files }
+          - { id: title, title: Title }
+          - { id: mutate, title: Mutation }
     steps:
-      - name: Is a pull request on another branch than the default one in a stack?
-        # GitHub rebases a stack's pull request onto the default branch once
-        # the one below it merged; one outside a stack stays on a merged
-        # branch. The agent stacks it right after opening it: the check
-        # waits a minute for that.
-        if: github.event.pull_request.base.ref != github.event.repository.default_branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
-          BASE_PR: ${{ github.event.pull_request.base.ref }}
-        run: |
-          for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            stack=$(gh api "repos/$REPO/pulls/$PR" -H "X-GitHub-Api-Version: 2026-03-10" --jq '.stack.number // empty')
-            if [ -n "$stack" ]; then
-              echo "in stack $stack"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "::error::pull request #$PR is on $BASE_PR but in no stack: make it one with the pull request of $BASE_PR, bottom first: gh api -X POST repos/$REPO/stacks -H 'X-GitHub-Api-Version: 2026-03-10' -F 'pull_requests[]=<the pull request of $BASE_PR>' -F 'pull_requests[]=$PR'"
-          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -99,24 +119,104 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - name: Install the kit and the tools its proofs ran with
+      - name: Install the kit and the tool of this gate
         env:
           GOTOOLCHAIN: auto # a tool may need a newer Go than the app; it builds a separate binary
           KIT_VERSION: ${{ needs.version.outputs.kit }}
+          GATE: ${{ matrix.gate.id }}
         run: |
+          set -eu
           go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
           dir=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION" | jq -r .Dir)
-          grep -v '^#' "$dir/tools.txt" | grep @ | xargs -n1 go install
-          pwsh -NoProfile -Command "Install-Module PSScriptAnalyzer -RequiredVersion $(awk '$1 == "PSScriptAnalyzer" {print $2}' "$dir/tools.txt") -Scope CurrentUser -Force"
-          python3 -m pip install --user "zizmor==$(awk '$1 == "zizmor" {print $2}' "$dir/tools.txt")"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          v=$(awk '$1 == "shellcheck" {print $2}' "$dir/tools.txt")
-          curl -fsSL -o "$RUNNER_TEMP/shellcheck.tar.xz" "https://github.com/koalaman/shellcheck/releases/download/v$v/shellcheck-v$v.linux.x86_64.tar.xz"
-          echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  $RUNNER_TEMP/shellcheck.tar.xz" | sha256sum -c -
-          tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
-          sudo mv "$RUNNER_TEMP/shellcheck-v$v/shellcheck" /usr/local/bin/
+          version() { awk -v name="$1" '$1 == name {print $2}' "$dir/tools.txt"; }
+          install() { grep "^$1@" "$dir/tools.txt" | xargs -n1 go install; }
+          case $GATE in
+            golangci-lint-*) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint ;;
+            deadcode) install golang.org/x/tools/cmd/deadcode ;;
+            nilaway) install go.uber.org/nilaway/cmd/nilaway ;;
+            govulncheck) install golang.org/x/vuln/cmd/govulncheck ;;
+            guard) install golang.org/x/exp/cmd/apidiff ;;
+            actionlint) install github.com/rhysd/actionlint/cmd/actionlint ;;
+            gitleaks) install github.com/zricethezav/gitleaks/v8 ;;
+            mutate) install github.com/avito-tech/go-mutesting/cmd/go-mutesting ;;
+            zizmor)
+              python3 -m pip install --user "zizmor==$(version zizmor)"
+              echo "$HOME/.local/bin" >> "$GITHUB_PATH" ;;
+            psscriptanalyzer)
+              pwsh -NoProfile -Command "Install-Module PSScriptAnalyzer -RequiredVersion $(version PSScriptAnalyzer) -Scope CurrentUser -Force" ;;
+            shellcheck)
+              v=$(version shellcheck)
+              curl -fsSL -o "$RUNNER_TEMP/shellcheck.tar.xz" "https://github.com/koalaman/shellcheck/releases/download/v$v/shellcheck-v$v.linux.x86_64.tar.xz"
+              echo "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198  $RUNNER_TEMP/shellcheck.tar.xz" | sha256sum -c -
+              tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP"
+              sudo mv "$RUNNER_TEMP/shellcheck-v$v/shellcheck" /usr/local/bin/ ;;
+          esac
+      - name: Run the gate
+        env:
+          GATE: ${{ matrix.gate.id }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          summary="$RUNNER_TEMP/kit-summary"
+          mkdir -p "$summary"
+          case $GATE in
+            mutate)
+              wants="The tests catch a change to each line the pull request added."
+              printf 'Mutation\t%s\n' "$wants" > "$summary/mutate.row"
+              if ! kit mutate --base "origin/$BASE"; then
+                printf '### ❌ Mutation\n\nIt wants: %s The tests missed some, for the agent to fix: its job'"'"'s log lists them.\n\n' "$(printf '%s' "$wants" | sed 's/^T/t/')" > "$summary/mutate.md"
+                exit 1
+              fi ;;
+            title) kit check --only title --title "$TITLE" --github --summary "$summary" ;;
+            *) kit check --only "$GATE" --base "origin/$BASE" --github --summary "$summary" ;;
+          esac
+      - name: Hand the gate's row and section of the summary to Check
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kit-summary-${{ matrix.gate.id }}
+          path: ${{ runner.temp }}/kit-summary
+          if-no-files-found: ignore
+          retention-days: 1
+
+  review:
+    # The review sheet, one comment on the pull request updated on each
+    # run; the kit's label; and the owner's approval status, which the
+    # ruleset requires: pending while something is theirs to approve.
+    name: Review sheet
+    needs: version
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write # the comment; the reviews
+      issues: write # the label
+      statuses: write # the owner's approval
+    outputs:
+      approval: ${{ steps.sheet.outputs.approval }}
+      release: ${{ steps.install.outputs.release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Install the kit and apidiff
+        id: install
+        env:
+          GOTOOLCHAIN: auto
+          KIT_VERSION: ${{ needs.version.outputs.kit }}
+        run: |
+          go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
+          info=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION")
+          grep '^golang.org/x/exp/cmd/apidiff@' "$(printf '%s' "$info" | jq -r .Dir)/tools.txt" | xargs go install
+          # A commit no release tags reads as its short id, not as a pseudo-version.
+          release=$(printf '%s' "$info" | jq -r .Version | sed -E 's/^v[0-9]+\.[0-9]+\.[0-9]+-(.*\.)?[0-9]{14}-([0-9a-f]{7})[0-9a-f]{5}$/\2/')
+          echo "release=$release" >> "$GITHUB_OUTPUT"
       - name: Which commits has a code owner approved?
-        # Each approved commit's tree goes to kit check, from the API, so a
+        # Each approved commit's tree goes to kit review, from the API, so a
         # commit a rebase left behind still counts: a protected file whose
         # content is the one approved stays approved.
         id: approval
@@ -137,30 +237,171 @@ jobs:
               --jq '.tree[] | select(.type == "blob") | "\(.sha) \(.path)"' > "$RUNNER_TEMP/approved-trees/$sha"
           done < "$RUNNER_TEMP/approved-commits"
           echo "approved=$head" >> "$GITHUB_OUTPUT"
-      - name: kit check
+      - name: Post the review sheet and the owner's approval status
+        id: sheet
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
           BASE: ${{ github.event.pull_request.base.ref }}
+          OWNER: ${{ inputs.owner }}
           APPROVED: ${{ steps.approval.outputs.approved || 'false' }}
-        run: kit check --base "origin/$BASE" --ci --approved="$APPROVED" --approved-trees "$RUNNER_TEMP/approved-trees"
-      - name: kit mutate
+        run: |
+          set -eu
+          review() { kit review --base "origin/$BASE" --approved="$APPROVED" --approved-trees "$RUNNER_TEMP/approved-trees" "$@"; }
+          sheet="$RUNNER_TEMP/sheet.md"
+          review > "$sheet"
+          state=$(review --approval)
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- kit review -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            url=$(gh api "repos/$REPO/issues/comments/$id" --method PATCH -F "body=@$sheet" --jq .html_url)
+          else
+            url=$(gh api "repos/$REPO/issues/$PR/comments" --method POST -F "body=@$sheet" --jq .html_url)
+          fi
+          review --labels | while read -r label; do
+            name=${label#?}
+            case $label in
+              +*) gh label create "$name" --repo "$REPO" --force > /dev/null
+                  gh pr edit "$PR" --repo "$REPO" --add-label "$name" > /dev/null ;;
+              -*) gh pr edit "$PR" --repo "$REPO" --remove-label "$name" > /dev/null 2>&1 || true ;;
+            esac
+          done
+          case $state in
+            waiting) status=pending; description="Waiting for $OWNER's approval: the kit's comment says what to read" ;;
+            approved) status=success; description="Approved by $OWNER" ;;
+            *) status=success; description="Nothing to approve" ;;
+          esac
+          gh api "repos/$REPO/statuses/$HEAD" --method POST -f state="$status" -f context="Kit / Owner approval" \
+            -f description="$description" -f target_url="$url" > /dev/null
+          echo "approval=$state" >> "$GITHUB_OUTPUT"
+
+  check:
+    # The job the ruleset requires: every gate passed. It runs whatever the
+    # jobs before it did, since GitHub counts a skipped check as passed.
+    name: Check
+    needs: [version, gate, review]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read # the gates' results
+      pull-requests: write # the stack; the comment's status line
+    steps:
+      - name: The failing gates' sections of the summary
+        if: ${{ !cancelled() }}
+        continue-on-error: true # no gate failed, or none ran
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: kit-summary-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/kit-summary
+      - name: Is a pull request on another branch than the default one in a stack?
+        # GitHub rebases a stack's pull request onto the default branch once
+        # the one below it merged; one outside a stack stays on a merged
+        # branch. The agent stacks it right after opening it: the check
+        # waits a minute for that.
+        if: github.event.pull_request.base.ref != github.event.repository.default_branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE_PR: ${{ github.event.pull_request.base.ref }}
+        run: |
+          for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            stack=$(gh api "repos/$REPO/pulls/$PR" -H "X-GitHub-Api-Version: 2026-03-10" --jq '.stack.number // empty')
+            if [ -n "$stack" ]; then
+              echo "in stack $stack"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error title=Not in a stack::pull request #$PR is on $BASE_PR but in no stack: make it one with the pull request of $BASE_PR, bottom first: gh api -X POST repos/$REPO/stacks -H 'X-GitHub-Api-Version: 2026-03-10' -F 'pull_requests[]=<the pull request of $BASE_PR>' -F 'pull_requests[]=$PR'"
+          {
+            echo "### ❌ Not in a stack"
+            echo
+            echo "This pull request goes into \`$BASE_PR\`, not the default branch, and is in no stack: GitHub would never move it onto the default branch once the one below merged. The agent makes the two one stack."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+      - name: Did every gate pass?
         if: ${{ !cancelled() }}
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN: ${{ github.run_id }}
           BASE: ${{ github.event.pull_request.base.ref }}
-        run: kit mutate --base "origin/$BASE"
+          DEFAULT: ${{ github.event.repository.default_branch }}
+          APPROVAL: ${{ needs.review.outputs.approval }}
+          NEEDS: ${{ needs.version.result }} ${{ needs.gate.result }} ${{ needs.review.result }}
+        run: |
+          set -eu
+          jobs=$(gh api "repos/$REPO/actions/runs/$RUN/jobs?filter=latest&per_page=100" --paginate \
+            --jq '.jobs[] | select(.name | test(" / (Check|Merge)$") | not) | "\(.conclusion // "pending")\t\(.name | sub("^.* / "; ""))\t\(.html_url)"')
+          failed() { printf '%s\n' "$jobs" | awk -F '\t' -v link="$1" '$2 != "" && $1 != "success" && $1 != "skipped" {printf "%s%s", sep, (link ? "[" $2 "](" $3 ")" : $2); sep=", "}'; }
+          names=$(failed 0)
+          if [ -n "$names" ]; then
+            count=$(printf '%s' "$names" | awk -F ', ' '{print NF}')
+            if [ "$count" -eq 1 ]; then what="1 check fails"; else what="$count checks fail"; fi
+            status="❌ $what: $(failed 1). The agent fixes them; the checks run again on its next push."
+            if [ "$APPROVAL" = waiting ]; then status="$status Meanwhile, what is yours to approve is below."; fi
+          elif [ "$NEEDS" != "success success success" ]; then
+            what="a job of the kit did not finish"
+            names=$what
+            status="❌ A job of the kit did not finish: re-run the failed jobs. That is the kit's or the runner's fault, not the change's."
+          elif [ "$APPROVAL" = waiting ]; then
+            status="✅ Every check passes. **Waiting for you:** read what is below, then approve the pull request; the kit merges it then."
+          elif [ "$BASE" != "$DEFAULT" ]; then
+            status="✅ Every check passes. It merges once the pull request below it in the stack has."
+          else
+            status="✅ Every check passes. The kit merges it now."
+          fi
+          {
+            printf 'Kit version\tWhich commit of the kit runs: the one this repository pins.\n'
+            printf 'Review sheet\tThe kit'"'"'s comment, the label, and your approval status.\n'
+            for f in "$RUNNER_TEMP"/kit-summary/*.row; do
+              if [ -f "$f" ]; then cat "$f"; fi
+            done
+          } > "$RUNNER_TEMP/rows.tsv"
+          {
+            printf '%s\n\n| | Check | What it checks |\n| --- | --- | --- |\n' "$status"
+            printf '%s\n' "$jobs" | ROWS="$RUNNER_TEMP/rows.tsv" awk -F '\t' '
+              BEGIN { while ((getline l < ENVIRON["ROWS"]) > 0) { split(l, f, "\t"); what[f[1]] = f[2] } }
+              $2 != "" { printf "| %s | [%s](%s) | %s |\n", ($1 == "success" ? "✅" : ($1 == "skipped" ? "➖" : "❌")), $2, $3, what[$2] }'
+            echo
+            for f in "$RUNNER_TEMP"/kit-summary/*.md; do
+              if [ -f "$f" ]; then cat "$f"; fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- kit review -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api "repos/$REPO/issues/comments/$id" --jq .body > "$RUNNER_TEMP/comment.md"
+            STATUS="$status" awk '/^<!-- \/kit status -->$/ {skip = 0} !skip {print} /^<!-- kit status -->$/ {print ENVIRON["STATUS"]; skip = 1}' \
+              "$RUNNER_TEMP/comment.md" > "$RUNNER_TEMP/restatus.md"
+            gh api "repos/$REPO/issues/comments/$id" --method PATCH -F "body=@$RUNNER_TEMP/restatus.md" > /dev/null
+          fi
+          if [ -n "$names" ]; then
+            echo "$what: $names"
+            exit 1
+          fi
 
   merge:
-    # A pull request into the default branch merges once the kit check
-    # passed, through GitHub's asynchronous merge: its auto-merge takes no
-    # pull request of a stack. The ruleset still decides, and a merge it
-    # refuses fails here with its reason. A stack's next pull request is
-    # rebased onto the default branch by GitHub, which runs this again.
-    # It merges as the repository's App: after a merge by the workflow's
-    # own token, GitHub deletes no branch, and moves the stack's next pull
-    # request onto the default branch without rebasing it or running its
-    # check.
-    needs: kit
-    if: github.event.pull_request.base.ref == github.event.repository.default_branch
-    runs-on: ubuntu-latest
+    # A pull request into the default branch merges once every gate passed
+    # and the owner approved what is theirs, through GitHub's asynchronous
+    # merge: its auto-merge takes no pull request of a stack. The ruleset
+    # still decides, and a merge it refuses fails here with its reason. A
+    # stack's next pull request is rebased onto the default branch by
+    # GitHub, which runs this again. It merges as the repository's App:
+    # after a merge by the workflow's own token, GitHub deletes no branch,
+    # and moves the stack's next pull request onto the default branch
+    # without rebasing it or running its check. The commit is the pull
+    # request's title and description, the bot its author, the owner its
+    # co-author.
+    name: Merge
+    needs: [check, review]
+    if: github.event.pull_request.base.ref == github.event.repository.default_branch && needs.review.outputs.approval != 'waiting'
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     concurrency:
       group: kit-merge-${{ github.event.pull_request.number }}
@@ -172,7 +413,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           if [ "$HAS_APP" != true ]; then
-            echo "::error::the kit merges as a GitHub App, and $REPO gives it none: the owner runs kit init github --repo $REPO with the App's KIT_APP_CLIENT_ID and KIT_APP_KEY"
+            echo "::error title=No App to merge as::the kit merges as a GitHub App, and $REPO gives it none: the owner runs kit init github --repo $REPO with the App's KIT_APP_CLIENT_ID and KIT_APP_KEY"
             exit 1
           fi
       - name: The App's token
@@ -189,16 +430,36 @@ jobs:
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+          OWNER: ${{ inputs.owner }}
+          RELEASE: ${{ needs.review.outputs.release }}
         run: |
           set -eu
           api() { gh api -H "X-GitHub-Api-Version: 2026-03-10" "$@"; }
+          restatus() {
+            id=$(api "repos/$REPO/issues/$PR/comments" --paginate \
+              --jq '.[] | select(.body | startswith("<!-- kit review -->")) | .id' | head -n 1)
+            if [ -n "$id" ]; then
+              api "repos/$REPO/issues/comments/$id" --jq .body > "$RUNNER_TEMP/comment.md"
+              STATUS="$1" awk '/^<!-- \/kit status -->$/ {skip = 0} !skip {print} /^<!-- kit status -->$/ {print ENVIRON["STATUS"]; skip = 1}' \
+                "$RUNNER_TEMP/comment.md" > "$RUNNER_TEMP/restatus.md"
+              api "repos/$REPO/issues/comments/$id" --method PATCH -F "body=@$RUNNER_TEMP/restatus.md" > /dev/null
+            fi
+            echo "$1"
+          }
           state=$(api "repos/$REPO/pulls/$PR" --jq '"\(.state) \(.merged) \(.head.sha)"')
           case $state in
             "closed true "*) echo "already merged"; exit 0 ;;
             "open false $HEAD") ;;
             *) echo "pull request #$PR moved on ($state): its own run merges it"; exit 0 ;;
           esac
-          uuid=$(api -X PUT "repos/$REPO/pulls/$PR/merge-async" -f merge_method=squash -f sha="$HEAD" --jq '.details.uuid // empty')
+          title="$(api "repos/$REPO/pulls/$PR" --jq .title) (#$PR)"
+          body=$(api "repos/$REPO/pulls/$PR" --jq '.body // ""' | tr -d '\r' | grep -v 'Built with \[go-agent-kit\](' || true)
+          email=$(api "users/$OWNER" --jq '"\(.id)+\(.login)@users.noreply.github.com"')
+          message=$(printf '%s\n\nCo-authored-by: %s <%s>\nBuilt-with: go-agent-kit %s <https://github.com/McReaper/go-agent-kit>\n' "$body" "$OWNER" "$email" "$RELEASE" | sed '/./,$!d')
+          next=$(api "repos/$REPO/pulls?state=open&base=$(api "repos/$REPO/pulls/$PR" --jq .head.ref)" --jq '[.[] | "#\(.number)"] | join(", ")')
+          uuid=$(api -X PUT "repos/$REPO/pulls/$PR/merge-async" -f merge_method=squash -f sha="$HEAD" \
+            -f commit_title="$title" -f commit_message="$message" --jq '.details.uuid // empty')
           if [ -z "$uuid" ]; then
             echo "already merged or queued"
             exit 0
@@ -206,62 +467,24 @@ jobs:
           for _ in $(seq 1 60); do
             result=$(api "repos/$REPO/pulls/$PR/merge-async/$uuid" --jq '"\(.status) \(.details.message // "")"')
             case $result in
-              merged*|enqueued*) echo "$result"; exit 0 ;;
-              failed*) echo "::error::GitHub refused the merge: ${result#failed }"; exit 1 ;;
+              merged*)
+                echo "$result"
+                # The 2026-03-10 API version has no merge_commit_sha; the default one has.
+                status="✅ Merged into \`$DEFAULT\` as $(gh api "repos/$REPO/pulls/$PR" --jq '.merge_commit_sha // empty')."
+                if [ -n "$next" ]; then status="$status Next in the stack: $next."; fi
+                restatus "$status"
+                exit 0 ;;
+              enqueued*)
+                echo "$result"
+                restatus "⏳ In the merge queue."
+                exit 0 ;;
+              failed*)
+                echo "::error title=GitHub refused the merge::${result#failed }"
+                restatus "❌ GitHub refused the merge: ${result#failed }"
+                exit 1 ;;
             esac
             sleep 5
           done
-          echo "::error::the merge of #$PR is still pending after five minutes"
+          echo "::error title=The merge is still pending::the merge of #$PR is still pending after five minutes"
+          restatus "❌ The merge is still pending after five minutes: re-run the Merge job."
           exit 1
-
-  review:
-    # The review sheet: one comment on the pull request, updated on each
-    # push, and the kit's label to match.
-    if: github.event_name == 'pull_request'
-    needs: version
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write # labels
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      - name: Install the kit and apidiff
-        env:
-          GOTOOLCHAIN: auto
-          KIT_VERSION: ${{ needs.version.outputs.kit }}
-        run: |
-          go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
-          dir=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION" | jq -r .Dir)
-          grep '^golang.org/x/exp/cmd/apidiff@' "$dir/tools.txt" | xargs go install
-      - name: Post the review sheet
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
-          BASE: ${{ github.event.pull_request.base.ref }}
-        run: |
-          sheet="$RUNNER_TEMP/sheet.md"
-          kit review --base "origin/$BASE" > "$sheet"
-          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
-            --jq '.[] | select(.body | startswith("<!-- kit review -->")) | .id' | head -n 1)
-          if [ -n "$id" ]; then
-            gh api "repos/$REPO/issues/comments/$id" --method PATCH -F "body=@$sheet" > /dev/null
-          else
-            gh pr comment "$PR" --repo "$REPO" --body-file "$sheet"
-          fi
-          kit review --base "origin/$BASE" --labels | while read -r label; do
-            name=${label#?}
-            case $label in
-              +*) gh label create "$name" --repo "$REPO" --force > /dev/null
-                  gh pr edit "$PR" --repo "$REPO" --add-label "$name" ;;
-              -*) gh pr edit "$PR" --repo "$REPO" --remove-label "$name" > /dev/null 2>&1 || true ;;
-            esac
-          done

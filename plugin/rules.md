@@ -11,4 +11,5 @@ Rules no check explains:
 - A scenario you believe is wrong: never bend the code or the steps to it; change it on the spec branch.
 - Code only tests reach: delete it with its tests.
 - Never silence a check (`//nolint`, `t.Skip`, a build tag): fix the code, or stop and ask.
+- A pull request's title is a conventional commit of 72 characters at most, `feat(notes): a blank title is refused`: it becomes the commit's subject on the default branch, and its description the commit's body.
 - A pull request merges by itself once its checks pass: never merge, never push to the default branch.

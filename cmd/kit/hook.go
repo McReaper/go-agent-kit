@@ -105,7 +105,11 @@ func stopHook(cmd *cobra.Command, base string) error {
 	if root, err := moduleRoot(h.Cwd); err == nil {
 		o.Dir = root
 	}
-	return feedback(cmd.ErrOrStderr(), check.Run(cmd.Context(), o))
+	results, err := check.Run(cmd.Context(), o)
+	if err != nil {
+		return err
+	}
+	return feedback(cmd.ErrOrStderr(), results)
 }
 
 // WHY: only failures are written, to stderr with code 2, the one channel

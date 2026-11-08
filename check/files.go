@@ -24,12 +24,12 @@ import (
 // Go: the Go gates never read them, and an app's CI runs kit check alone.
 func fileGates() []gate {
 	return []gate{
-		{"actionlint", actionlintGate},
-		{"zizmor", zizmorGate},
-		{"shellcheck", shellcheckGate},
-		{"psscriptanalyzer", psscriptanalyzerGate},
-		{"gitleaks", gitleaksGate},
-		{"kit files", kitFilesGate},
+		{Gate{"actionlint", "actionlint", "Workflows", "The workflows are valid."}, actionlintGate},
+		{Gate{"zizmor", "zizmor", "Workflow security", "The workflows have no known security flaw."}, zizmorGate},
+		{Gate{"shellcheck", "shellcheck", "Shell scripts", "The shell scripts have no known pitfall."}, shellcheckGate},
+		{Gate{"psscriptanalyzer", "psscriptanalyzer", "PowerShell scripts", "The PowerShell scripts have no known pitfall."}, psscriptanalyzerGate},
+		{Gate{"gitleaks", "gitleaks", "Secrets", "No secret is committed."}, gitleaksGate},
+		{Gate{"kit-files", "kit files", "Kit files", "The kit's workflows are the ones this kit version writes."}, kitFilesGate},
 	}
 }
 
@@ -155,8 +155,8 @@ func gitleaksGate(ctx context.Context, o Options) Result {
 	return found(lines)
 }
 
-// WHY: the kit's CI file is the one an app keeps; once a kit version needs
-// it otherwise, the app hears it from its own check.
+// WHY: the kit's workflows are the files an app keeps; once a kit version
+// needs them otherwise, the app hears it from its own check.
 func kitFilesGate(_ context.Context, o Options) Result {
 	current, err := os.ReadFile(filepath.Join(o.Dir, ".github", "workflows", "kit.yml"))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -165,12 +165,21 @@ func kitFilesGate(_ context.Context, o Options) Result {
 	if err != nil {
 		return failed(err)
 	}
-	want, err := kitinit.WorkflowFor(current)
+	want, err := kitinit.WorkflowsFor(current)
 	if err != nil {
 		return found([]string{".github/workflows/kit.yml:1: kit-files: T2: " + err.Error()})
 	}
-	if !bytes.Equal(want, current) {
-		return found([]string{".github/workflows/kit.yml:1: kit-files: T2: it differs from the kit.yml this kit version writes: delete it and run kit init, which writes it again"})
+	var lines []string
+	for _, f := range want {
+		have, err := os.ReadFile(filepath.Join(o.Dir, filepath.FromSlash(f.Path)))
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			lines = append(lines, f.Path+":1: kit-files: T2: this kit version writes it and the repository has none: run kit init, which writes it")
+		case err != nil:
+			return failed(err)
+		case !bytes.Equal(have, f.Content):
+			lines = append(lines, f.Path+":1: kit-files: T2: it differs from the one this kit version writes: delete it and run kit init, which writes it again")
+		}
 	}
-	return Result{}
+	return found(lines)
 }

@@ -1,0 +1,18 @@
+name: Kit approval
+
+# The owner's approval re-runs the review sheet's job of kit.yml's run on
+# the approved commit, then the check and the merge after it.
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+jobs:
+  approval:
+    name: Approval
+    permissions:
+      actions: write # re-run the review sheet's job
+      statuses: read # the owner's approval status
+    uses: McReaper/go-agent-kit/.github/workflows/kit-approval.yml@{{.Commit}} # {{.Tag}}

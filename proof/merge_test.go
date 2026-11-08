@@ -15,41 +15,90 @@ import (
 // WHY: a pull request of a stack takes no auto-merge, and GitHub rebases
 // the next one onto the default branch only once the one below merged: the
 // kit's merge job merges through the asynchronous merge, and says why when
-// the ruleset refuses.
+// the ruleset refuses. The commit is the pull request's title and
+// description, with the owner as co-author and the kit's release, never
+// the agent's commits' messages; the kit's comment says where it went.
 func TestTheMergeJobMergesThroughTheAsynchronousMergeAndSaysWhyGitHubRefused(t *testing.T) {
 	script := stepRun(t, "../.github/workflows/kit-check.yml", "Merge")
 	for _, c := range []struct {
 		name, state, result string
 		code                int
-		writes              []string
-		says                string
+		merges              bool
+		says, status        string
 	}{
-		{"green", "open false h1", "merged", 0, []string{"api -H X-GitHub-Api-Version: 2026-03-10 -X PUT repos/o/r/pulls/7/merge-async -f merge_method=squash -f sha=h1 --jq .details.uuid // empty"}, "merged"},
-		{"refused", "open false h1", "failed Repository rule violations found", 1, []string{"api -H X-GitHub-Api-Version: 2026-03-10 -X PUT repos/o/r/pulls/7/merge-async -f merge_method=squash -f sha=h1 --jq .details.uuid // empty"}, "GitHub refused the merge: Repository rule violations found"},
-		{"merged by an earlier run", "closed true h1", "", 0, nil, "already merged"},
-		{"pushed to since", "open false h2", "", 0, nil, "its own run merges it"},
+		{"green", "open false h1", "merged", 0, true, "merged", "✅ Merged into `main` as m1. Next in the stack: #9."},
+		{"refused", "open false h1", "failed Repository rule violations found", 1, true, "::error title=GitHub refused the merge::Repository rule violations found", "❌ GitHub refused the merge: Repository rule violations found"},
+		{"merged by an earlier run", "closed true h1", "", 0, false, "already merged", ""},
+		{"pushed to since", "open false h2", "", 0, false, "its own run merges it", ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			fake := `gh() {
-  echo "$*" >> "$LOG"
-  case "$*" in
-  *merge-async/u1*) echo "$RESULT" ;;
-  *merge-async*) echo u1 ;;
-  *pulls/7*) echo "$STATE" ;;
-  esac
-}
-sleep() { :; }
+			tmp := t.TempDir()
+			fake := mergeFake + `sleep() { :; }
 `
-			out, code, log := runStep(t, fake+script, "PR=7", "HEAD=h1", "STATE="+c.state, "RESULT="+c.result)
-			writes := gestures(log)
+			out, code, log := runStep(t, fake+script, "PR=7", "HEAD=h1", "STATE="+c.state, "RESULT="+c.result,
+				"OWNER=octo", "RELEASE=v0.2.8", "DEFAULT=main", "RUNNER_TEMP="+tmp, "GITHUB_STEP_SUMMARY="+filepath.Join(tmp, "summary.md"))
 			if code != c.code || !strings.Contains(out, c.says) {
 				t.Errorf("exit %d, want %d; output lacks %q:\n%s", code, c.code, c.says, out)
 			}
-			if strings.Join(writes, "\n") != strings.Join(c.writes, "\n") {
-				t.Errorf("writes %q, want %q", writes, c.writes)
+			if merged := strings.Contains(log, " -X PUT repos/o/r/pulls/7/merge-async "); merged != c.merges {
+				t.Errorf("merged %v, want %v:\n%s", merged, c.merges, log)
+			}
+			if !c.merges {
+				return
+			}
+			if strings.Contains(log, "2026-03-10 repos/o/r/pulls/7 --jq .merge_commit_sha") {
+				t.Error("the merge commit is read with the API version that has no merge_commit_sha")
+			}
+			wantMessage := "Why it changes.\n\nCo-authored-by: octo <1+octo@users.noreply.github.com>\nBuilt-with: go-agent-kit v0.2.8 <https://github.com/McReaper/go-agent-kit>"
+			for file, want := range map[string]string{
+				"title":   "feat(notes): a short title is refused (#7)",
+				"message": wantMessage,
+				"comment": "<!-- kit review -->\n<!-- kit status -->\n" + c.status + "\n<!-- /kit status -->\n\n## For you\n",
+			} {
+				if got := readFile(t, filepath.Join(tmp, file)); got != want {
+					t.Errorf("%s = %q, want %q", file, got, want)
+				}
 			}
 		})
 	}
+}
+
+// WHY: the merge job reads pull request #7 piece by piece, whose
+// description ends with the kit's line; the fake records the commit's title
+// and message and the comment the job writes, in $RUNNER_TEMP, for the
+// proof to read.
+const mergeFake = `gh() {
+  echo "$*" >> "$LOG"
+  for a in "$@"; do
+    case $a in
+    commit_title=*) printf '%s' "${a#commit_title=}" > "$RUNNER_TEMP/title" ;;
+    commit_message=*) printf '%s' "${a#commit_message=}" > "$RUNNER_TEMP/message" ;;
+    body=@*) cp "${a#body=@}" "$RUNNER_TEMP/comment" ;;
+    esac
+  done
+  case "$*" in
+  *merge-async/u1*) echo "$RESULT" ;;
+  *merge-async*) echo u1 ;;
+  *"pulls/7 --jq .title") echo "feat(notes): a short title is refused" ;;
+  *"pulls/7 --jq .body"*) printf 'Why it changes.\r\n\r\n\360\237\247\260 Built with [go-agent-kit](https://github.com/McReaper/go-agent-kit)\n' ;;
+  *"pulls/7 --jq .head.ref") echo feat/x ;;
+  *"pulls/7 --jq .merge_commit_sha"*) echo m1 ;;
+  *"pulls/7 --jq"*) echo "$STATE" ;;
+  *users/octo*) echo "1+octo@users.noreply.github.com" ;;
+  *base=feat/x*) echo "#9" ;;
+  *issues/7/comments*) echo 55 ;;
+  *"comments/55 --jq .body") printf '%s\n' "<!-- kit review -->" "<!-- kit status -->" "⏳ The gates are running." "<!-- /kit status -->" "" "## For you" ;;
+  esac
+}
+`
+
+func readFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }
 
 // WHY: GitHub moves a pull request onto the default branch once the one
@@ -99,14 +148,14 @@ func TestTheMergeJobMergesAsTheRepositorysAppOrSaysHowToGiveItOne(t *testing.T) 
 		t.Errorf("kit-check.yml's merge job uses the workflow's own token")
 	}
 	dir := t.TempDir()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := kitinit.Write(dir, fs); err != nil {
 		t.Fatal(err)
 	}
-	kit := jobs(t, filepath.Join(dir, ".github", "workflows", "kit.yml"))["kit"]
+	kit := jobs(t, filepath.Join(dir, ".github", "workflows", "kit.yml"))["pr"]
 	for _, want := range []string{
 		"      KIT_APP_CLIENT_ID: ${{ secrets.KIT_APP_CLIENT_ID }}\n",
 		"      KIT_APP_KEY: ${{ secrets.KIT_APP_KEY }}\n",
@@ -120,34 +169,116 @@ func TestTheMergeJobMergesAsTheRepositorysAppOrSaysHowToGiveItOne(t *testing.T) 
 	}
 }
 
-// WHY: the run that failed for want of the owner's approval stays on the
-// commit, and GitHub holds the merge on it even once another run passes:
-// the approval re-runs that run, once it finished, and no other.
-func TestAnApprovalReRunsTheMergeCheckThatFailedOnTheApprovedCommit(t *testing.T) {
-	script := stepRun(t, "../.github/workflows/kit-approval.yml", "Re-run the merge check that failed on the approved commit")
+// WHY: the owner's approval status is the review sheet's job's to post,
+// and Check and Merge run after it: the approval re-runs that job, in the
+// run of the approved commit, once the run finished; and nothing when the
+// status already says approved.
+func TestAnApprovalReRunsTheReviewSheetOfTheApprovedCommitsRun(t *testing.T) {
+	script := stepRun(t, "../.github/workflows/kit-approval.yml", "Re-run the review sheet of the approved commit")
 	fake := `gh() {
   echo "$*" >> "$LOG"
   case "$*" in
-  *actions/runs*)
-    if [ -e "$LOG.listed" ]; then
-      printf '%s\n' "11 completed failure" "12 completed failure" "13 completed success"
-    else
-      : > "$LOG.listed"
-      printf '%s\n' "11 in_progress " "12 completed failure" "13 completed success"
-    fi ;;
+  *commits/h1/status*) echo "$STATE" ;;
+  *"actions/runs?head_sha=h1"*) echo 11 ;;
+  *runs/11/jobs*) echo 101 ;;
   esac
 }
 `
-	out, code, log := runStep(t, fake+script, "HEAD=h1", "CALLER=o/r/.github/workflows/kit.yml@refs/pull/6/merge")
-	if code != 0 {
-		t.Fatalf("exit %d\n%s", code, out)
+	for state, want := range map[string][]string{
+		"pending": {"run watch 11 --repo o/r", "run rerun --job 101 --repo o/r"},
+		"success": nil,
+	} {
+		out, code, log := runStep(t, fake+script, "HEAD=h1", "STATE="+state, "WORKFLOW=.github/workflows/kit.yml")
+		if code != 0 {
+			t.Fatalf("%s: exit %d\n%s", state, code, out)
+		}
+		if got := gestures(log); strings.Join(got, "\n") != strings.Join(want, "\n") {
+			t.Errorf("%s: gestures %q, want %q", state, got, want)
+		}
+		if state == "pending" && !strings.Contains(log, `select(.path == ".github/workflows/kit.yml")`) {
+			t.Errorf("the runs listed are not kit.yml's only:\n%s", log)
+		}
 	}
-	want := []string{"run watch 11 --repo o/r", "run rerun 11 --repo o/r --failed", "run rerun 12 --repo o/r --failed"}
-	if got := gestures(log); strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Errorf("gestures %q, want %q", got, want)
-	}
-	if !strings.Contains(log, `select(.path == ".github/workflows/kit.yml")`) {
-		t.Errorf("the runs listed are not the caller's only:\n%s", log)
+}
+
+// WHY: Check is the owner's line in the checks list and the comment's
+// status: it names the gates that failed, with their jobs, and says what
+// happens next; with every gate green, it passes. Its summary is the run's
+// one: the table of every check, then each failing gate's section.
+func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
+	script := stepRun(t, "../.github/workflows/kit-check.yml", "Did every gate pass?")
+	fake := `gh() {
+  echo "$*" >> "$LOG"
+  for a in "$@"; do
+    case $a in body=@*) cp "${a#body=@}" "$RUNNER_TEMP/comment" ;; esac
+  done
+  case "$*" in
+  *runs/5/jobs*) printf '%b' "$JOBS" ;;
+  *issues/7/comments*) echo 55 ;;
+  *"comments/55 --jq .body") printf '%s\n' "<!-- kit review -->" "<!-- kit status -->" "⏳ The gates are running." "<!-- /kit status -->" "" "## For you" ;;
+  esac
+}
+`
+	green := `success\tKit version\thttps://x/0\nsuccess\tTests\thttps://x/1\nsuccess\tSpec\thttps://x/2\n`
+	for _, c := range []struct {
+		name, jobs, needs, approval, base string
+		code                              int
+		status                            string
+	}{
+		{"green", green, "success success success", "none", "main", 0, "✅ Every check passes. The kit merges it now."},
+		{"waiting for the owner", green, "success success success", "waiting", "main", 0, "✅ Every check passes. **Waiting for you:** read what is below, then approve the pull request; the kit merges it then."},
+		{"stacked", green, "success success success", "none", "spec/x", 0, "✅ Every check passes. It merges once the pull request below it in the stack has."},
+		{
+			"a gate fails", `success\tKit version\thttps://x/0\nfailure\tTests\thttps://x/1\nsuccess\tSpec\thttps://x/2\n`, "success failure success", "none", "main", 1,
+			"❌ 1 check fails: [Tests](https://x/1). The agent fixes them; the checks run again on its next push.",
+		},
+		{
+			"two fail", `success\tKit version\thttps://x/0\nfailure\tTests\thttps://x/1\ncancelled\tSpec\thttps://x/2\n`, "success failure success", "waiting", "main", 1,
+			"❌ 2 checks fail: [Tests](https://x/1), [Spec](https://x/2). The agent fixes them; the checks run again on its next push. Meanwhile, what is yours to approve is below.",
+		},
+		{
+			"a job before failed unseen", green, "success success failure", "", "main", 1,
+			"❌ A job of the kit did not finish: re-run the failed jobs. That is the kit's or the runner's fault, not the change's.",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			section := "### ❌ Tests\n\nIt wants: every test passes.\n"
+			files := map[string]string{"go-test.row": "Tests\tEvery test passes.\n", "spec.row": "Spec\tEach built scenario passes.\n"}
+			if c.code == 1 {
+				files["go-test.md"] = section
+			}
+			if err := os.MkdirAll(filepath.Join(tmp, "kit-summary"), 0o750); err != nil {
+				t.Fatal(err)
+			}
+			for name, content := range files {
+				if err := os.WriteFile(filepath.Join(tmp, "kit-summary", name), []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			out, code, _ := runStep(t, fake+script, "PR=7", "RUN=5", "JOBS="+c.jobs, "NEEDS="+c.needs, "APPROVAL="+c.approval, "BASE="+c.base, "DEFAULT=main",
+				"RUNNER_TEMP="+tmp, "GITHUB_STEP_SUMMARY="+filepath.Join(tmp, "summary.md"))
+			if code != c.code {
+				t.Errorf("exit %d, want %d\n%s", code, c.code, out)
+			}
+			want := "<!-- kit review -->\n<!-- kit status -->\n" + c.status + "\n<!-- /kit status -->\n\n## For you\n"
+			if got := readFile(t, filepath.Join(tmp, "comment")); got != want {
+				t.Errorf("comment = %q, want %q", got, want)
+			}
+			summary := readFile(t, filepath.Join(tmp, "summary.md"))
+			if !strings.HasPrefix(summary, c.status+"\n") || strings.Contains(summary, section) != (c.code == 1) {
+				t.Errorf("summary:\n%s", summary)
+			}
+			for _, row := range []string{
+				"| ✅ | [Kit version](https://x/0) | Which commit of the kit runs: the one this repository pins. |\n",
+				"| [Tests](https://x/1) | Every test passes. |\n",
+				"| [Spec](https://x/2) | Each built scenario passes. |\n",
+			} {
+				if !strings.Contains(summary, row) {
+					t.Errorf("the summary's table lacks %q:\n%s", row, summary)
+				}
+			}
+		})
 	}
 }
 
@@ -159,7 +290,7 @@ func runStep(t *testing.T, script string, env ...string) (string, int, string) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), "sh", "-c", `. "$1"`, "sh", path)
-	cmd.Env = append(append(os.Environ(), "LOG="+log, "REPO=o/r", "GH_TOKEN=x"), env...)
+	cmd.Env = append(append(os.Environ(), "LOG="+log, "REPO=o/r", "GH_TOKEN=x", "RUNNER_TEMP="+dir, "GITHUB_STEP_SUMMARY="+filepath.Join(dir, "summary.md")), env...)
 	out, err := cmd.CombinedOutput()
 	code := 0
 	if exit, ok := errors.AsType[*exec.ExitError](err); ok {

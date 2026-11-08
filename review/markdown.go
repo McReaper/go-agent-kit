@@ -11,6 +11,17 @@ import (
 // comment on the pull request.
 const Marker = "<!-- kit review -->"
 
+// StatusStart and StatusEnd hold the sheet's status line: the jobs that
+// run after the sheet's, the check and the merge, rewrite what is between
+// them as the pull request moves on.
+const (
+	StatusStart = "<!-- kit status -->"
+	StatusEnd   = "<!-- /kit status -->"
+)
+
+// Repository is the kit's home, which the sheet's footer links to.
+const Repository = "https://github.com/McReaper/go-agent-kit"
+
 func words(k spec.ChangeKind) string {
 	if k == spec.Disabled {
 		return "disabled: tagged `@wip`, it stops running"
@@ -18,15 +29,27 @@ func words(k spec.ChangeKind) string {
 	return string(k)
 }
 
-// Markdown writes the sheet for a pull request comment.
-func (s Sheet) Markdown() string {
-	var b strings.Builder
-	b.WriteString(Marker + "\n")
-	if s.Empty() {
-		b.WriteString("Nothing for you: this pull request merges by itself once its checks pass.\n")
-		return b.String()
+// Status is the sheet's first line while the gates run: where the owner's
+// approval stands.
+func (s Sheet) Status() string {
+	switch s.State {
+	case Waiting:
+		return "⏳ The gates are running. **Waiting for you:** read what is below, then approve the pull request."
+	case Approved:
+		return "⏳ The gates are running. You approved what is yours: the kit merges it once they pass."
+	case NothingToApprove:
 	}
-	b.WriteString("## For you\n")
+	return "⏳ The gates are running. Nothing for you: the kit merges it once they pass."
+}
+
+// Markdown writes the sheet for a pull request comment; version is the
+// kit's release, empty when unknown.
+func (s Sheet) Markdown(version string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\n%s\n%s\n%s\n", Marker, StatusStart, s.Status(), StatusEnd)
+	if !s.Empty() {
+		b.WriteString("\n## For you\n")
+	}
 	if len(s.Spec) > 0 {
 		b.WriteString("\n**The spec.** Read these scenarios in the pull request's files:\n\n")
 		for _, c := range s.Spec {
@@ -39,7 +62,10 @@ func (s Sheet) Markdown() string {
 			fmt.Fprintf(&b, "- %s (`%s`)\n", it.Text, where(it))
 		}
 	}
-	b.WriteString("\nApproving the pull request approves these; touch one again and it needs approving again.\n")
+	if !s.Empty() {
+		b.WriteString("\nApproving the pull request approves these; touch one again and it needs approving again.\n")
+	}
+	fmt.Fprintf(&b, "\n<sub>%s</sub>\n", strings.TrimSpace("[go-agent-kit]("+Repository+") "+version))
 	return b.String()
 }
 
