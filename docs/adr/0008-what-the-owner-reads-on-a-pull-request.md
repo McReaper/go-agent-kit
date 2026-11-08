@@ -4,7 +4,7 @@
 
 - Each gate of `kit check` runs in a CI job of its own, all at once, named for the owner. `Check`, the job the ruleset requires, passes once every one did.
 - The owner's approval is a commit status, `Kit / Owner approval`, which the review sheet's job posts and the ruleset requires. No gate fails for want of it.
-- The kit's comment opens with a status line that each job rewrites as the pull request moves on. Each gate's job summary says what it wants and what it found, and each finding is an annotation on its line.
+- The kit's comment opens with a status line that each job rewrites as the pull request moves on. The run has one summary, Check's: every check, then what each failing gate wants and found. Each finding with a line is an annotation on it.
 - The commit the merge job lands is the pull request's title, a conventional commit of 72 characters at most, and its description. The App's bot is its author, the owner its co-author.
 
 ## Why

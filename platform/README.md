@@ -23,7 +23,7 @@ The kit judges every app, so its owner merges each change to it: a code owner (`
 
 An app's `.github/workflows/kit.yml` and `kit-approval.yml`, written by `kit init`, call `.github/workflows/kit-check.yml` and `kit-approval.yml` of this repository at the commit their `uses` lines pin; Dependabot moves that pin to each new release tag. `kit.yml` runs on `pull_request` (an edit counts when it changed the title or the base), as the `Pull request` job:
 
-- one job per gate of `kit check`, all at once, plus the title and `kit mutate`, each named for the owner (`Tests`, `Spec`, `Known vulnerabilities`), each with a summary saying what it wants and what it found, and an annotation on each finding's line;
+- one job per gate of `kit check`, all at once, plus the title and `kit mutate`, each named for the owner (`Tests`, `Spec`, `Known vulnerabilities`), with an annotation on each finding's line; a failing one hands Check its section of the run's one summary: what it wants and what it found;
 - `Review sheet`: the kit's comment, the `needs-you` label, and the `Kit / Owner approval` status, from the trees of the commits a code owner approved, so a change that is the owner's is approved once, and stays approved while its files hold the content approved. It is the one job allowed to post statuses, and runs none of the change's code;
 - `Check`, the required one: every gate's job passed. It never skips (GitHub counts a skipped check as passed), and rewrites the comment's status line: which checks failed, or what comes next;
 - `Merge`.

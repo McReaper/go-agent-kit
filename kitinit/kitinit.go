@@ -31,10 +31,12 @@ type Version struct {
 	Commit string
 }
 
-// Options say what the files name: the kit version and the owner's login.
+// Options say what the files name: the kit version, the owner's login, and
+// the owner's address the agent's commits name them co-author by.
 type Options struct {
-	Version Version
-	Owner   string
+	Version    Version
+	Owner      string
+	OwnerEmail string
 }
 
 // File is one file of the repository: its path from the root, its content.
@@ -45,8 +47,8 @@ type File struct {
 
 // Files returns the files a repository keeps for the kit, for o.
 func Files(o Options) ([]File, error) {
-	if o.Owner == "" || len(o.Version.Commit) != 40 {
-		return nil, errors.New("kit init needs the owner's login and the kit's full commit id")
+	if o.Owner == "" || o.OwnerEmail == "" || len(o.Version.Commit) != 40 {
+		return nil, errors.New("kit init needs the owner's login and address and the kit's full commit id")
 	}
 	return renderAll(o, []struct{ path, from string }{
 		{".github/workflows/kit.yml", "kit.yml"},
@@ -59,12 +61,13 @@ func Files(o Options) ([]File, error) {
 
 type templateData struct {
 	Version
-	Owner   string
-	Harness []string
+	Owner      string
+	OwnerEmail string
+	Harness    []string
 }
 
 func renderAll(o Options, fs []struct{ path, from string }) ([]File, error) {
-	data := templateData{o.Version, o.Owner, codeOwned()}
+	data := templateData{o.Version, o.Owner, o.OwnerEmail, codeOwned()}
 	var out []File
 	for _, f := range fs {
 		content, err := render(f.from, data)

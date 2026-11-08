@@ -8,7 +8,7 @@
   },
   "enabledPlugins": { "kit@go-agent-kit": true },
   "attribution": {
-    "commit": "Built-with: go-agent-kit <https://github.com/McReaper/go-agent-kit>",
+    "commit": "Co-authored-by: {{.Owner}} <{{.OwnerEmail}}>\nBuilt-with: go-agent-kit <https://github.com/McReaper/go-agent-kit>",
     "pr": "🧰 Built with [go-agent-kit](https://github.com/McReaper/go-agent-kit)",
     "sessionUrl": false
   },

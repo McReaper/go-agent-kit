@@ -58,14 +58,23 @@ func vulnGate(ctx context.Context, o Options) Result {
 }
 
 func testGate(ctx context.Context, o Options) Result {
-	argv := []string{"go", "test", "-count=1"}
+	argv := []string{"go", "test", "-json", "-count=1"}
 	if o.Race {
 		argv = append(argv, "-race")
 	}
 	out, err := run.Command(ctx, o.Dir, append(argv, "./...")...)
-	r := ran{out, err}.result(1, append(out.Stdout, out.Stderr...))
-	r.Findings = keep(r.Findings, "--- FAIL", "FAIL", "panic:", "#")
-	return r
+	switch {
+	case err != nil:
+		return failed(err)
+	case out.Code == 0:
+		return Result{}
+	case out.Code != 1:
+		return failed(fmt.Errorf("exit %d: %s", out.Code, strings.TrimSpace(string(out.Stderr))))
+	}
+	if fs := testFindings(o.Dir, out.Stdout); len(fs) > 0 {
+		return Result{Findings: fs}
+	}
+	return failed(fmt.Errorf("go test failed and named no test: %s", strings.TrimSpace(string(out.Stderr))))
 }
 
 func keep(lines []string, prefixes ...string) []string {

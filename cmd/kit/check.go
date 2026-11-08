@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -28,14 +27,16 @@ func checkCommand(out io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&o.Race, "race", o.Race, "run the tests with the race detector (needs cgo)")
 	cmd.Flags().StringVar(&o.Title, "title", "", "the pull request's title, to check it too (CI)")
 	cmd.Flags().StringSliceVar(&o.Only, "only", nil, "run only these gates, by ID (CI runs each in its own job)")
-	cmd.Flags().BoolVar(&r.github, "github", false, "also annotate the findings' lines and write the job's summary (GitHub Actions)")
+	cmd.Flags().BoolVar(&r.github, "github", false, "also annotate the findings' lines (GitHub Actions)")
+	cmd.Flags().StringVar(&r.summary, "summary", "", "with --github, add the failing gates' section of the run's summary to this file")
 	return cmd
 }
 
 // WHY: --github changes how the results are written, not what is checked.
 type checkRun struct {
-	o      check.Options
-	github bool
+	o       check.Options
+	github  bool
+	summary string
 }
 
 func runCheck(cmd *cobra.Command, out io.Writer, r checkRun) error {
@@ -49,7 +50,7 @@ func runCheck(cmd *cobra.Command, out io.Writer, r checkRun) error {
 		return err
 	}
 	if r.github {
-		if err := reportGitHub(out, os.Getenv("GITHUB_STEP_SUMMARY"), results); err != nil {
+		if err := reportGitHub(out, r.summary, results); err != nil {
 			return err
 		}
 	}

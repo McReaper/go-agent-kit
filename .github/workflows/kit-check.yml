@@ -51,7 +51,7 @@ permissions: {}
 jobs:
   version:
     name: Kit version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       id-token: write # the kit's version, read from the job's token
     outputs:
@@ -76,12 +76,13 @@ jobs:
           esac
 
   gate:
-    # One job a gate, all at once: the checks list says which one failed,
-    # and its summary what it wants and what it found. Its token reads the
-    # code and nothing else: the change's own code runs here.
+    # One job a gate, all at once: the checks list says which one failed.
+    # A failing gate's section of the run's summary, what it wants and what
+    # it found, goes to Check, which writes the run's one summary. Its token
+    # reads the code and nothing else: the change's own code runs here.
     name: ${{ matrix.gate.title }}
     needs: version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -156,11 +157,25 @@ jobs:
           BASE: ${{ github.event.pull_request.base.ref }}
           TITLE: ${{ github.event.pull_request.title }}
         run: |
+          mkdir -p "$RUNNER_TEMP/kit-summary"
+          summary="$RUNNER_TEMP/kit-summary/$GATE.md"
           case $GATE in
-            mutate) kit mutate --base "origin/$BASE" ;;
-            title) kit check --only title --title "$TITLE" --github ;;
-            *) kit check --only "$GATE" --base "origin/$BASE" --github ;;
+            mutate)
+              if ! kit mutate --base "origin/$BASE"; then
+                printf '### ❌ Mutation\n\nIt wants: the tests catch a change to each line the pull request added. The tests missed some, for the agent to fix: its job'"'"'s log lists them.\n\n' > "$summary"
+                exit 1
+              fi ;;
+            title) kit check --only title --title "$TITLE" --github --summary "$summary" ;;
+            *) kit check --only "$GATE" --base "origin/$BASE" --github --summary "$summary" ;;
           esac
+      - name: Hand the gate's section of the summary to Check
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kit-summary-${{ matrix.gate.id }}
+          path: ${{ runner.temp }}/kit-summary
+          if-no-files-found: ignore
+          retention-days: 1
 
   review:
     # The review sheet, one comment on the pull request updated on each
@@ -168,7 +183,7 @@ jobs:
     # ruleset requires: pending while something is theirs to approve.
     name: Review sheet
     needs: version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pull-requests: write # the comment; the reviews
@@ -195,7 +210,9 @@ jobs:
           go install "github.com/McReaper/go-agent-kit/cmd/kit@$KIT_VERSION"
           info=$(go mod download -json "github.com/McReaper/go-agent-kit@$KIT_VERSION")
           grep '^golang.org/x/exp/cmd/apidiff@' "$(printf '%s' "$info" | jq -r .Dir)/tools.txt" | xargs go install
-          echo "release=$(printf '%s' "$info" | jq -r .Version)" >> "$GITHUB_OUTPUT"
+          # A commit no release tags reads as its short id, not as a pseudo-version.
+          release=$(printf '%s' "$info" | jq -r .Version | sed -E 's/^v[0-9]+\.[0-9]+\.[0-9]+-(.*\.)?[0-9]{14}-([0-9a-f]{7})[0-9a-f]{5}$/\2/')
+          echo "release=$release" >> "$GITHUB_OUTPUT"
       - name: Which commits has a code owner approved?
         # Each approved commit's tree goes to kit review, from the API, so a
         # commit a rebase left behind still counts: a protected file whose
@@ -264,11 +281,19 @@ jobs:
     name: Check
     needs: [version, gate, review]
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: read # the gates' results
       pull-requests: write # the stack; the comment's status line
     steps:
+      - name: The failing gates' sections of the summary
+        if: ${{ !cancelled() }}
+        continue-on-error: true # no gate failed, or none ran
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: kit-summary-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/kit-summary
       - name: Is a pull request on another branch than the default one in a stack?
         # GitHub rebases a stack's pull request onto the default branch once
         # the one below it merged; one outside a stack stays on a merged
@@ -330,8 +355,12 @@ jobs:
             status="✅ Every check passes. The kit merges it now."
           fi
           {
-            printf '%s\n\n| | Gate |\n| --- | --- |\n' "$status"
+            printf '%s\n\n| | Check |\n| --- | --- |\n' "$status"
             printf '%s\n' "$jobs" | awk -F '\t' '$2 != "" {printf "| %s | [%s](%s) |\n", ($1 == "success" ? "✅" : ($1 == "skipped" ? "➖" : "❌")), $2, $3}'
+            echo
+            for f in "$RUNNER_TEMP"/kit-summary/*.md; do
+              if [ -f "$f" ]; then cat "$f"; fi
+            done
           } >> "$GITHUB_STEP_SUMMARY"
           id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
             --jq '.[] | select(.body | startswith("<!-- kit review -->")) | .id' | head -n 1)
@@ -342,7 +371,7 @@ jobs:
             gh api "repos/$REPO/issues/comments/$id" --method PATCH -F "body=@$RUNNER_TEMP/restatus.md" > /dev/null
           fi
           if [ -n "$names" ]; then
-            echo "::error title=Check::$what: $names"
+            echo "$what: $names"
             exit 1
           fi
 
@@ -361,7 +390,7 @@ jobs:
     name: Merge
     needs: [check, review]
     if: github.event.pull_request.base.ref == github.event.repository.default_branch && needs.review.outputs.approval != 'waiting'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     concurrency:
       group: kit-merge-${{ github.event.pull_request.number }}
@@ -374,11 +403,6 @@ jobs:
         run: |
           if [ "$HAS_APP" != true ]; then
             echo "::error title=No App to merge as::the kit merges as a GitHub App, and $REPO gives it none: the owner runs kit init github --repo $REPO with the App's KIT_APP_CLIENT_ID and KIT_APP_KEY"
-            {
-              echo "### ❌ No App to merge as"
-              echo
-              echo "The kit merges as a GitHub App, and this repository gives it none. As the owner, run \`kit init github --repo $REPO\` with the App's \`KIT_APP_CLIENT_ID\` and \`KIT_APP_KEY\`."
-            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
       - name: The App's token
@@ -410,7 +434,7 @@ jobs:
                 "$RUNNER_TEMP/comment.md" > "$RUNNER_TEMP/restatus.md"
               api "repos/$REPO/issues/comments/$id" --method PATCH -F "body=@$RUNNER_TEMP/restatus.md" > /dev/null
             fi
-            printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"
+            echo "$1"
           }
           state=$(api "repos/$REPO/pulls/$PR" --jq '"\(.state) \(.merged) \(.head.sha)"')
           case $state in

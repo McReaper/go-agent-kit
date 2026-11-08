@@ -61,7 +61,7 @@ func runReview(ctx context.Context, out io.Writer, o reviewOptions) error {
 	case o.approval:
 		_, err = io.WriteString(out, string(s.State)+"\n")
 	default:
-		_, err = io.WriteString(out, s.Markdown(ownVersion()))
+		_, err = io.WriteString(out, s.Markdown(shortVersion(ownVersion())))
 	}
 	if err != nil {
 		return fmt.Errorf("print the review sheet: %w", err)

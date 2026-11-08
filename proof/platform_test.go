@@ -263,7 +263,7 @@ type claudeSettings struct {
 
 func initFiles(t *testing.T) map[string]string {
 	t.Helper()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "OWNER"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "OWNER", OwnerEmail: "1+OWNER@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func TestTheSettingsNameTheKitInTheAgentsCommitsAndPullRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := settings.Attribution
-	if a.Commit != "Built-with: go-agent-kit <https://github.com/McReaper/go-agent-kit>" ||
+	if a.Commit != "Co-authored-by: OWNER <1+OWNER@users.noreply.github.com>\nBuilt-with: go-agent-kit <https://github.com/McReaper/go-agent-kit>" ||
 		!strings.HasSuffix(a.PR, "Built with [go-agent-kit](https://github.com/McReaper/go-agent-kit)") ||
 		a.SessionURL == nil || *a.SessionURL {
 		t.Errorf("attribution = %+v", a)
@@ -353,7 +353,7 @@ func TestTheAppCodeOwnersHoldTheHarnessAndLeaveTheSpecToTheCheck(t *testing.T) {
 func TestTheCIKitInitWritesPassesTheWorkflowGates(t *testing.T) {
 	withZizmor(t)
 	dir := t.TempDir()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}

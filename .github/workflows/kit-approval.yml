@@ -21,7 +21,7 @@ jobs:
   recheck:
     name: Check again
     if: github.event.review.state == 'approved'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
       actions: write # re-run the review sheet's job

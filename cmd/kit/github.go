@@ -20,41 +20,67 @@ import (
 const (
 	maxAnnotations = 10
 	maxRows        = 50
+	maxMessage     = 300
 )
 
 var findingAt = regexp.MustCompile(`^([^\s:]+):(\d+):(?:\d+:)? ?(.*)$`)
 
 // WHY: on GitHub a finding is read in two places besides the log: on its
-// line, in the pull request's files, and in the job's summary, where the
-// owner reads what the gate wants and whose the finding is to fix.
+// line, in the pull request's files, and in the run's one summary, which
+// the Check job writes from each gate's section, where the owner reads
+// what the gate wants and whose the finding is to fix.
 func reportGitHub(out io.Writer, summaryPath string, results []check.Result) error {
-	var b strings.Builder
-	var lines []string
-	for _, r := range results {
-		for _, f := range r.Findings {
-			lines = append(lines, annotation(r.Title, f))
-		}
-	}
-	for _, l := range lines[:min(len(lines), maxAnnotations)] {
-		b.WriteString(l)
-	}
-	if _, err := io.WriteString(out, b.String()); err != nil {
+	lines := annotations(results)
+	if _, err := io.WriteString(out, strings.Join(lines[:min(len(lines), maxAnnotations)], "")); err != nil {
 		return fmt.Errorf("annotate the findings: %w", err)
 	}
 	if summaryPath == "" {
 		return nil
 	}
-	return appendFile(summaryPath, summary(results))
+	text := summary(results)
+	if text == "" {
+		return nil
+	}
+	return appendFile(summaryPath, text)
 }
 
-func annotation(title, finding string) string {
-	props := "title=" + escapeProperty(title)
-	msg := finding
-	if m := findingAt.FindStringSubmatch(finding); m != nil {
-		props = "file=" + escapeProperty(m[1]) + ",line=" + m[2] + "," + props
-		msg = m[3]
+func annotations(results []check.Result) []string {
+	var out []string
+	for _, r := range results {
+		out = append(out, gateAnnotations(r)...)
 	}
-	return "::error " + props + "::" + escapeData(msg) + "\n"
+	return out
+}
+
+func gateAnnotations(r check.Result) []string {
+	var out []string
+	for _, f := range r.Findings {
+		if a, ok := annotation(r.Title, f); ok {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// WHY: GitHub pins an annotation with no file to the workflow's file, where
+// it reads as the workflow's fault; a finding with no line is the
+// summary's and the log's.
+func annotation(title, finding string) (string, bool) {
+	m := findingAt.FindStringSubmatch(finding)
+	if m == nil {
+		return "", false
+	}
+	return "::error file=" + escapeProperty(m[1]) + ",line=" + m[2] + ",title=" + escapeProperty(title) + "::" + escapeData(shorten(m[3])) + "\n", true
+}
+
+// WHY: a test's message can quote a whole program's output; the summary and
+// the annotation say enough to know what broke, and the log keeps it all.
+func shorten(s string) string {
+	s = oneLine(s)
+	if utf8.RuneCountInString(s) <= maxMessage {
+		return s
+	}
+	return string([]rune(s)[:maxMessage]) + "…"
 }
 
 func escapeData(s string) string {
@@ -74,7 +100,7 @@ func summary(results []check.Result) string {
 		case len(r.Findings) > 0:
 			fmt.Fprintf(&b, "### ❌ %s\n\nIt wants: %s It found %s, for the agent to fix:\n\n", r.Title, lowerFirst(r.Purpose), count(len(r.Findings), "problem"))
 			writeRows(&b, r.Findings)
-		default:
+		case len(r.Notes) > 0:
 			fmt.Fprintf(&b, "### ✅ %s\n\n%s\n\n", r.Title, r.Purpose)
 		}
 		if len(r.Notes) > 0 {
@@ -101,7 +127,7 @@ func writeRows(b *strings.Builder, findings []string) {
 }
 
 func cell(s string) string {
-	return strings.ReplaceAll(oneLine(s), "|", `\|`)
+	return strings.ReplaceAll(shorten(s), "|", `\|`)
 }
 
 func oneLine(s string) string {

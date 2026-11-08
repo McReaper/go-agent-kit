@@ -78,7 +78,7 @@ func TestKitCheckFailsOnAKitWorkflowItsKitVersionWouldNotWrite(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			dir := changeOf(t, trialCase{name: "no change"})
-			fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+			fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -36,27 +36,6 @@ func TestCIRunsEachGateOfKitCheckInAJobOfItsOwn(t *testing.T) {
 	}
 }
 
-// WHY: GitHub tells a step where its summary goes through the environment.
-type kitIn struct {
-	dir string
-	env []string
-}
-
-func kitRunEnv(t *testing.T, in kitIn, args ...string) (string, int) {
-	t.Helper()
-	cmd := exec.CommandContext(t.Context(), kitCommand(t, "kit"), args...)
-	cmd.Dir = in.dir
-	cmd.Env = append(os.Environ(), in.env...)
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		return string(out), 0
-	}
-	if exitCode(err) != 1 {
-		t.Fatalf("kit %v: %v\n%s", args, err, out)
-	}
-	return string(out), 1
-}
-
 // WHY: on GitHub, a finding is read in two places: on its line, in the
 // pull request's files, and in the job's summary, where the owner reads
 // what the gate wants and whose the finding is to fix. The log keeps the
@@ -64,7 +43,7 @@ func kitRunEnv(t *testing.T, in kitIn, args ...string) (string, int) {
 func TestKitCheckAnnotatesEachFindingsLineAndWritesTheOwnersSummary(t *testing.T) {
 	dir := changeOf(t, caseNamed(t, "m5-only-tests"))
 	summary := filepath.Join(t.TempDir(), "summary.md")
-	out, code := kitRunEnv(t, kitIn{dir, []string{"GITHUB_STEP_SUMMARY=" + summary}}, "check", "--base", "base", "--only", "sweep,archtest", "--github")
+	out, code := kitRun(t, dir, "check", "--base", "base", "--only", "sweep,archtest", "--github", "--summary", summary)
 	if code != 1 {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
@@ -77,16 +56,34 @@ func TestKitCheckAnnotatesEachFindingsLineAndWritesTheOwnersSummary(t *testing.T
 		t.Fatal(err)
 	}
 	row := regexp.MustCompile("(?m)^\\| `internal/[^`]+\\.go:\\d+` \\| only-tests: .*Oldest is reached by tests only.* \\|$")
-	for _, want := range []string{
-		"### ❌ Sweep\n\nIt wants: no code only tests reach, no name exported for its own package, no log message written twice. It found 2 problems, for the agent to fix:\n\n| Where | What |\n| --- | --- |\n",
-		"### ✅ Architecture\n\nEach module reaches the others through their contract only.\n",
-	} {
-		if !strings.Contains(string(got), want) {
-			t.Errorf("the summary lacks %q:\n%s", want, got)
-		}
+	if want := "### ❌ Sweep\n\nIt wants: no code only tests reach, no name exported for its own package, no log message written twice. It found 2 problems, for the agent to fix:\n\n| Where | What |\n| --- | --- |\n"; !strings.HasPrefix(string(got), want) {
+		t.Errorf("the summary lacks %q:\n%s", want, got)
+	}
+	if strings.Contains(string(got), "Architecture") {
+		t.Errorf("the summary has a section for a gate that passed:\n%s", got)
 	}
 	if !row.Match(got) {
 		t.Errorf("the summary lacks the finding's row:\n%s", got)
+	}
+}
+
+// WHY: go test's own lines name a package and a test, not why it failed:
+// the finding is the failing check's message, at its line, so the owner
+// reads what broke and the annotation lands on it. A line outside the
+// module, godog's, stays in the message.
+func TestKitCheckSaysWhichTestFailedWhereAndWhy(t *testing.T) {
+	dir := changeOf(t, caseNamed(t, "m6-broken-program"))
+	out, code := kitRun(t, dir, "check", "--base", "base", "--only", "go-test", "--race=false", "--github")
+	for _, want := range []*regexp.Regexp{
+		regexp.MustCompile(`(?m)^  cmd/notes/smoke_test\.go:33: TestTheBuiltProgramAnswersEveryToolAndCommandWithItsExample\S*: the program serves no tool`),
+		regexp.MustCompile(`(?m)^::error file=cmd/notes/smoke_test\.go,line=33,title=Tests::TestTheBuiltProgramAnswersEveryToolAndCommandWithItsExample`),
+	} {
+		if code != 1 || !want.MatchString(out) {
+			t.Errorf("exit %d; the output lacks %s:\n%s", code, want, out)
+		}
+	}
+	if strings.Contains(out, "  FAIL") || strings.Contains(out, "--- FAIL") {
+		t.Errorf("go test's own lines are findings:\n%s", out)
 	}
 }
 

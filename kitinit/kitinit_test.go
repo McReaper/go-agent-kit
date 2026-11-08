@@ -21,7 +21,7 @@ const commit = "0123456789abcdef0123456789abcdef01234567"
 
 func files(t *testing.T) map[string]string {
 	t.Helper()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: commit}, Owner: "octo"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: commit}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestTheFilesPinTheKitNameTheOwnerAndTurnThePluginOn(t *testing.T) {
 func TestTheFilesNeedTheOwnerAndTheKitsFullCommit(t *testing.T) {
 	for _, o := range []kitinit.Options{
 		{Version: kitinit.Version{Tag: "v0.2.0", Commit: commit}},
-		{Version: kitinit.Version{Tag: "v0.2.0", Commit: "0123456"}, Owner: "octo"},
+		{Version: kitinit.Version{Tag: "v0.2.0", Commit: "0123456"}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"},
 	} {
 		if _, err := kitinit.Files(o); err == nil {
 			t.Errorf("Files(%+v) wrote files", o)
@@ -82,7 +82,7 @@ func TestWriteKeepsAFileTheRepositoryHasAndWritesTheOthersOnce(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".github", "CODEOWNERS"), []byte("* @octo @hubot\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: commit}, Owner: "octo"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: commit}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}

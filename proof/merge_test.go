@@ -145,7 +145,7 @@ func TestTheMergeJobMergesAsTheRepositorysAppOrSaysHowToGiveItOne(t *testing.T) 
 		t.Errorf("kit-check.yml's merge job uses the workflow's own token")
 	}
 	dir := t.TempDir()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,8 @@ func TestAnApprovalReRunsTheReviewSheetOfTheApprovedCommitsRun(t *testing.T) {
 
 // WHY: Check is the owner's line in the checks list and the comment's
 // status: it names the gates that failed, with their jobs, and says what
-// happens next; with every gate green, it passes.
+// happens next; with every gate green, it passes. Its summary is the run's
+// one: the table of every check, then each failing gate's section.
 func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 	script := stepRun(t, "../.github/workflows/kit-check.yml", "Did every gate pass?")
 	fake := `gh() {
@@ -239,6 +240,15 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			tmp := t.TempDir()
+			section := "### ❌ Tests\n\nIt wants: every test passes.\n"
+			if c.code == 1 {
+				if err := os.MkdirAll(filepath.Join(tmp, "kit-summary"), 0o750); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(tmp, "kit-summary", "go-test.md"), []byte(section), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
 			out, code, _ := runStep(t, fake+script, "PR=7", "RUN=5", "JOBS="+c.jobs, "NEEDS="+c.needs, "APPROVAL="+c.approval, "BASE="+c.base, "DEFAULT=main",
 				"RUNNER_TEMP="+tmp, "GITHUB_STEP_SUMMARY="+filepath.Join(tmp, "summary.md"))
 			if code != c.code {
@@ -248,7 +258,8 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 			if got := readFile(t, filepath.Join(tmp, "comment")); got != want {
 				t.Errorf("comment = %q, want %q", got, want)
 			}
-			if summary := readFile(t, filepath.Join(tmp, "summary.md")); !strings.HasPrefix(summary, c.status+"\n") || !strings.Contains(summary, "| [Tests](https://x/1) |") {
+			summary := readFile(t, filepath.Join(tmp, "summary.md"))
+			if !strings.HasPrefix(summary, c.status+"\n") || !strings.Contains(summary, "| [Tests](https://x/1) |") || strings.Contains(summary, section) != (c.code == 1) {
 				t.Errorf("summary:\n%s", summary)
 			}
 		})
