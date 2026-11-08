@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -12,27 +13,47 @@ import (
 )
 
 func checkCommand(out io.Writer) *cobra.Command {
-	o := check.Options{Base: "origin/main", GOOS: []string{"linux", "windows"}, Race: runtime.GOOS == "linux"}
+	r := checkRun{o: check.Options{Base: "origin/main", GOOS: []string{"linux", "windows"}, Race: runtime.GOOS == "linux"}}
+	o := &r.o
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run every gate of the kit on the module: the same command on your machine and in CI",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir, err := filepath.Abs(".")
-			if err != nil {
-				return fmt.Errorf("check: %w", err)
-			}
-			o.Dir = dir
-			return reportCheck(out, check.Run(cmd.Context(), o))
+			return runCheck(cmd, out, r)
 		},
 	}
 	cmd.Flags().StringVar(&o.Base, "base", o.Base, "the branch the change goes into, for the guard")
 	cmd.Flags().StringSliceVar(&o.GOOS, "goos", o.GOOS, "the systems the module builds for")
-	cmd.Flags().BoolVar(&o.CI, "ci", false, "the merge check: changes that need approval fail until --approved")
-	cmd.Flags().BoolVar(&o.Approved, "approved", false, "a code owner approved the change's latest commit")
-	cmd.Flags().StringVar(&o.ApprovedTrees, "approved-trees", "", "a directory of the trees of commits a code owner approved: the protected files they hold unchanged stay approved")
 	cmd.Flags().BoolVar(&o.Race, "race", o.Race, "run the tests with the race detector (needs cgo)")
+	cmd.Flags().StringVar(&o.Title, "title", "", "the pull request's title, to check it too (CI)")
+	cmd.Flags().StringSliceVar(&o.Only, "only", nil, "run only these gates, by ID (CI runs each in its own job)")
+	cmd.Flags().BoolVar(&r.github, "github", false, "also annotate the findings' lines and write the job's summary (GitHub Actions)")
 	return cmd
+}
+
+// WHY: --github changes how the results are written, not what is checked.
+type checkRun struct {
+	o      check.Options
+	github bool
+}
+
+func runCheck(cmd *cobra.Command, out io.Writer, r checkRun) error {
+	dir, err := filepath.Abs(".")
+	if err != nil {
+		return fmt.Errorf("check: %w", err)
+	}
+	r.o.Dir = dir
+	results, err := check.Run(cmd.Context(), r.o)
+	if err != nil {
+		return err
+	}
+	if r.github {
+		if err := reportGitHub(out, os.Getenv("GITHUB_STEP_SUMMARY"), results); err != nil {
+			return err
+		}
+	}
+	return reportCheck(out, results)
 }
 
 func reportCheck(out io.Writer, results []check.Result) error {
@@ -44,9 +65,12 @@ func reportCheck(out io.Writer, results []check.Result) error {
 			failedGates = append(failedGates, r.Gate)
 		}
 	}
-	if len(failedGates) == 0 {
+	switch {
+	case len(failedGates) == 0:
 		b.WriteString("kit check: every gate passes\n")
-	} else {
+	case len(failedGates) == 1:
+		fmt.Fprintf(&b, "kit check: 1 gate fails: %s\n", failedGates[0])
+	default:
 		fmt.Fprintf(&b, "kit check: %d gates fail: %s\n", len(failedGates), strings.Join(failedGates, ", "))
 	}
 	if _, err := io.WriteString(out, b.String()); err != nil {

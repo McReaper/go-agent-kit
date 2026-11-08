@@ -1,10 +1,10 @@
 // Command kit runs the kit's checks on a repository.
 //
 //	kit guard --base origin/main [--ci [--approved] [--approved-trees dir]] [--json]
-//	kit check [--base origin/main] [--ci [--approved] [--approved-trees dir]]
+//	kit check [--base origin/main] [--only id,...] [--title "..."] [--github]
 //	kit sweep [--json]
 //	kit mutate [--base origin/main] [--min 0.8]
-//	kit review [--base origin/main] [--labels | --json]
+//	kit review [--base origin/main] [--approved] [--approved-trees dir] [--labels | --json | --approval]
 //	kit spec [--json]
 //	kit secrets
 //	kit init --owner <login> [--version <tag>]; kit init github --repo <owner/repo>; kit init app --name <name>

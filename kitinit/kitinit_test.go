@@ -34,8 +34,13 @@ func files(t *testing.T) map[string]string {
 
 func TestTheFilesPinTheKitNameTheOwnerAndTurnThePluginOn(t *testing.T) {
 	got := files(t)
-	if want := "uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@" + commit + " # v0.2.0\n"; !strings.Contains(got[".github/workflows/kit.yml"], want) {
-		t.Errorf("kit.yml lacks %q:\n%s", want, got[".github/workflows/kit.yml"])
+	for path, want := range map[string]string{
+		".github/workflows/kit.yml":          "uses: McReaper/go-agent-kit/.github/workflows/kit-check.yml@" + commit + " # v0.2.0\n    with:\n      owner: octo\n",
+		".github/workflows/kit-approval.yml": "uses: McReaper/go-agent-kit/.github/workflows/kit-approval.yml@" + commit + " # v0.2.0\n",
+	} {
+		if !strings.Contains(got[path], want) {
+			t.Errorf("%s lacks %q:\n%s", path, want, got[path])
+		}
 	}
 	for _, line := range []string{"/.github/ @octo\n", "/AGENTS.md @octo\n", "**/GLOSSARY.md @octo\n"} {
 		if !strings.Contains(got[".github/CODEOWNERS"], line) {
@@ -85,12 +90,12 @@ func TestWriteKeepsAFileTheRepositoryHasAndWritesTheOthersOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := kitinit.Report{Written: []string{".github/workflows/kit.yml", ".github/dependabot.yml", ".claude/settings.json"}, Kept: []string{".github/CODEOWNERS"}}
+	want := kitinit.Report{Written: []string{".github/workflows/kit.yml", ".github/workflows/kit-approval.yml", ".github/dependabot.yml", ".claude/settings.json"}, Kept: []string{".github/CODEOWNERS"}}
 	if diff := cmp.Diff(want, first); diff != "" {
 		t.Errorf("first run (-want +got):\n%s", diff)
 	}
 	again, err := kitinit.Write(dir, fs)
-	if err != nil || len(again.Written) != 0 || len(again.Same) != 3 {
+	if err != nil || len(again.Written) != 0 || len(again.Same) != 4 {
 		t.Errorf("second run: %+v, %v", again, err)
 	}
 }
@@ -231,16 +236,23 @@ func TestExchangeTradesTheCodeForTheAppAndItsKey(t *testing.T) {
 	}
 }
 
-func TestTheWorkflowForAPinIsTheOneKitInitWritesForIt(t *testing.T) {
-	written := []byte(files(t)[".github/workflows/kit.yml"])
-	if got, err := kitinit.WorkflowFor(written); err != nil || string(got) != string(written) {
-		t.Errorf("WorkflowFor(what kit init wrote) = %s, %v", got, err)
+func TestTheWorkflowsForAPinAreTheOnesKitInitWritesForIt(t *testing.T) {
+	all := files(t)
+	written := []byte(all[".github/workflows/kit.yml"])
+	got, err := kitinit.WorkflowsFor(written)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("WorkflowsFor(what kit init wrote) = %v, %v", got, err)
 	}
-	trimmed := []byte(strings.Replace(string(written), "  pull_request_review:\n    types: [submitted]\n", "", 1))
-	if got, err := kitinit.WorkflowFor(trimmed); err != nil || string(got) == string(trimmed) {
-		t.Errorf("a kit.yml without the review trigger passes: %v", err)
+	for _, f := range got {
+		if string(f.Content) != all[f.Path] {
+			t.Errorf("WorkflowsFor's %s is not what kit init wrote:\n%s", f.Path, f.Content)
+		}
 	}
-	if _, err := kitinit.WorkflowFor([]byte("name: kit\n")); err == nil {
+	if _, err := kitinit.WorkflowsFor([]byte("name: kit\n")); err == nil {
 		t.Error("a kit.yml with no pin passes")
+	}
+	ownerless := []byte(strings.Replace(string(written), "      owner: octo\n", "", 1))
+	if _, err := kitinit.WorkflowsFor(ownerless); err == nil {
+		t.Error("a kit.yml naming no owner passes")
 	}
 }

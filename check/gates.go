@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/McReaper/go-agent-kit/analyzers/all"
 	"github.com/McReaper/go-agent-kit/archtest"
@@ -105,30 +106,42 @@ func archLine(v archtest.Violation) (at, string) {
 
 func sweepLine(f sweep.Finding) (at, string) { return at{f.File, f.Line}, f.Rule + ": " + f.Message }
 
+// WHY: what is the owner's to approve never fails the check, here or in
+// CI: the review sheet's job holds the merge for it, through the owner's
+// approval status, from a job that runs none of the change's code.
 func guardGate(ctx context.Context, o Options) Result {
 	_, all, err := guard.Run(ctx, o.Dir, o.Base)
 	if err != nil {
 		return failed(err)
 	}
-	trees, err := guard.ReadTrees(o.ApprovedTrees)
-	if err != nil {
-		return failed(err)
-	}
-	covered, err := guard.Covered(ctx, all, guard.Approval{Dir: o.Dir, Head: o.Approved, Trees: trees})
-	if err != nil {
-		return failed(err)
-	}
-	blocking := guard.Blocking(all, o.CI, covered)
 	r := Result{}
 	for _, f := range all {
 		line := fmt.Sprintf("%s:%d: %s: %s", f.File, f.Line, f.Rule, f.Message)
-		if slices.Contains(blocking, f) {
-			r.Findings = append(r.Findings, line)
-		} else {
+		if f.NeedsApproval() {
 			r.Notes = append(r.Notes, line)
+		} else {
+			r.Findings = append(r.Findings, line)
 		}
 	}
 	return r
+}
+
+// MaxTitle is the longest pull request title: GitHub cuts a longer one in
+// its lists, and the title becomes the commit's subject on the default
+// branch.
+const MaxTitle = 72
+
+var conventional = regexp.MustCompile(`^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|spec)(\([a-z0-9][a-z0-9/._-]*\))?!?: \S`)
+
+func titleGate(_ context.Context, o Options) Result {
+	var lines []string
+	if n := utf8.RuneCountInString(o.Title); n > MaxTitle {
+		lines = append(lines, fmt.Sprintf("title: the title has %d characters, the limit is %d: say less, the description holds the rest", n, MaxTitle))
+	}
+	if !conventional.MatchString(o.Title) {
+		lines = append(lines, "title: the title is no conventional commit: write type(scope): what changes, the type one of feat, fix, docs, refactor, perf, test, build, ci, chore, revert, style, or spec for a spec's pull request")
+	}
+	return Result{Findings: lines}
 }
 
 func nonEmpty(text []byte) []string {
