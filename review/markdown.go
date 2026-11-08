@@ -34,12 +34,12 @@ func words(k spec.ChangeKind) string {
 func (s Sheet) Status() string {
 	switch s.State {
 	case Waiting:
-		return "⏳ The gates are running. **Waiting for you:** read what is below, then approve the pull request."
+		return "⏳ The checks are running. **Waiting for you:** read what is below, then approve the pull request."
 	case Approved:
-		return "⏳ The gates are running. You approved what is yours: Rumblestrip merges it once they pass."
+		return "⏳ The checks are running. You approved what is yours: Rumblestrip merges it once they pass."
 	case NothingToApprove:
 	}
-	return "⏳ The gates are running. Nothing for you: Rumblestrip merges it once they pass."
+	return "⏳ The checks are running. Nothing for you: Rumblestrip merges it once they pass."
 }
 
 // Markdown writes the sheet for a pull request comment; version is the

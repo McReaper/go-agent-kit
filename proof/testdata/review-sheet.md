@@ -1,6 +1,6 @@
 <!-- rumblestrip -->
 <!-- rumblestrip status -->
-⏳ The gates are running. **Waiting for you:** read what is below, then approve the pull request.
+⏳ The checks are running. **Waiting for you:** read what is below, then approve the pull request.
 <!-- /rumblestrip status -->
 
 ## For you

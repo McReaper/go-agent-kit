@@ -11,7 +11,7 @@ import (
 
 func TestASheetWithNothingForTheOwnerSaysTheChangeMergesByItself(t *testing.T) {
 	s := review.Sheet{State: review.NothingToApprove}
-	want := review.Marker + "\n" + review.StatusStart + "\n⏳ The gates are running. Nothing for you: Rumblestrip merges it once they pass.\n" + review.StatusEnd + "\n" +
+	want := review.Marker + "\n" + review.StatusStart + "\n⏳ The checks are running. Nothing for you: Rumblestrip merges it once they pass.\n" + review.StatusEnd + "\n" +
 		"\n<sub>[Rumblestrip](https://github.com/McReaper/rumblestrip-go) v1.2.3</sub>\n"
 	if got := s.Markdown("v1.2.3"); got != want {
 		t.Errorf("Markdown() = %q, want %q", got, want)
