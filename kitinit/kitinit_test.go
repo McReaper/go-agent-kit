@@ -126,6 +126,58 @@ func TestProtectBringsAnExistingRulesetToTheKitsAndCreatesTheOther(t *testing.T)
 	}
 }
 
+type fakeOwner struct {
+	fakeAPI
+	secrets []kitinit.Secret
+}
+
+func (f *fakeOwner) SetSecret(_ context.Context, s kitinit.Secret) error {
+	f.secrets = append(f.secrets, s)
+	return nil
+}
+
+func TestGiveAppStoresTheAppsClientIDAndKeyForActionsAndDependabot(t *testing.T) {
+	owner := &fakeOwner{}
+	app := kitinit.MergeApp{Repo: "o/r", ClientID: "Iv1", Key: []byte("the key")}
+	app.Installation.Permissions = map[string]string{"contents": "write", "pull_requests": "write", "metadata": "read"}
+	if _, err := kitinit.GiveApp(t.Context(), owner, app); err != nil {
+		t.Fatal(err)
+	}
+	want := []kitinit.Secret{
+		{Repo: "o/r", Name: "KIT_APP_CLIENT_ID", For: "actions", Value: []byte("Iv1")},
+		{Repo: "o/r", Name: "KIT_APP_KEY", For: "actions", Value: []byte("the key")},
+		{Repo: "o/r", Name: "KIT_APP_CLIENT_ID", For: "dependabot", Value: []byte("Iv1")},
+		{Repo: "o/r", Name: "KIT_APP_KEY", For: "dependabot", Value: []byte("the key")},
+	}
+	if diff := cmp.Diff(want, owner.secrets); diff != "" {
+		t.Errorf("secrets (-want +got):\n%s", diff)
+	}
+}
+
+func TestGiveAppRefusesAnAppThatMayNotMergeAndSetsNoSecret(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		perms map[string]string
+		says  string
+	}{
+		{"reads the contents", map[string]string{"contents": "read", "pull_requests": "write"}, "may not write contents on o/r"},
+		{"no pull requests", map[string]string{"contents": "write"}, "may not write pull_requests on o/r"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			owner := &fakeOwner{}
+			app := kitinit.MergeApp{Repo: "o/r", ClientID: "Iv1", Key: []byte("the key")}
+			app.Installation.Permissions = c.perms
+			_, err := kitinit.GiveApp(t.Context(), owner, app)
+			if err == nil || !strings.Contains(err.Error(), c.says) {
+				t.Errorf("err = %v, want one saying %q", err, c.says)
+			}
+			if len(owner.secrets) != 0 {
+				t.Errorf("secrets set: %d, want none", len(owner.secrets))
+			}
+		})
+	}
+}
+
 func TestTheAppsManifestAsksNoWorkflowsAndNoAdministration(t *testing.T) {
 	m, err := kitinit.Manifest("notes-agent", "http://127.0.0.1:9/created")
 	if err != nil {

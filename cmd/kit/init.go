@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/McReaper/go-agent-kit/internal/platform/ghapp"
 	"github.com/McReaper/go-agent-kit/internal/platform/gomod"
 	"github.com/McReaper/go-agent-kit/kitinit"
 	"github.com/spf13/cobra"
@@ -81,23 +82,68 @@ func initReport(r kitinit.Report) string {
 	for _, p := range r.Kept {
 		fmt.Fprintf(&b, "kept, it differs from the kit's: %s (delete it and run kit init again to take the kit's)\n", p)
 	}
-	b.WriteString("\nThen, as the owner, once: kit init github --repo OWNER/REPO (the rulesets and the repository's settings), and kit init app if the agent has no GitHub App yet.\n")
+	b.WriteString("\nThen, as the owner, once: kit init app if the agent has no GitHub App yet, and kit init github --repo OWNER/REPO with its KIT_APP_CLIENT_ID and KIT_APP_KEY (the rulesets, the repository's settings, the App the kit merges as).\n")
 	return b.String()
 }
 
+type initGitHubOptions struct {
+	repo     string
+	clientID string
+	key      string
+}
+
 func initGitHubCommand(out io.Writer) *cobra.Command {
-	var repo string
-	cmd := leaf("github", "As the owner: the rulesets that make the kit check the arbiter, merged branches deleted, immutable releases", func(cmd *cobra.Command) error {
-		lines, err := kitinit.Protect(cmd.Context(), kitinit.GH{}, repo)
-		for _, l := range lines {
-			if _, werr := fmt.Fprintln(out, l); werr != nil {
-				return errors.Join(err, werr)
-			}
-		}
-		return err
+	o := initGitHubOptions{clientID: os.Getenv("KIT_APP_CLIENT_ID"), key: os.Getenv("KIT_APP_KEY")}
+	cmd := leaf("github", "As the owner: the rulesets that make the kit check the arbiter, merged branches deleted, immutable releases, the App the kit merges as", func(cmd *cobra.Command) error {
+		return runInitGitHub(cmd.Context(), out, o)
 	})
-	cmd.Flags().StringVar(&repo, "repo", "", "the repository, OWNER/REPO")
+	cmd.Flags().StringVar(&o.repo, "repo", "", "the repository, OWNER/REPO")
+	cmd.Flags().StringVar(&o.clientID, "client-id", o.clientID, "the Client ID of the GitHub App the kit merges as, a new one from kit init app or one you have (KIT_APP_CLIENT_ID)")
+	cmd.Flags().StringVar(&o.key, "key", o.key, "that App's private key file (KIT_APP_KEY)")
 	return cmd
+}
+
+// WHY: the App is checked before anything changes, so a repository is
+// never left with the kit's rules and no App to merge as.
+func runInitGitHub(ctx context.Context, out io.Writer, o initGitHubOptions) error {
+	app, err := mergeApp(ctx, o)
+	if err != nil {
+		return err
+	}
+	lines, err := kitinit.Protect(ctx, kitinit.GH{}, o.repo)
+	if err == nil {
+		var more []string
+		more, err = kitinit.GiveApp(ctx, kitinit.GH{}, app)
+		lines = append(lines, more...)
+	}
+	for _, l := range lines {
+		if _, werr := fmt.Fprintln(out, l); werr != nil {
+			return errors.Join(err, werr)
+		}
+	}
+	return err
+}
+
+func mergeApp(ctx context.Context, o initGitHubOptions) (kitinit.MergeApp, error) {
+	if o.repo == "" {
+		return kitinit.MergeApp{}, errors.New("kit init github: name the repository with --repo OWNER/REPO")
+	}
+	if o.clientID == "" || o.key == "" {
+		return kitinit.MergeApp{}, errors.New("kit init github: the kit merges as a GitHub App: give its Client ID and key, --client-id and --key or KIT_APP_CLIENT_ID and KIT_APP_KEY; kit init app creates one")
+	}
+	jwt, err := (&appOptions{clientID: o.clientID, key: o.key}).jwt()
+	if err != nil {
+		return kitinit.MergeApp{}, fmt.Errorf("kit init github: %w", err)
+	}
+	inst, err := ghapp.NewClient().RepoInstallation(ctx, jwt, o.repo)
+	if err != nil {
+		return kitinit.MergeApp{}, fmt.Errorf("kit init github: is the App installed on %s? %w", o.repo, err)
+	}
+	key, err := ghapp.KeyFile(o.key)
+	if err != nil {
+		return kitinit.MergeApp{}, fmt.Errorf("kit init github: %w", err)
+	}
+	return kitinit.MergeApp{Repo: o.repo, ClientID: o.clientID, Key: key, Installation: inst}, nil
 }
 
 type initAppOptions struct {
@@ -217,7 +263,8 @@ func saveApp(out io.Writer, app kitinit.App) error {
 Install it on the repositories the agent works in:
   https://github.com/apps/%s/installations/new
 
-The agent acts as it with kit app exec, given:
+The agent acts as it with kit app exec, and the kit merges as it once
+kit init github --repo OWNER/REPO ran, given:
   KIT_APP_CLIENT_ID=%s
   KIT_APP_KEY=%s
   KIT_APP_INSTALLATION=<the installation's id: kit app installations lists it>
