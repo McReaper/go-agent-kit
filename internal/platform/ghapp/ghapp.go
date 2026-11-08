@@ -39,13 +39,15 @@ func NewClient() Client {
 	return Client{BaseURL: "https://api.github.com", HTTP: &http.Client{Timeout: 30 * time.Second}}
 }
 
-// Installation is one account the app is installed on.
+// Installation is one account the app is installed on, and what it may
+// do there: each permission's name and its level, read or write.
 type Installation struct {
 	ID      int64 `json:"id"`
 	Account struct {
 		Login string `json:"login"`
 	} `json:"account"`
-	RepositorySelection string `json:"repository_selection"`
+	RepositorySelection string            `json:"repository_selection"`
+	Permissions         map[string]string `json:"permissions"`
 }
 
 // Token is an installation token. It prints and logs as [redacted].
@@ -60,8 +62,8 @@ func (Token) String() string { return "[redacted]" }
 // LogValue hides the token's value from slog.
 func (Token) LogValue() slog.Value { return slog.StringValue("[redacted]") }
 
-// LoadKey reads the app's private key, PKCS#1 or PKCS#8.
-func LoadKey(path string) (*rsa.PrivateKey, error) {
+// KeyFile reads the app's private key file as it is.
+func KeyFile(path string) ([]byte, error) {
 	root, err := os.OpenRoot(filepath.Dir(path))
 	if err != nil {
 		return nil, fmt.Errorf("open the key's folder: %w", err)
@@ -69,6 +71,15 @@ func LoadKey(path string) (*rsa.PrivateKey, error) {
 	data, rerr := root.ReadFile(filepath.Base(path))
 	if err := errors.Join(rerr, root.Close()); err != nil {
 		return nil, fmt.Errorf("read the key: %w", err)
+	}
+	return data, nil
+}
+
+// LoadKey reads the app's private key, PKCS#1 or PKCS#8.
+func LoadKey(path string) (*rsa.PrivateKey, error) {
+	data, err := KeyFile(path)
+	if err != nil {
+		return nil, err
 	}
 	block, _ := pem.Decode(data)
 	if block == nil {
@@ -113,6 +124,13 @@ func JWT(issuer string, key *rsa.PrivateKey, now time.Time) (string, error) {
 func (c Client) Installations(ctx context.Context, jwt string) ([]Installation, error) {
 	var out []Installation
 	return out, c.do(ctx, call{http.MethodGet, "/app/installations", jwt}, &out)
+}
+
+// RepoInstallation returns the app's installation that holds repo
+// ("owner/name").
+func (c Client) RepoInstallation(ctx context.Context, jwt, repo string) (Installation, error) {
+	var out Installation
+	return out, c.do(ctx, call{http.MethodGet, "/repos/" + repo + "/installation", jwt}, &out)
 }
 
 // Slug returns the app's slug, which names its bot user: <slug>[bot].

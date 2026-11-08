@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/McReaper/go-agent-kit/kitinit"
 )
 
 // WHY: a pull request of a stack takes no auto-merge, and GitHub rebases
@@ -65,6 +67,56 @@ sleep() { :; }
 	out, code, _ = runStep(t, fake+script, "PR=9", "BASE_PR=spec/x", "STACK=")
 	if code != 1 || !strings.Contains(out, "gh api -X POST repos/o/r/stacks") || !strings.Contains(out, "pull_requests[]=9") {
 		t.Errorf("in no stack: exit %d\n%s", code, out)
+	}
+}
+
+// WHY: after a merge by the workflow's own token GitHub deletes no branch,
+// and moves a stack's next pull request onto the default branch without
+// rebasing it or running its check: the merge job merges as an App, and
+// says how to give it one rather than merging as the workflow.
+func TestTheMergeJobMergesAsTheRepositorysAppOrSaysHowToGiveItOne(t *testing.T) {
+	script := stepRun(t, "../.github/workflows/kit-check.yml", "Has the repository an App to merge as?")
+	if out, code, _ := runStep(t, script, "HAS_APP=true"); code != 0 {
+		t.Errorf("with an App: exit %d\n%s", code, out)
+	}
+	out, code, _ := runStep(t, script, "HAS_APP=false")
+	if code != 1 || !strings.Contains(out, "kit init github --repo o/r") {
+		t.Errorf("with no App: exit %d, want 1 and the command\n%s", code, out)
+	}
+	merge := jobs(t, "../.github/workflows/kit-check.yml")["merge"]
+	for _, want := range []string{
+		"    permissions: {}\n",
+		"uses: actions/create-github-app-token@",
+		"client-id: ${{ secrets.KIT_APP_CLIENT_ID }}\n",
+		"private-key: ${{ secrets.KIT_APP_KEY }}\n",
+		"GH_TOKEN: ${{ steps.app.outputs.token }}\n",
+	} {
+		if !strings.Contains(merge, want) {
+			t.Errorf("kit-check.yml's merge job lacks %q", want)
+		}
+	}
+	if strings.Contains(merge, "github.token") {
+		t.Errorf("kit-check.yml's merge job uses the workflow's own token")
+	}
+	dir := t.TempDir()
+	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := kitinit.Write(dir, fs); err != nil {
+		t.Fatal(err)
+	}
+	kit := jobs(t, filepath.Join(dir, ".github", "workflows", "kit.yml"))["kit"]
+	for _, want := range []string{
+		"      KIT_APP_CLIENT_ID: ${{ secrets.KIT_APP_CLIENT_ID }}\n",
+		"      KIT_APP_KEY: ${{ secrets.KIT_APP_KEY }}\n",
+	} {
+		if !strings.Contains(kit, want) {
+			t.Errorf("kit.yml's kit job does not pass %q", strings.TrimSpace(want))
+		}
+	}
+	if strings.Contains(kit, "inherit") || strings.Contains(kit, "contents: write") {
+		t.Errorf("kit.yml's kit job passes every secret or lets the workflow write the code:\n%s", kit)
 	}
 }
 

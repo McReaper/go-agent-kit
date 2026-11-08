@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 )
 
@@ -17,11 +18,13 @@ type Output struct {
 }
 
 // Cmd is a command to run: where, the variables it adds to the caller's
-// environment, and its argv.
+// environment, its argv, and what it reads on its standard input, if
+// anything.
 type Cmd struct {
-	Dir  string
-	Env  []string
-	Argv []string
+	Dir   string
+	Env   []string
+	Argv  []string
+	Stdin io.Reader
 }
 
 // Command runs argv in dir with the caller's environment (see Run).
@@ -36,6 +39,7 @@ func Run(ctx context.Context, c Cmd) (Output, error) {
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Dir = c.Dir
 	cmd.Env = append(cmd.Environ(), c.Env...)
+	cmd.Stdin = c.Stdin
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()

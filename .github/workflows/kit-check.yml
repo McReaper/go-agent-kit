@@ -12,9 +12,10 @@ name: kit-check
 #
 # The caller runs it on pull_request (opened, synchronize, reopened, edited);
 # an approval re-runs it through kit-approval.yml. The caller grants
-# contents and pull-requests write for the merge and the sheet, issues
-# write for the label, id-token write for the version. An edit runs the
-# jobs only when it moved the pull request's base.
+# contents read, pull-requests write for the sheet, issues write for the
+# label, id-token write for the version, and passes the secrets of the App
+# the merge job merges as. An edit runs the jobs only when it moved the
+# pull request's base.
 
 on:
   workflow_call:
@@ -24,6 +25,13 @@ on:
         required: false
         type: string
         default: ""
+    secrets:
+      KIT_APP_CLIENT_ID:
+        description: The Client ID of the GitHub App the merge job merges as; kit init github sets it.
+        required: false
+      KIT_APP_KEY:
+        description: That App's private key; kit init github sets it.
+        required: false
 
 permissions: {}
 
@@ -146,19 +154,38 @@ jobs:
     # pull request of a stack. The ruleset still decides, and a merge it
     # refuses fails here with its reason. A stack's next pull request is
     # rebased onto the default branch by GitHub, which runs this again.
+    # It merges as the repository's App: after a merge by the workflow's
+    # own token, GitHub deletes no branch, and moves the stack's next pull
+    # request onto the default branch without rebasing it or running its
+    # check.
     needs: kit
     if: github.event.pull_request.base.ref == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
       group: kit-merge-${{ github.event.pull_request.number }}
-    permissions:
-      contents: write
-      pull-requests: write
+    permissions: {}
     steps:
+      - name: Has the repository an App to merge as?
+        env:
+          HAS_APP: ${{ secrets.KIT_APP_CLIENT_ID != '' && secrets.KIT_APP_KEY != '' }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$HAS_APP" != true ]; then
+            echo "::error::the kit merges as a GitHub App, and $REPO gives it none: the owner runs kit init github --repo $REPO with the App's KIT_APP_CLIENT_ID and KIT_APP_KEY"
+            exit 1
+          fi
+      - name: The App's token
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.KIT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.KIT_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - name: Merge
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           HEAD: ${{ github.event.pull_request.head.sha }}

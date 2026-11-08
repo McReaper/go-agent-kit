@@ -109,6 +109,8 @@ func fakeGitHub(t *testing.T) ghapp.Client {
 			reply(t, w, `{"token":"ghs_secret","expires_at":"2026-10-31T02:00:00Z"}`)
 		case "GET /app":
 			reply(t, w, `{"slug":"t7-companion-maintainer"}`)
+		case "GET /repos/McReaper/notes/installation":
+			reply(t, w, `{"id":42,"account":{"login":"McReaper"},"permissions":{"contents":"write","pull_requests":"read"}}`)
 		case "GET /users/t7-companion-maintainer[bot]":
 			reply(t, w, `{"id":350539711}`)
 		default:
@@ -137,6 +139,10 @@ func TestTheClientListsInstallationsAndMintsATokenWithTheJWT(t *testing.T) {
 	id, err := c.UserID(ctx, slug+"[bot]")
 	if err != nil || id != 350539711 {
 		t.Fatalf("UserID = %d, %v", id, err)
+	}
+	inst, err := c.RepoInstallation(ctx, "the-jwt", "McReaper/notes")
+	if err != nil || inst.ID != 42 || inst.Permissions["contents"] != "write" || inst.Permissions["pull_requests"] != "read" {
+		t.Fatalf("RepoInstallation = %+v, %v", inst, err)
 	}
 }
 
