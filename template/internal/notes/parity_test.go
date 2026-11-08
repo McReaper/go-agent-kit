@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/template/internal/notes"
-	"github.com/McReaper/go-agent-kit/template/internal/platform/journal"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/journal"
 	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

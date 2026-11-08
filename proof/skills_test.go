@@ -38,5 +38,5 @@ func TestTheSecretsSkillsCodePassesEveryGate(t *testing.T) {
 	}
 	runIn(t, place{dir: dir}, "go", "test", "-count=1", "./internal/platform/secret/")
 	check(t, wantsOf(golangciTool), golangciFindings(t, dir))
-	check(t, wantsOf(kitvetTool), kitvetFindings(t, dir))
+	check(t, wantsOf(vetTool), vetFindings(t, dir))
 }

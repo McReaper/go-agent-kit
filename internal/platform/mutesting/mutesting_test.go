@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/mutesting"
+	"github.com/McReaper/rumblestrip-go/internal/platform/mutesting"
 )
 
 func TestTheReportCountsTimeoutsAsKilled(t *testing.T) {

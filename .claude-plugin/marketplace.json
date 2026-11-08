@@ -1,11 +1,11 @@
 {
-  "name": "go-agent-kit",
+  "name": "rumblestrip-go",
   "owner": { "name": "McReaper" },
   "plugins": [
     {
-      "name": "kit",
+      "name": "rumblestrip",
       "source": "./plugin",
-      "description": "The anti-drift kit for a Go repository built on it: its skills, the kit's rules in every session, a gesture past the kit refused before it runs, feedback after each edit and the full check before the agent stops."
+      "description": "Rumblestrip for a Go repository built on it: its skills, Rumblestrip's rules in every session, a gesture past Rumblestrip refused before it runs, feedback after each edit and the full check before the agent stops."
     }
   ]
 }

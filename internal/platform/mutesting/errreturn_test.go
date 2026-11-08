@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/mutesting"
+	"github.com/McReaper/rumblestrip-go/internal/platform/mutesting"
 )
 
 type reportEntry struct {

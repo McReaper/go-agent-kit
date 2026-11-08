@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/git"
+	"github.com/McReaper/rumblestrip-go/internal/platform/git"
 )
 
 // Line is one added line: its number in the new file and its text.

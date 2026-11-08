@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/git"
+	"github.com/McReaper/rumblestrip-go/internal/platform/git"
 )
 
 // Tree is an approved commit's files: each path's git blob id.

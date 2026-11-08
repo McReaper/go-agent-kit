@@ -3,7 +3,7 @@ package typedid_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/typedid"
+	"github.com/McReaper/rumblestrip-go/analyzers/typedid"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

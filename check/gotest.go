@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/gotest"
+	"github.com/McReaper/rumblestrip-go/internal/platform/gotest"
 )
 
 var (

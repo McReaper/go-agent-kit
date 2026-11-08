@@ -7,8 +7,8 @@ package review
 import (
 	"context"
 
-	"github.com/McReaper/go-agent-kit/guard"
-	"github.com/McReaper/go-agent-kit/spec"
+	"github.com/McReaper/rumblestrip-go/guard"
+	"github.com/McReaper/rumblestrip-go/spec"
 )
 
 // Item is one line of the sheet: a file, a line when it has one, and what
@@ -83,7 +83,7 @@ func (s Sheet) Empty() bool {
 	return len(s.Spec)+len(s.Approval) == 0
 }
 
-// Labels are the pull request labels the kit sets, each with whether this
+// Labels are the pull request labels Rumblestrip sets, each with whether this
 // sheet earns it: the caller adds the ones that are true and removes the
 // others.
 func (s Sheet) Labels() map[string]bool {

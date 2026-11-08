@@ -8,7 +8,7 @@ Go handles errors in code: every `if err != nil { return …err… }` is a branc
 
 ## Decision
 
-`kit mutate` runs go-mutesting on a copy of the module, the files git sees (tracked and new, ignored ones left out, so build outputs and databases aren't copied), in the packages a change touches. Only mutants that start on a line the change adds count, so old code's survivors don't fail a new change. A mutant that only removes the return of an `if err != nil` block isn't counted, and the report says how many there were. It fails under `--min`, 0.8, calibrated on the template (see `docs/kit.md`, M6). Equivalent mutants are why the gate is a score, not zero survivors.
+`rumblestrip mutate` runs go-mutesting on a copy of the module, the files git sees (tracked and new, ignored ones left out, so build outputs and databases aren't copied), in the packages a change touches. Only mutants that start on a line the change adds count, so old code's survivors don't fail a new change. A mutant that only removes the return of an `if err != nil` block isn't counted, and the report says how many there were. It fails under `--min`, 0.8, calibrated on the template (see `docs/rumblestrip.md`, M6). Equivalent mutants are why the gate is a score, not zero survivors.
 
 ## Consequences
 

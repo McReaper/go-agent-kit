@@ -1,4 +1,4 @@
-// Package archtest checks a Go module against the kit's layout (criteria
+// Package archtest checks a Go module against Rumblestrip's layout (criteria
 // E1, E2 and E7):
 //
 //	cmd/<app>                          wiring only

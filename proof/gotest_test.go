@@ -12,7 +12,7 @@ import (
 
 const (
 	testTool       = "test/"
-	templateModule = "github.com/McReaper/go-agent-kit/template"
+	templateModule = "github.com/McReaper/rumblestrip-go/template"
 )
 
 var testFailure = regexp.MustCompile(`^\s+(\w+_test\.go):(\d+): (.*)`)

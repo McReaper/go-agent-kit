@@ -9,10 +9,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/add"
-	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/infra"
-	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/list"
-	"github.com/McReaper/go-agent-kit/template/internal/platform/op"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes/internal/add"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes/internal/infra"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes/internal/list"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/op"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 )

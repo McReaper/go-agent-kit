@@ -14,14 +14,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/git"
-	"github.com/McReaper/go-agent-kit/internal/platform/gitleaks"
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
-	"github.com/McReaper/go-agent-kit/kitinit"
+	"github.com/McReaper/rumblestrip-go/internal/platform/git"
+	"github.com/McReaper/rumblestrip-go/internal/platform/gitleaks"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/setup"
 )
 
 // WHY: workflows, scripts, secrets and the dependency bot's config aren't
-// Go: the Go gates never read them, and an app's CI runs kit check alone.
+// Go: the Go gates never read them, and an app's CI runs rumblestrip check alone.
 func fileGates() []gate {
 	return []gate{
 		{Gate{"actionlint", "actionlint", "Workflows", "The workflows are valid."}, actionlintGate},
@@ -29,7 +29,7 @@ func fileGates() []gate {
 		{Gate{"shellcheck", "shellcheck", "Shell scripts", "The shell scripts have no known pitfall."}, shellcheckGate},
 		{Gate{"psscriptanalyzer", "psscriptanalyzer", "PowerShell scripts", "The PowerShell scripts have no known pitfall."}, psscriptanalyzerGate},
 		{Gate{"gitleaks", "gitleaks", "Secrets", "No secret is committed."}, gitleaksGate},
-		{Gate{"kit-files", "kit files", "Kit files", "The kit's workflows are the ones this kit version writes."}, kitFilesGate},
+		{Gate{"rumblestrip-files", "rumblestrip files", "Rumblestrip files", "Rumblestrip's workflows are the ones this Rumblestrip version writes."}, kitFilesGate},
 	}
 }
 
@@ -140,7 +140,7 @@ func ignoreEOF(err error) error {
 }
 
 // WHY: the change's commits, then what isn't committed yet, staged or not:
-// the agent runs kit check before it commits.
+// the agent runs rumblestrip check before it commits.
 func gitleaksGate(ctx context.Context, o Options) Result {
 	var lines []string
 	for _, scope := range [][]string{{"--log-opts=" + o.Base + "..HEAD"}, {"--pre-commit"}, {"--pre-commit", "--staged"}} {
@@ -155,30 +155,30 @@ func gitleaksGate(ctx context.Context, o Options) Result {
 	return found(lines)
 }
 
-// WHY: the kit's workflows are the files an app keeps; once a kit version
+// WHY: Rumblestrip's workflows are the files an app keeps; once a Rumblestrip version
 // needs them otherwise, the app hears it from its own check.
 func kitFilesGate(_ context.Context, o Options) Result {
-	current, err := os.ReadFile(filepath.Join(o.Dir, ".github", "workflows", "kit.yml"))
+	current, err := os.ReadFile(filepath.Join(o.Dir, ".github", "workflows", "rumblestrip.yml"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return Result{}
 	}
 	if err != nil {
 		return failed(err)
 	}
-	want, err := kitinit.WorkflowsFor(current)
+	want, err := setup.WorkflowsFor(current)
 	if err != nil {
-		return found([]string{".github/workflows/kit.yml:1: kit-files: T2: " + err.Error()})
+		return found([]string{".github/workflows/rumblestrip.yml:1: rumblestrip-files: T2: " + err.Error()})
 	}
 	var lines []string
 	for _, f := range want {
 		have, err := os.ReadFile(filepath.Join(o.Dir, filepath.FromSlash(f.Path)))
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
-			lines = append(lines, f.Path+":1: kit-files: T2: this kit version writes it and the repository has none: run kit init, which writes it")
+			lines = append(lines, f.Path+":1: rumblestrip-files: T2: this Rumblestrip version writes it and the repository has none: run rumblestrip init, which writes it")
 		case err != nil:
 			return failed(err)
 		case !bytes.Equal(have, f.Content):
-			lines = append(lines, f.Path+":1: kit-files: T2: it differs from the one this kit version writes: delete it and run kit init, which writes it again")
+			lines = append(lines, f.Path+":1: rumblestrip-files: T2: it differs from the one this Rumblestrip version writes: delete it and run rumblestrip init, which writes it again")
 		}
 	}
 	return found(lines)

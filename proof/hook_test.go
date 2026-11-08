@@ -17,8 +17,8 @@ func bash(t *testing.T, dir, command string) string {
 	return string(data)
 }
 
-// WHY: the plugin asks kit before each command the agent runs. A gesture
-// past the kit is refused before it reaches the platform, and a commit
+// WHY: the plugin asks rumblestrip before each command the agent runs. A gesture
+// past Rumblestrip is refused before it reaches the platform, and a commit
 // waits until it holds no secret: one committed stays in the history,
 // where only a rewrite removes it.
 func TestThePreToolHookRefusesAGestureAndACommitWithAStagedSecret(t *testing.T) {

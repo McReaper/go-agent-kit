@@ -26,7 +26,7 @@ const (
 // Check returns every rule d breaks that its lines show: bypasses, which
 // block everywhere, and protected changes and size, which need a code
 // owner's approval before merge (see NeedsApproval). A key or an env file
-// committed is gitleaks', with the kit's rules.
+// committed is gitleaks', with Rumblestrip's rules.
 func Check(d Diff) []Finding {
 	var out []Finding
 	for _, f := range d.Files {

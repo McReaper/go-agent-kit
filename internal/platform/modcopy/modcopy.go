@@ -11,7 +11,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/git"
+	"github.com/McReaper/rumblestrip-go/internal/platform/git"
 )
 
 // Copy copies the files git sees in dir, tracked and new, to a new
@@ -24,7 +24,7 @@ func Copy(ctx context.Context, dir string) (work string, err error) {
 	if err != nil {
 		return "", err
 	}
-	work, err = os.MkdirTemp("", "kit-copy-*")
+	work, err = os.MkdirTemp("", "rumblestrip-copy-*")
 	if err != nil {
 		return "", fmt.Errorf("make the copy's directory: %w", err)
 	}

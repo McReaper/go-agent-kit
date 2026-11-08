@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/ghapp"
+	"github.com/McReaper/rumblestrip-go/internal/platform/ghapp"
 )
 
 func newKey(t *testing.T) *rsa.PrivateKey {

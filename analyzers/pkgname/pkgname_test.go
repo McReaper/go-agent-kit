@@ -3,7 +3,7 @@ package pkgname_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/pkgname"
+	"github.com/McReaper/rumblestrip-go/analyzers/pkgname"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/template/internal/platform/paths"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/paths"
 )
 
 func TestWithoutXDGDataHomeTheDataDirIsUnderHome(t *testing.T) {

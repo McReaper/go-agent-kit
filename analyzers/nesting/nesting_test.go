@@ -3,7 +3,7 @@ package nesting_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/nesting"
+	"github.com/McReaper/rumblestrip-go/analyzers/nesting"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

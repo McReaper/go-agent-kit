@@ -3,7 +3,7 @@ package ctxroot_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/ctxroot"
+	"github.com/McReaper/rumblestrip-go/analyzers/ctxroot"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

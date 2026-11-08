@@ -1,4 +1,4 @@
-// Package gitleaks runs gitleaks on a git repository with the kit's config
+// Package gitleaks runs gitleaks on a git repository with Rumblestrip's config
 // and reads its report.
 package gitleaks
 
@@ -10,8 +10,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
-	"github.com/McReaper/go-agent-kit/lint"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/lint"
 )
 
 // Leak is one secret gitleaks found.
@@ -25,7 +25,7 @@ type Leak struct {
 // Scan runs gitleaks git on the repository at dir, with scope's options
 // (--log-opts=<range>, --pre-commit, --staged), and returns what it found.
 //
-// WHY: the kit's config goes with every scan; without --config gitleaks
+// WHY: Rumblestrip's config goes with every scan; without --config gitleaks
 // reads the repository's own .gitleaks.toml, which could allow a secret.
 func Scan(ctx context.Context, dir string, scope ...string) (leaks []Leak, err error) {
 	config, err := writeConfig()
@@ -48,7 +48,7 @@ func Scan(ctx context.Context, dir string, scope ...string) (leaks []Leak, err e
 }
 
 func writeConfig() (string, error) {
-	f, err := os.CreateTemp("", "kit-gitleaks-*.toml")
+	f, err := os.CreateTemp("", "rumblestrip-gitleaks-*.toml")
 	if err != nil {
 		return "", fmt.Errorf("write the gitleaks config: %w", err)
 	}

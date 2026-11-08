@@ -5,7 +5,7 @@ description: How to add or change a feature of this app, spec first. The spec is
 
 # A feature, spec first
 
-The owner reads the spec and nothing else: the scenarios in `features/*.feature`. They approve what the app does there. The code, its unit tests and the steps that run the scenarios are judged by the machines: `kit check`, `kit mutate`.
+The owner reads the spec and nothing else: the scenarios in `features/*.feature`. They approve what the app does there. The code, its unit tests and the steps that run the scenarios are judged by the machines: `rumblestrip check`, `rumblestrip mutate`.
 
 ## 1. Write the spec, open its pull request
 
@@ -13,7 +13,7 @@ On a branch from the default branch, `spec/<feature>`, add or change scenarios i
 
 - one scenario per behaviour a user would notice, named as that behaviour;
 - in the user's words: what they do and what they see, not flags or JSON;
-- every `Then` says what it expects with a value, a quoted text or a number: `Then it is refused with "the limit is 80"`. The kit alters each value and checks the scenario then fails; a `Then` with no value is refused;
+- every `Then` says what it expects with a value, a quoted text or a number: `Then it is refused with "the limit is 80"`. Rumblestrip alters each value and checks the scenario then fails; a `Then` with no value is refused;
 - a new scenario is tagged `@wip`: approved, not built yet. The spec's test leaves it out.
 
 Open the pull request with the spec alone, titled `spec(<module>): <the behaviour, in the user's words>`. Its description says in one line what the feature is for. If the request leaves something open, a limit or what is refused, write the scenario you would choose and say so there: the owner decides. Write `@wip` in backticks there, as any `@name`: GitHub notifies the account a bare one names. Once they approve it, the pull request merges by itself.
@@ -49,9 +49,9 @@ Then wire it in the module's contract, `internal/<module>/<module>.go`: `Registe
 
 ## 4. Check before you stop
 
-- `kit check`: every gate. It runs `kit spec`, which runs each built scenario alone, then once per value its `Then` steps expect, that value altered: it must pass as written and fail altered. A step that passes whatever it is told checks nothing.
-- `kit mutate`: the new lines' mutants must die. A mutant that lives is a behaviour no test pins: add the test, or delete the code if nothing needs it.
-- `kit review`: the sheet the owner reads. On the build's pull request it says there is nothing for them.
+- `rumblestrip check`: every gate. It runs `rumblestrip spec`, which runs each built scenario alone, then once per value its `Then` steps expect, that value altered: it must pass as written and fail altered. A step that passes whatever it is told checks nothing.
+- `rumblestrip mutate`: the new lines' mutants must die. A mutant that lives is a behaviour no test pins: add the test, or delete the code if nothing needs it.
+- `rumblestrip review`: the sheet the owner reads. On the build's pull request it says there is nothing for them.
 
 ## When something is wrong
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/psscriptanalyzer"
+	"github.com/McReaper/rumblestrip-go/internal/platform/psscriptanalyzer"
 )
 
 const psTool = "psscriptanalyzer/"
@@ -39,7 +39,7 @@ func TestKitCheckFailsOnAPowerShellScript(t *testing.T) {
 		"FAIL psscriptanalyzer\n", "scripts/install.ps1:7: PSAvoidUsingInvokeExpression",
 	} {
 		if !strings.Contains(out, want) {
-			t.Errorf("kit check lacks %q", want)
+			t.Errorf("rumblestrip check lacks %q", want)
 		}
 	}
 	if code != 1 {
@@ -51,7 +51,7 @@ func TestKitCheckFailsOnAPowerShellScript(t *testing.T) {
 }
 
 // WHY: tools.txt is what CI installs and what the doc names; the versions
-// the kit runs must be those.
+// Rumblestrip runs must be those.
 func TestTheKitRunsTheVersionsToolsTxtPins(t *testing.T) {
 	data, err := os.ReadFile("../tools.txt")
 	if err != nil {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/McReaper/go-agent-kit/template/internal/notes/internal/domain"
-	"github.com/McReaper/go-agent-kit/template/internal/platform/op"
+	"github.com/McReaper/rumblestrip-go/template/internal/notes/internal/domain"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/op"
 )
 
 const (

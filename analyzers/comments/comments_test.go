@@ -3,7 +3,7 @@ package comments_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/comments"
+	"github.com/McReaper/rumblestrip-go/analyzers/comments"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/analyzers/internal/layout"
+	"github.com/McReaper/rumblestrip-go/analyzers/internal/layout"
 	"golang.org/x/tools/go/analysis"
 )
 

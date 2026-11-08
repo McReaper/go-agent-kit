@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 )
 
 // Commit returns the commit module's version names, from the module proxy's

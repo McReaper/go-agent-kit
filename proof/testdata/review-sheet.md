@@ -1,7 +1,7 @@
-<!-- kit review -->
-<!-- kit status -->
+<!-- rumblestrip -->
+<!-- rumblestrip status -->
 ⏳ The gates are running. **Waiting for you:** read what is below, then approve the pull request.
-<!-- /kit status -->
+<!-- /rumblestrip status -->
 
 ## For you
 
@@ -17,4 +17,4 @@
 
 Approving the pull request approves these; touch one again and it needs approving again.
 
-<sub>[go-agent-kit](https://github.com/McReaper/go-agent-kit) VERSION</sub>
+<sub>[Rumblestrip](https://github.com/McReaper/rumblestrip-go) VERSION</sub>

@@ -9,17 +9,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/kitinit"
+	"github.com/McReaper/rumblestrip-go/setup"
 )
 
 // WHY: a pull request of a stack takes no auto-merge, and GitHub rebases
 // the next one onto the default branch only once the one below merged: the
-// kit's merge job merges through the asynchronous merge, and says why when
+// Rumblestrip's merge job merges through the asynchronous merge, and says why when
 // the ruleset refuses. The commit is the pull request's title and
-// description, with the owner as co-author and the kit's release, never
-// the agent's commits' messages; the kit's comment says where it went.
+// description, with the owner as co-author and Rumblestrip's release, never
+// the agent's commits' messages; Rumblestrip's comment says where it went.
 func TestTheMergeJobMergesThroughTheAsynchronousMergeAndSaysWhyGitHubRefused(t *testing.T) {
-	script := stepRun(t, "../.github/workflows/kit-check.yml", "Merge")
+	script := stepRun(t, "../.github/workflows/rumblestrip-check.yml", "Merge")
 	for _, c := range []struct {
 		name, state, result string
 		code                int
@@ -49,11 +49,11 @@ func TestTheMergeJobMergesThroughTheAsynchronousMergeAndSaysWhyGitHubRefused(t *
 			if strings.Contains(log, "2026-03-10 repos/o/r/pulls/7 --jq .merge_commit_sha") {
 				t.Error("the merge commit is read with the API version that has no merge_commit_sha")
 			}
-			wantMessage := "Why it changes.\n\nCo-authored-by: octo <1+octo@users.noreply.github.com>\nBuilt-with: go-agent-kit v0.2.8 <https://github.com/McReaper/go-agent-kit>"
+			wantMessage := "Why it changes.\n\nCo-authored-by: octo <1+octo@users.noreply.github.com>\nBuilt-with: Rumblestrip v0.2.8 <https://github.com/McReaper/rumblestrip-go>"
 			for file, want := range map[string]string{
 				"title":   "feat(notes): a short title is refused (#7)",
 				"message": wantMessage,
-				"comment": "<!-- kit review -->\n<!-- kit status -->\n" + c.status + "\n<!-- /kit status -->\n\n## For you\n",
+				"comment": "<!-- rumblestrip -->\n<!-- rumblestrip status -->\n" + c.status + "\n<!-- /rumblestrip status -->\n\n## For you\n",
 			} {
 				if got := readFile(t, filepath.Join(tmp, file)); got != want {
 					t.Errorf("%s = %q, want %q", file, got, want)
@@ -64,7 +64,7 @@ func TestTheMergeJobMergesThroughTheAsynchronousMergeAndSaysWhyGitHubRefused(t *
 }
 
 // WHY: the merge job reads pull request #7 piece by piece, whose
-// description ends with the kit's line; the fake records the commit's title
+// description ends with Rumblestrip's line; the fake records the commit's title
 // and message and the comment the job writes, in $RUNNER_TEMP, for the
 // proof to read.
 const mergeFake = `gh() {
@@ -80,14 +80,14 @@ const mergeFake = `gh() {
   *merge-async/u1*) echo "$RESULT" ;;
   *merge-async*) echo u1 ;;
   *"pulls/7 --jq .title") echo "feat(notes): a short title is refused" ;;
-  *"pulls/7 --jq .body"*) printf 'Why it changes.\r\n\r\n\360\237\247\260 Built with [go-agent-kit](https://github.com/McReaper/go-agent-kit)\n' ;;
+  *"pulls/7 --jq .body"*) printf 'Why it changes.\r\n\r\n\360\237\247\260 Built with [Rumblestrip](https://github.com/McReaper/rumblestrip-go)\n' ;;
   *"pulls/7 --jq .head.ref") echo feat/x ;;
   *"pulls/7 --jq .merge_commit_sha"*) echo m1 ;;
   *"pulls/7 --jq"*) echo "$STATE" ;;
   *users/octo*) echo "1+octo@users.noreply.github.com" ;;
   *base=feat/x*) echo "#9" ;;
   *issues/7/comments*) echo 55 ;;
-  *"comments/55 --jq .body") printf '%s\n' "<!-- kit review -->" "<!-- kit status -->" "⏳ The gates are running." "<!-- /kit status -->" "" "## For you" ;;
+  *"comments/55 --jq .body") printf '%s\n' "<!-- rumblestrip -->" "<!-- rumblestrip status -->" "⏳ The gates are running." "<!-- /rumblestrip status -->" "" "## For you" ;;
   esac
 }
 `
@@ -105,7 +105,7 @@ func readFile(t *testing.T, path string) string {
 // below it merged only when both are a stack; outside one it stays on a
 // merged branch and never merges. The check says so, with the command.
 func TestAPullRequestOnAnotherBranchIsInAStackOrTheCheckSaysHow(t *testing.T) {
-	script := stepRun(t, "../.github/workflows/kit-check.yml", "Is a pull request on another branch than the default one in a stack?")
+	script := stepRun(t, "../.github/workflows/rumblestrip-check.yml", "Is a pull request on another branch than the default one in a stack?")
 	fake := `gh() { echo "$*" >> "$LOG"; echo "$STACK"; }
 sleep() { :; }
 `
@@ -124,48 +124,48 @@ sleep() { :; }
 // rebasing it or running its check: the merge job merges as an App, and
 // says how to give it one rather than merging as the workflow.
 func TestTheMergeJobMergesAsTheRepositorysAppOrSaysHowToGiveItOne(t *testing.T) {
-	script := stepRun(t, "../.github/workflows/kit-check.yml", "Has the repository an App to merge as?")
+	script := stepRun(t, "../.github/workflows/rumblestrip-check.yml", "Has the repository an App to merge as?")
 	if out, code, _ := runStep(t, script, "HAS_APP=true"); code != 0 {
 		t.Errorf("with an App: exit %d\n%s", code, out)
 	}
 	out, code, _ := runStep(t, script, "HAS_APP=false")
-	if code != 1 || !strings.Contains(out, "kit init github --repo o/r") {
+	if code != 1 || !strings.Contains(out, "rumblestrip init github --repo o/r") {
 		t.Errorf("with no App: exit %d, want 1 and the command\n%s", code, out)
 	}
-	merge := jobs(t, "../.github/workflows/kit-check.yml")["merge"]
+	merge := jobs(t, "../.github/workflows/rumblestrip-check.yml")["merge"]
 	for _, want := range []string{
 		"    permissions: {}\n",
 		"uses: actions/create-github-app-token@",
-		"client-id: ${{ secrets.KIT_APP_CLIENT_ID }}\n",
-		"private-key: ${{ secrets.KIT_APP_KEY }}\n",
+		"client-id: ${{ secrets.RUMBLESTRIP_APP_CLIENT_ID }}\n",
+		"private-key: ${{ secrets.RUMBLESTRIP_APP_KEY }}\n",
 		"GH_TOKEN: ${{ steps.app.outputs.token }}\n",
 	} {
 		if !strings.Contains(merge, want) {
-			t.Errorf("kit-check.yml's merge job lacks %q", want)
+			t.Errorf("rumblestrip-check.yml's merge job lacks %q", want)
 		}
 	}
 	if strings.Contains(merge, "github.token") {
-		t.Errorf("kit-check.yml's merge job uses the workflow's own token")
+		t.Errorf("rumblestrip-check.yml's merge job uses the workflow's own token")
 	}
 	dir := t.TempDir()
-	fs, err := kitinit.Files(kitinit.Options{Version: kitinit.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
+	fs, err := setup.Files(setup.Options{Version: setup.Version{Tag: "v0.2.0", Commit: strings.Repeat("ab", 20)}, Owner: "octo", OwnerEmail: "1+octo@users.noreply.github.com"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kitinit.Write(dir, fs); err != nil {
+	if _, err := setup.Write(dir, fs); err != nil {
 		t.Fatal(err)
 	}
-	kit := jobs(t, filepath.Join(dir, ".github", "workflows", "kit.yml"))["pr"]
+	rumblestrip := jobs(t, filepath.Join(dir, ".github", "workflows", "rumblestrip.yml"))["pr"]
 	for _, want := range []string{
-		"      KIT_APP_CLIENT_ID: ${{ secrets.KIT_APP_CLIENT_ID }}\n",
-		"      KIT_APP_KEY: ${{ secrets.KIT_APP_KEY }}\n",
+		"      RUMBLESTRIP_APP_CLIENT_ID: ${{ secrets.RUMBLESTRIP_APP_CLIENT_ID }}\n",
+		"      RUMBLESTRIP_APP_KEY: ${{ secrets.RUMBLESTRIP_APP_KEY }}\n",
 	} {
-		if !strings.Contains(kit, want) {
-			t.Errorf("kit.yml's kit job does not pass %q", strings.TrimSpace(want))
+		if !strings.Contains(rumblestrip, want) {
+			t.Errorf("rumblestrip.yml's rumblestrip job does not pass %q", strings.TrimSpace(want))
 		}
 	}
-	if strings.Contains(kit, "inherit") || strings.Contains(kit, "contents: write") {
-		t.Errorf("kit.yml's kit job passes every secret or lets the workflow write the code:\n%s", kit)
+	if strings.Contains(rumblestrip, "inherit") || strings.Contains(rumblestrip, "contents: write") {
+		t.Errorf("rumblestrip.yml's rumblestrip job passes every secret or lets the workflow write the code:\n%s", rumblestrip)
 	}
 }
 
@@ -174,7 +174,7 @@ func TestTheMergeJobMergesAsTheRepositorysAppOrSaysHowToGiveItOne(t *testing.T) 
 // run of the approved commit, once the run finished; and nothing when the
 // status already says approved.
 func TestAnApprovalReRunsTheReviewSheetOfTheApprovedCommitsRun(t *testing.T) {
-	script := stepRun(t, "../.github/workflows/kit-approval.yml", "Re-run the review sheet of the approved commit")
+	script := stepRun(t, "../.github/workflows/rumblestrip-approval.yml", "Re-run the review sheet of the approved commit")
 	fake := `gh() {
   echo "$*" >> "$LOG"
   case "$*" in
@@ -188,15 +188,15 @@ func TestAnApprovalReRunsTheReviewSheetOfTheApprovedCommitsRun(t *testing.T) {
 		"pending": {"run watch 11 --repo o/r", "run rerun --job 101 --repo o/r"},
 		"success": nil,
 	} {
-		out, code, log := runStep(t, fake+script, "HEAD=h1", "STATE="+state, "WORKFLOW=.github/workflows/kit.yml")
+		out, code, log := runStep(t, fake+script, "HEAD=h1", "STATE="+state, "WORKFLOW=.github/workflows/rumblestrip.yml")
 		if code != 0 {
 			t.Fatalf("%s: exit %d\n%s", state, code, out)
 		}
 		if got := gestures(log); strings.Join(got, "\n") != strings.Join(want, "\n") {
 			t.Errorf("%s: gestures %q, want %q", state, got, want)
 		}
-		if state == "pending" && !strings.Contains(log, `select(.path == ".github/workflows/kit.yml")`) {
-			t.Errorf("the runs listed are not kit.yml's only:\n%s", log)
+		if state == "pending" && !strings.Contains(log, `select(.path == ".github/workflows/rumblestrip.yml")`) {
+			t.Errorf("the runs listed are not rumblestrip.yml's only:\n%s", log)
 		}
 	}
 }
@@ -206,7 +206,7 @@ func TestAnApprovalReRunsTheReviewSheetOfTheApprovedCommitsRun(t *testing.T) {
 // happens next; with every gate green, it passes. Its summary is the run's
 // one: the table of every check, then each failing gate's section.
 func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
-	script := stepRun(t, "../.github/workflows/kit-check.yml", "Did every gate pass?")
+	script := stepRun(t, "../.github/workflows/rumblestrip-check.yml", "Did every gate pass?")
 	fake := `gh() {
   echo "$*" >> "$LOG"
   for a in "$@"; do
@@ -215,30 +215,30 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
   case "$*" in
   *runs/5/jobs*) printf '%b' "$JOBS" ;;
   *issues/7/comments*) echo 55 ;;
-  *"comments/55 --jq .body") printf '%s\n' "<!-- kit review -->" "<!-- kit status -->" "⏳ The gates are running." "<!-- /kit status -->" "" "## For you" ;;
+  *"comments/55 --jq .body") printf '%s\n' "<!-- rumblestrip -->" "<!-- rumblestrip status -->" "⏳ The gates are running." "<!-- /rumblestrip status -->" "" "## For you" ;;
   esac
 }
 `
-	green := `success\tKit version\thttps://x/0\nsuccess\tTests\thttps://x/1\nsuccess\tSpec\thttps://x/2\n`
+	green := `success\tRumblestrip version\thttps://x/0\nsuccess\tTests\thttps://x/1\nsuccess\tSpec\thttps://x/2\n`
 	for _, c := range []struct {
 		name, jobs, needs, approval, base string
 		code                              int
 		status                            string
 	}{
-		{"green", green, "success success success", "none", "main", 0, "✅ Every check passes. The kit merges it now."},
-		{"waiting for the owner", green, "success success success", "waiting", "main", 0, "✅ Every check passes. **Waiting for you:** read what is below, then approve the pull request; the kit merges it then."},
+		{"green", green, "success success success", "none", "main", 0, "✅ Every check passes. Rumblestrip merges it now."},
+		{"waiting for the owner", green, "success success success", "waiting", "main", 0, "✅ Every check passes. **Waiting for you:** read what is below, then approve the pull request; Rumblestrip merges it then."},
 		{"stacked", green, "success success success", "none", "spec/x", 0, "✅ Every check passes. It merges once the pull request below it in the stack has."},
 		{
-			"a gate fails", `success\tKit version\thttps://x/0\nfailure\tTests\thttps://x/1\nsuccess\tSpec\thttps://x/2\n`, "success failure success", "none", "main", 1,
+			"a gate fails", `success\tRumblestrip version\thttps://x/0\nfailure\tTests\thttps://x/1\nsuccess\tSpec\thttps://x/2\n`, "success failure success", "none", "main", 1,
 			"❌ 1 check fails: [Tests](https://x/1). The agent fixes them; the checks run again on its next push.",
 		},
 		{
-			"two fail", `success\tKit version\thttps://x/0\nfailure\tTests\thttps://x/1\ncancelled\tSpec\thttps://x/2\n`, "success failure success", "waiting", "main", 1,
+			"two fail", `success\tRumblestrip version\thttps://x/0\nfailure\tTests\thttps://x/1\ncancelled\tSpec\thttps://x/2\n`, "success failure success", "waiting", "main", 1,
 			"❌ 2 checks fail: [Tests](https://x/1), [Spec](https://x/2). The agent fixes them; the checks run again on its next push. Meanwhile, what is yours to approve is below.",
 		},
 		{
 			"a job before failed unseen", green, "success success failure", "", "main", 1,
-			"❌ A job of the kit did not finish: re-run the failed jobs. That is the kit's or the runner's fault, not the change's.",
+			"❌ A job of Rumblestrip did not finish: re-run the failed jobs. That is Rumblestrip's or the runner's fault, not the change's.",
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -248,11 +248,11 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 			if c.code == 1 {
 				files["go-test.md"] = section
 			}
-			if err := os.MkdirAll(filepath.Join(tmp, "kit-summary"), 0o750); err != nil {
+			if err := os.MkdirAll(filepath.Join(tmp, "rumblestrip-summary"), 0o750); err != nil {
 				t.Fatal(err)
 			}
 			for name, content := range files {
-				if err := os.WriteFile(filepath.Join(tmp, "kit-summary", name), []byte(content), 0o600); err != nil {
+				if err := os.WriteFile(filepath.Join(tmp, "rumblestrip-summary", name), []byte(content), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -261,7 +261,7 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 			if code != c.code {
 				t.Errorf("exit %d, want %d\n%s", code, c.code, out)
 			}
-			want := "<!-- kit review -->\n<!-- kit status -->\n" + c.status + "\n<!-- /kit status -->\n\n## For you\n"
+			want := "<!-- rumblestrip -->\n<!-- rumblestrip status -->\n" + c.status + "\n<!-- /rumblestrip status -->\n\n## For you\n"
 			if got := readFile(t, filepath.Join(tmp, "comment")); got != want {
 				t.Errorf("comment = %q, want %q", got, want)
 			}
@@ -270,7 +270,7 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 				t.Errorf("summary:\n%s", summary)
 			}
 			for _, row := range []string{
-				"| ✅ | [Kit version](https://x/0) | Which commit of the kit runs: the one this repository pins. |\n",
+				"| ✅ | [Rumblestrip version](https://x/0) | Which commit of Rumblestrip runs: the one this repository pins. |\n",
 				"| [Tests](https://x/1) | Every test passes. |\n",
 				"| [Spec](https://x/2) | Each built scenario passes. |\n",
 			} {

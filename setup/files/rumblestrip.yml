@@ -1,0 +1,39 @@
+name: Rumblestrip
+
+# Rumblestrip's merge check, review sheet and merge, at the Rumblestrip commit the uses
+# line pins: rumblestrip-check.yml reads it from the job's token, so this is the
+# one pin, with rumblestrip-approval.yml's, and Dependabot moves both. The merge is
+# the App's whose Client ID and key rumblestrip init github stored as the
+# repository's secrets.
+
+on:
+  pull_request:
+    # edited: the title or the base changed (the job's condition).
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+jobs:
+  pr:
+    # WHY: an edit of the description alone runs nothing. The condition is
+    # this job's, not the called jobs': a skipped called job reports a
+    # skipped Check, which GitHub counts as passed.
+    if: github.event.action != 'edited' || github.event.changes.title || github.event.changes.base
+    name: Pull request
+    concurrency:
+      group: rumblestrip-${{"{{"}} github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write # Rumblestrip's comment
+      issues: write # Rumblestrip's label
+      statuses: write # the owner's approval
+      actions: read # the gates' results
+      id-token: write # Rumblestrip's version, read from the job's token
+    uses: McReaper/rumblestrip-go/.github/workflows/rumblestrip-check.yml@{{.Commit}} # {{.Tag}}
+    with:
+      owner: {{.Owner}}
+    secrets:
+      # The App Rumblestrip merges as, which rumblestrip init github gives the repository.
+      RUMBLESTRIP_APP_CLIENT_ID: ${{"{{"}} secrets.RUMBLESTRIP_APP_CLIENT_ID }}
+      RUMBLESTRIP_APP_KEY: ${{"{{"}} secrets.RUMBLESTRIP_APP_KEY }}

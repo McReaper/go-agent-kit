@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/template/internal/platform/op"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/op"
 	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/pflag"

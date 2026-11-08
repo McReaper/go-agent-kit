@@ -23,11 +23,11 @@ func reviewFindings(t *testing.T, dir string) []finding {
 	t.Helper()
 	out, code := kitRun(t, dir, "review", "--base", "base", "--json")
 	if code != 0 {
-		t.Fatalf("kit review: exit %d\n%s", code, out)
+		t.Fatalf("rumblestrip review: exit %d\n%s", code, out)
 	}
 	var rows []reviewRow
 	if err := json.Unmarshal([]byte(out), &rows); err != nil {
-		t.Fatalf("kit review: %v\n%s", err, out)
+		t.Fatalf("rumblestrip review: %v\n%s", err, out)
 	}
 	findings := make([]finding, 0, len(rows))
 	for _, r := range rows {
@@ -50,7 +50,7 @@ func TestKitReviewListsWhatTheOwnerMustRead(t *testing.T) {
 	}
 }
 
-// WHY: the proofs' build of kit stamps the sheet's footer with a version
+// WHY: the proofs' build of rumblestrip stamps the sheet's footer with a version
 // from the checkout, which moves with every commit.
 var footerVersion = regexp.MustCompile(`\) v[^ <]+</sub>`)
 
@@ -69,7 +69,7 @@ func TestKitReviewWritesTheSheetForThePullRequest(t *testing.T) {
 		t.Errorf("labels:\n%s", labels)
 	}
 	out, _ = kitRun(t, changeOf(t, trialCase{name: "no change"}), "review", "--base", "base")
-	if !strings.Contains(out, "Nothing for you: the kit merges it once they pass.") {
+	if !strings.Contains(out, "Nothing for you: Rumblestrip merges it once they pass.") {
 		t.Errorf("an empty change:\n%s", out)
 	}
 	labels, _ = kitRun(t, changeOf(t, trialCase{name: "no change"}), "review", "--base", "base", "--labels")

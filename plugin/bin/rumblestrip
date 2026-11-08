@@ -1,0 +1,15 @@
+#!/bin/sh
+# rumblestrip, at the version the repository pins: the commit its
+# .github/workflows/rumblestrip.yml calls rumblestrip-check.yml at, so the agent's checks
+# are the merge check's. go run builds it once and caches it.
+set -eu
+root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "rumblestrip: not in a git repository" >&2
+  exit 2
+}
+pin=$(sed -n 's|.*rumblestrip-go/\.github/workflows/rumblestrip-check\.yml@\([0-9a-f]\{40\}\).*|\1|p' "$root/.github/workflows/rumblestrip.yml" 2>/dev/null | head -n 1)
+if [ -z "$pin" ]; then
+  echo "rumblestrip: $root/.github/workflows/rumblestrip.yml pins no Rumblestrip version: run rumblestrip init" >&2
+  exit 2
+fi
+exec go run "github.com/McReaper/rumblestrip-go/cmd/rumblestrip@$pin" "$@"

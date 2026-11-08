@@ -7,7 +7,7 @@ description: How this app holds a credential (an API token, a password, a key) s
 
 A credential is held in a `secret.Secret` from the moment it is read until the call that needs it. Printed, logged, encoded to JSON or written to the journal, it reads `[redacted]`; only `Reveal` gives the value, at the one place that sends it.
 
-The first credential adds the package to the platform, with its test, in the pull request that needs it. The kit's proofs compile both and run them through every gate.
+The first credential adds the package to the platform, with its test, in the pull request that needs it. Rumblestrip's proofs compile both and run them through every gate.
 
 ```go internal/platform/secret/secret.go
 // Package secret holds credentials so they never reach a log, an error,
@@ -72,7 +72,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/template/internal/platform/secret"
+	"github.com/McReaper/rumblestrip-go/template/internal/platform/secret"
 )
 
 const value = "ghp_example0123456789"

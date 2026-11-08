@@ -9,7 +9,7 @@ import (
 
 // WHY: what a Then step expects is a quoted string or a number in its text,
 // its doc string, or a cell of its table below the header: each is a value
-// the kit alters once.
+// Rumblestrip alters once.
 type value struct {
 	raw   string
 	alter func() Step
@@ -106,7 +106,7 @@ func altered(s string) string {
 }
 
 // Gherkin writes s as a feature file of its own, the one scenario run when
-// the kit proves it.
+// Rumblestrip proves it.
 func (s Scenario) Gherkin() string {
 	var b strings.Builder
 	b.WriteString("Feature: " + s.File + "\n\n")

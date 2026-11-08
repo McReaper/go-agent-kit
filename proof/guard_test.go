@@ -47,16 +47,16 @@ func gitIn(t *testing.T, dir string, args ...string) {
 
 func guardFindings(t *testing.T, dir string) []finding {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), kitCommand(t, "kit"), "guard", "--base", "base", "--json")
+	cmd := exec.CommandContext(t.Context(), kitCommand(t, "rumblestrip"), "guard", "--base", "base", "--json")
 	cmd.Dir = dir
 	cmd.Env = os.Environ()
 	out, err := cmd.Output()
 	if err != nil && exitCode(err) != 1 {
-		t.Fatalf("kit guard: %v\n%s", err, stderrOf(err))
+		t.Fatalf("rumblestrip guard: %v\n%s", err, stderrOf(err))
 	}
 	var rows []guardRow
 	if err := json.Unmarshal(out, &rows); err != nil {
-		t.Fatalf("kit guard: %v\n%s", err, out)
+		t.Fatalf("rumblestrip guard: %v\n%s", err, out)
 	}
 	findings := make([]finding, 0, len(rows))
 	for _, r := range rows {

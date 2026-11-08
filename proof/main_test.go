@@ -14,13 +14,13 @@ var (
 	buildErr error
 )
 
-// WHY: the kit's commands are built once for the whole run, not per test;
+// WHY: Rumblestrip's commands are built once for the whole run, not per test;
 // a failed build fails every test that needs them, with its output.
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "kit-proof-bin")
+	dir, err := os.MkdirTemp("", "rumblestrip-proof-bin")
 	bin, buildErr = dir, err
 	if err == nil {
-		buildErr = build("kitvet", "kit")
+		buildErr = build("rumblestrip-vet", "rumblestrip")
 	}
 	m.Run()
 	if err := os.RemoveAll(dir); err != nil {

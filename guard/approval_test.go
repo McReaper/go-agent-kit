@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/guard"
-	"github.com/McReaper/go-agent-kit/internal/platform/git"
+	"github.com/McReaper/rumblestrip-go/guard"
+	"github.com/McReaper/rumblestrip-go/internal/platform/git"
 	"github.com/google/go-cmp/cmp"
 )
 

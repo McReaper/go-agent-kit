@@ -3,7 +3,7 @@ package logreturn_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/logreturn"
+	"github.com/McReaper/rumblestrip-go/analyzers/logreturn"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

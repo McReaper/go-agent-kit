@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 )
 
-// Version is the PSScriptAnalyzer the kit's proofs ran with; tools.txt
+// Version is the PSScriptAnalyzer Rumblestrip's proofs ran with; tools.txt
 // names the same.
 const Version = "1.25.0"
 

@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 )
 
 // WHY: only pkg/ holds libraries other programs import, and only an
@@ -28,7 +28,7 @@ func apiChanges(ctx context.Context, dir string, d Diff) (items []Finding, err e
 	if err != nil {
 		return nil, err
 	}
-	old, err := os.MkdirTemp("", "kit-review-*")
+	old, err := os.MkdirTemp("", "rumblestrip-review-*")
 	if err != nil {
 		return nil, fmt.Errorf("make the base's directory: %w", err)
 	}
@@ -73,7 +73,7 @@ func (t trees) packageAPI(ctx context.Context, p string) ([]Finding, error) {
 	case !after:
 		return []Finding{apiBreak(p, "the package is removed")}, nil
 	}
-	export := filepath.Join(t.base, ".kit-api-export")
+	export := filepath.Join(t.base, ".rumblestrip-api-export")
 	if _, err := output(ctx, t.base, "apidiff", "-w", export, t.module+"/"+p); err != nil {
 		return nil, err
 	}

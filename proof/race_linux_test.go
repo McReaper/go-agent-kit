@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// WHY: the race detector needs cgo and a C compiler; the kit's CI runs
+// WHY: the race detector needs cgo and a C compiler; Rumblestrip's CI runs
 // on Linux, where both are present, so this proof is built for Linux only.
 func raceFindings(t *testing.T, dir string) []finding {
 	t.Helper()

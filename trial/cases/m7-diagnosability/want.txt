@@ -7,4 +7,4 @@ golangci/forbidigo internal/notes/internal/m7case/m7.go:35 use of `recover` forb
 golangci/sloglint internal/notes/internal/m7case/m7.go:19 InfoContext should be used instead
 golangci/sloglint internal/notes/internal/m7case/m7.go:19 default logger should not be used
 golangci/sloglint internal/notes/internal/m7case/m7.go:19 key\-value pairs should not be used
-kitvet/logreturn internal/notes/internal/m7case/m7.go:45 M7: err is logged and returned
+rumblestrip-vet/logreturn internal/notes/internal/m7case/m7.go:45 M7: err is logged and returned

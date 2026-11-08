@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/template/internal/tags"
+	"github.com/McReaper/rumblestrip-go/template/internal/tags"
 )
 
 func TestNormalizeKeepsTheFirstOrderOnce(t *testing.T) {

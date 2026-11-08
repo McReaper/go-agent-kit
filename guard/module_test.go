@@ -3,7 +3,7 @@ package guard_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/guard"
+	"github.com/McReaper/rumblestrip-go/guard"
 )
 
 func TestThePlatformIsNoModule(t *testing.T) {

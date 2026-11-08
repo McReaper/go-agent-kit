@@ -1,0 +1,18 @@
+# Dependabot moves Rumblestrip's pin (the github-actions ecosystem, rumblestrip.yml's
+# uses line) and the module's dependencies, a week after each release: a
+# pull request each, which merges by itself once green. A new dependency, or
+# the go line, waits for the owner.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

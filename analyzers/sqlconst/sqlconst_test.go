@@ -3,7 +3,7 @@ package sqlconst_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/sqlconst"
+	"github.com/McReaper/rumblestrip-go/analyzers/sqlconst"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

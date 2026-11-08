@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/McReaper/go-agent-kit/spec"
+	"github.com/McReaper/rumblestrip-go/spec"
 )
 
 const notes = `Feature: Notes

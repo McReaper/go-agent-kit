@@ -3,7 +3,7 @@ package domainconv_test
 import (
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/analyzers/domainconv"
+	"github.com/McReaper/rumblestrip-go/analyzers/domainconv"
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 

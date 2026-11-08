@@ -1,5 +1,5 @@
-// Package check runs every gate of the kit on a module, the same way on an
-// agent's machine and in CI: lint and the kit's analyzers per target
+// Package check runs every gate of Rumblestrip on a module, the same way on an
+// agent's machine and in CI: lint and Rumblestrip's analyzers per target
 // system, archtest, sweep, dead code, nil flows, known vulnerabilities,
 // the tests, the spec's proof, the guard, and the workflows, scripts and
 // secrets.
@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/McReaper/go-agent-kit/archtest"
-	"github.com/McReaper/go-agent-kit/sweep"
+	"github.com/McReaper/rumblestrip-go/archtest"
+	"github.com/McReaper/rumblestrip-go/sweep"
 )
 
 // Options says what to check and how strictly.
@@ -86,7 +86,7 @@ func only(gs []gate, ids []string) ([]gate, error) {
 	for _, id := range ids {
 		i := slices.IndexFunc(gs, func(g gate) bool { return g.ID == id })
 		if i < 0 {
-			return nil, fmt.Errorf("kit check: no gate %q; the gates are %s (title needs --title)", id, strings.Join(gateIDs(gs), ", "))
+			return nil, fmt.Errorf("rumblestrip check: no gate %q; the gates are %s (title needs --title)", id, strings.Join(gateIDs(gs), ", "))
 		}
 		out = append(out, gs[i])
 	}
@@ -102,7 +102,7 @@ func gateIDs(gs []gate) []string {
 }
 
 // Package runs the gates that judge one package on its own, the linters
-// and the kit's analyzers per GOOS: what an agent hears after each edit.
+// and Rumblestrip's analyzers per GOOS: what an agent hears after each edit.
 // pattern is a package path relative to o.Dir, like ./internal/notes.
 func Package(ctx context.Context, o Options, pattern string) []Result {
 	return runGates(ctx, o, perSystem(o, pattern))
@@ -123,8 +123,8 @@ func perSystem(o Options, pattern string) []gate {
 	for _, goos := range o.GOOS {
 		system := systemName(goos)
 		gs = append(gs,
-			gate{Gate{"golangci-lint-" + goos, "golangci-lint (" + goos + ")", "Lint (" + system + ")", "The code follows the kit's lint rules, built for " + system + "."}, lintFor(goos, pattern)},
-			gate{Gate{"kitvet-" + goos, "kitvet (" + goos + ")", "Kit analyzers (" + system + ")", "The code follows the kit's own rules, built for " + system + "."}, vetFor(goos, pattern)})
+			gate{Gate{"golangci-lint-" + goos, "golangci-lint (" + goos + ")", "Lint (" + system + ")", "The code follows Rumblestrip's lint rules, built for " + system + "."}, lintFor(goos, pattern)},
+			gate{Gate{"rumblestrip-vet-" + goos, "rumblestrip-vet (" + goos + ")", "Rumblestrip analyzers (" + system + ")", "The code follows Rumblestrip's own rules, built for " + system + "."}, vetFor(goos, pattern)})
 	}
 	return gs
 }

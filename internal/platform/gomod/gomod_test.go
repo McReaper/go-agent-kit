@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McReaper/go-agent-kit/internal/platform/gomod"
+	"github.com/McReaper/rumblestrip-go/internal/platform/gomod"
 )
 
-// WHY: the kit depends on go-cmp, so the module cache holds it; with the
+// WHY: Rumblestrip depends on go-cmp, so the module cache holds it; with the
 // proxy off, the test reads the cache and needs no network.
 func TestCommitReturnsTheCommitAVersionNames(t *testing.T) {
 	t.Setenv("GOPROXY", "off")
