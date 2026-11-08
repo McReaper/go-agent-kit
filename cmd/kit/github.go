@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
@@ -26,22 +25,51 @@ const (
 var findingAt = regexp.MustCompile(`^([^\s:]+):(\d+):(?:\d+:)? ?(.*)$`)
 
 // WHY: on GitHub a finding is read in two places besides the log: on its
-// line, in the pull request's files, and in the run's one summary, which
-// the Check job writes from each gate's section, where the owner reads
-// what the gate wants and whose the finding is to fix.
-func reportGitHub(out io.Writer, summaryPath string, results []check.Result) error {
+// line, in the pull request's files, and in the run's one summary, where
+// the owner reads what each check is for, then what a failing one wants
+// and whose the finding is to fix. Check writes that summary from what each
+// gate's job leaves in summaryDir: a row, the gate's title and what it
+// checks, and its section when it failed.
+func reportGitHub(out io.Writer, summaryDir string, results []check.Result) error {
 	lines := annotations(results)
 	if _, err := io.WriteString(out, strings.Join(lines[:min(len(lines), maxAnnotations)], "")); err != nil {
 		return fmt.Errorf("annotate the findings: %w", err)
 	}
-	if summaryPath == "" {
+	if summaryDir == "" {
 		return nil
 	}
-	text := summary(results)
-	if text == "" {
+	return writeSummary(summaryDir, results)
+}
+
+func writeSummary(dir string, results []check.Result) (err error) {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return fmt.Errorf("write the summary: %w", err)
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return fmt.Errorf("write the summary: %w", err)
+	}
+	defer func() { err = errors.Join(err, root.Close()) }()
+	for _, r := range results {
+		if err := writeGateSummary(root, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeGateSummary(root *os.Root, r check.Result) error {
+	if err := root.WriteFile(r.ID+".row", []byte(r.Title+"\t"+r.Purpose+"\n"), 0o600); err != nil {
+		return fmt.Errorf("write the summary: %w", err)
+	}
+	s := gateSection(r)
+	if s == "" {
 		return nil
 	}
-	return appendFile(summaryPath, text)
+	if err := root.WriteFile(r.ID+".md", []byte(s), 0o600); err != nil {
+		return fmt.Errorf("write the summary: %w", err)
+	}
+	return nil
 }
 
 func annotations(results []check.Result) []string {
@@ -91,21 +119,19 @@ func escapeProperty(s string) string {
 	return strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C").Replace(s)
 }
 
-func summary(results []check.Result) string {
+func gateSection(r check.Result) string {
 	var b strings.Builder
-	for _, r := range results {
-		switch {
-		case r.Err != nil:
-			fmt.Fprintf(&b, "### ❌ %s\n\nIt could not run: `%s`. That is the kit's or the runner's fault, not the change's: re-run the job.\n\n", r.Title, oneLine(r.Err.Error()))
-		case len(r.Findings) > 0:
-			fmt.Fprintf(&b, "### ❌ %s\n\nIt wants: %s It found %s, for the agent to fix:\n\n", r.Title, lowerFirst(r.Purpose), count(len(r.Findings), "problem"))
-			writeRows(&b, r.Findings)
-		case len(r.Notes) > 0:
-			fmt.Fprintf(&b, "### ✅ %s\n\n%s\n\n", r.Title, r.Purpose)
-		}
-		if len(r.Notes) > 0 {
-			fmt.Fprintf(&b, "%s yours to approve: the kit's comment on the pull request lists them.\n\n", count(len(r.Notes), "change is", "changes are"))
-		}
+	switch {
+	case r.Err != nil:
+		fmt.Fprintf(&b, "### ❌ %s\n\nIt could not run: `%s`. That is the kit's or the runner's fault, not the change's: re-run the job.\n\n", r.Title, oneLine(r.Err.Error()))
+	case len(r.Findings) > 0:
+		fmt.Fprintf(&b, "### ❌ %s\n\nIt wants: %s It found %s, for the agent to fix:\n\n", r.Title, lowerFirst(r.Purpose), count(len(r.Findings), "problem"))
+		writeRows(&b, r.Findings)
+	case len(r.Notes) > 0:
+		fmt.Fprintf(&b, "### ✅ %s\n\n%s\n\n", r.Title, r.Purpose)
+	}
+	if len(r.Notes) > 0 {
+		fmt.Fprintf(&b, "%s yours to approve: the kit's comment on the pull request lists them.\n\n", count(len(r.Notes), "change is", "changes are"))
 	}
 	return b.String()
 }
@@ -148,21 +174,4 @@ func count(n int, forms ...string) string {
 		return "1 " + forms[0]
 	}
 	return fmt.Sprintf("%d %s", n, plural)
-}
-
-func appendFile(path, text string) (err error) {
-	root, err := os.OpenRoot(filepath.Dir(path))
-	if err != nil {
-		return fmt.Errorf("write the job's summary: %w", err)
-	}
-	defer func() { err = errors.Join(err, root.Close()) }()
-	f, err := root.OpenFile(filepath.Base(path), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("write the job's summary: %w", err)
-	}
-	defer func() { err = errors.Join(err, f.Close()) }()
-	if _, err := f.WriteString(text); err != nil {
-		return fmt.Errorf("write the job's summary: %w", err)
-	}
-	return nil
 }

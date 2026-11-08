@@ -37,13 +37,13 @@ func TestCIRunsEachGateOfKitCheckInAJobOfItsOwn(t *testing.T) {
 }
 
 // WHY: on GitHub, a finding is read in two places: on its line, in the
-// pull request's files, and in the job's summary, where the owner reads
-// what the gate wants and whose the finding is to fix. The log keeps the
-// agent's line.
+// pull request's files, and in the run's summary, where the owner reads
+// what each check is for, then what a failing one wants and whose the
+// finding is to fix. The log keeps the agent's line.
 func TestKitCheckAnnotatesEachFindingsLineAndWritesTheOwnersSummary(t *testing.T) {
 	dir := changeOf(t, caseNamed(t, "m5-only-tests"))
-	summary := filepath.Join(t.TempDir(), "summary.md")
-	out, code := kitRun(t, dir, "check", "--base", "base", "--only", "sweep,archtest", "--github", "--summary", summary)
+	summaryDir := t.TempDir()
+	out, code := kitRun(t, dir, "check", "--base", "base", "--only", "sweep,archtest", "--github", "--summary", summaryDir)
 	if code != 1 {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
@@ -51,16 +51,24 @@ func TestKitCheckAnnotatesEachFindingsLineAndWritesTheOwnersSummary(t *testing.T
 	if !annotation.MatchString(out) || !strings.Contains(out, "FAIL sweep\n") || !strings.Contains(out, "kit check: 1 gate fails: sweep\n") {
 		t.Errorf("the log lacks the annotation or the agent's lines:\n%s", out)
 	}
-	got, err := os.ReadFile(summary)
+	for file, want := range map[string]string{
+		"sweep.row":    "Sweep\tNo code only tests reach, no name exported for its own package, no log message written twice.\n",
+		"archtest.row": "Architecture\tEach module reaches the others through their contract only.\n",
+	} {
+		if got := readFile(t, filepath.Join(summaryDir, file)); got != want {
+			t.Errorf("%s = %q, want %q", file, got, want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(summaryDir, "archtest.md")); err == nil {
+		t.Error("a gate that passed has a section of the summary")
+	}
+	got, err := os.ReadFile(filepath.Join(summaryDir, "sweep.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	row := regexp.MustCompile("(?m)^\\| `internal/[^`]+\\.go:\\d+` \\| only-tests: .*Oldest is reached by tests only.* \\|$")
 	if want := "### ❌ Sweep\n\nIt wants: no code only tests reach, no name exported for its own package, no log message written twice. It found 2 problems, for the agent to fix:\n\n| Where | What |\n| --- | --- |\n"; !strings.HasPrefix(string(got), want) {
 		t.Errorf("the summary lacks %q:\n%s", want, got)
-	}
-	if strings.Contains(string(got), "Architecture") {
-		t.Errorf("the summary has a section for a gate that passed:\n%s", got)
 	}
 	if !row.Match(got) {
 		t.Errorf("the summary lacks the finding's row:\n%s", got)

@@ -28,7 +28,7 @@ func checkCommand(out io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&o.Title, "title", "", "the pull request's title, to check it too (CI)")
 	cmd.Flags().StringSliceVar(&o.Only, "only", nil, "run only these gates, by ID (CI runs each in its own job)")
 	cmd.Flags().BoolVar(&r.github, "github", false, "also annotate the findings' lines (GitHub Actions)")
-	cmd.Flags().StringVar(&r.summary, "summary", "", "with --github, add the failing gates' section of the run's summary to this file")
+	cmd.Flags().StringVar(&r.summary, "summary", "", "with --github, leave each gate's row of the run's summary in this directory, and its section when it fails")
 	return cmd
 }
 

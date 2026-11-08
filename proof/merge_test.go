@@ -46,6 +46,9 @@ func TestTheMergeJobMergesThroughTheAsynchronousMergeAndSaysWhyGitHubRefused(t *
 			if !c.merges {
 				return
 			}
+			if strings.Contains(log, "2026-03-10 repos/o/r/pulls/7 --jq .merge_commit_sha") {
+				t.Error("the merge commit is read with the API version that has no merge_commit_sha")
+			}
 			wantMessage := "Why it changes.\n\nCo-authored-by: octo <1+octo@users.noreply.github.com>\nBuilt-with: go-agent-kit v0.2.8 <https://github.com/McReaper/go-agent-kit>"
 			for file, want := range map[string]string{
 				"title":   "feat(notes): a short title is refused (#7)",
@@ -241,11 +244,15 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			tmp := t.TempDir()
 			section := "### ❌ Tests\n\nIt wants: every test passes.\n"
+			files := map[string]string{"go-test.row": "Tests\tEvery test passes.\n", "spec.row": "Spec\tEach built scenario passes.\n"}
 			if c.code == 1 {
-				if err := os.MkdirAll(filepath.Join(tmp, "kit-summary"), 0o750); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(filepath.Join(tmp, "kit-summary", "go-test.md"), []byte(section), 0o600); err != nil {
+				files["go-test.md"] = section
+			}
+			if err := os.MkdirAll(filepath.Join(tmp, "kit-summary"), 0o750); err != nil {
+				t.Fatal(err)
+			}
+			for name, content := range files {
+				if err := os.WriteFile(filepath.Join(tmp, "kit-summary", name), []byte(content), 0o600); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -259,8 +266,17 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 				t.Errorf("comment = %q, want %q", got, want)
 			}
 			summary := readFile(t, filepath.Join(tmp, "summary.md"))
-			if !strings.HasPrefix(summary, c.status+"\n") || !strings.Contains(summary, "| [Tests](https://x/1) |") || strings.Contains(summary, section) != (c.code == 1) {
+			if !strings.HasPrefix(summary, c.status+"\n") || strings.Contains(summary, section) != (c.code == 1) {
 				t.Errorf("summary:\n%s", summary)
+			}
+			for _, row := range []string{
+				"| ✅ | [Kit version](https://x/0) | Which commit of the kit runs: the one this repository pins. |\n",
+				"| [Tests](https://x/1) | Every test passes. |\n",
+				"| [Spec](https://x/2) | Each built scenario passes. |\n",
+			} {
+				if !strings.Contains(summary, row) {
+					t.Errorf("the summary's table lacks %q:\n%s", row, summary)
+				}
 			}
 		})
 	}

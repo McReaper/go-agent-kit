@@ -157,18 +157,20 @@ jobs:
           BASE: ${{ github.event.pull_request.base.ref }}
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          mkdir -p "$RUNNER_TEMP/kit-summary"
-          summary="$RUNNER_TEMP/kit-summary/$GATE.md"
+          summary="$RUNNER_TEMP/kit-summary"
+          mkdir -p "$summary"
           case $GATE in
             mutate)
+              wants="The tests catch a change to each line the pull request added."
+              printf 'Mutation\t%s\n' "$wants" > "$summary/mutate.row"
               if ! kit mutate --base "origin/$BASE"; then
-                printf '### ❌ Mutation\n\nIt wants: the tests catch a change to each line the pull request added. The tests missed some, for the agent to fix: its job'"'"'s log lists them.\n\n' > "$summary"
+                printf '### ❌ Mutation\n\nIt wants: %s The tests missed some, for the agent to fix: its job'"'"'s log lists them.\n\n' "$(printf '%s' "$wants" | sed 's/^T/t/')" > "$summary/mutate.md"
                 exit 1
               fi ;;
             title) kit check --only title --title "$TITLE" --github --summary "$summary" ;;
             *) kit check --only "$GATE" --base "origin/$BASE" --github --summary "$summary" ;;
           esac
-      - name: Hand the gate's section of the summary to Check
+      - name: Hand the gate's row and section of the summary to Check
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -355,8 +357,17 @@ jobs:
             status="✅ Every check passes. The kit merges it now."
           fi
           {
-            printf '%s\n\n| | Check |\n| --- | --- |\n' "$status"
-            printf '%s\n' "$jobs" | awk -F '\t' '$2 != "" {printf "| %s | [%s](%s) |\n", ($1 == "success" ? "✅" : ($1 == "skipped" ? "➖" : "❌")), $2, $3}'
+            printf 'Kit version\tWhich commit of the kit runs: the one this repository pins.\n'
+            printf 'Review sheet\tThe kit'"'"'s comment, the label, and your approval status.\n'
+            for f in "$RUNNER_TEMP"/kit-summary/*.row; do
+              if [ -f "$f" ]; then cat "$f"; fi
+            done
+          } > "$RUNNER_TEMP/rows.tsv"
+          {
+            printf '%s\n\n| | Check | What it checks |\n| --- | --- | --- |\n' "$status"
+            printf '%s\n' "$jobs" | ROWS="$RUNNER_TEMP/rows.tsv" awk -F '\t' '
+              BEGIN { while ((getline l < ENVIRON["ROWS"]) > 0) { split(l, f, "\t"); what[f[1]] = f[2] } }
+              $2 != "" { printf "| %s | [%s](%s) | %s |\n", ($1 == "success" ? "✅" : ($1 == "skipped" ? "➖" : "❌")), $2, $3, what[$2] }'
             echo
             for f in "$RUNNER_TEMP"/kit-summary/*.md; do
               if [ -f "$f" ]; then cat "$f"; fi
@@ -458,7 +469,8 @@ jobs:
             case $result in
               merged*)
                 echo "$result"
-                status="✅ Merged into \`$DEFAULT\` as $(api "repos/$REPO/pulls/$PR" --jq '.merge_commit_sha // empty')."
+                # The 2026-03-10 API version has no merge_commit_sha; the default one has.
+                status="✅ Merged into \`$DEFAULT\` as $(gh api "repos/$REPO/pulls/$PR" --jq '.merge_commit_sha // empty')."
                 if [ -n "$next" ]; then status="$status Next in the stack: $next."; fi
                 restatus "$status"
                 exit 0 ;;

@@ -33,6 +33,7 @@ type Options struct {
 // Result is one gate's outcome: Gate is its name in the log, Title and
 // Purpose what the owner reads.
 type Result struct {
+	ID       string
 	Gate     string
 	Title    string
 	Purpose  string
@@ -111,7 +112,7 @@ func runGates(ctx context.Context, o Options, gs []gate) []Result {
 	var out []Result
 	for _, g := range gs {
 		r := g.run(ctx, o)
-		r.Gate, r.Title, r.Purpose = g.Name, g.Title, g.Purpose
+		r.ID, r.Gate, r.Title, r.Purpose = g.ID, g.Name, g.Title, g.Purpose
 		out = append(out, r)
 	}
 	return out
