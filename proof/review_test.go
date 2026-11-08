@@ -65,7 +65,7 @@ func TestKitReviewWritesTheSheetForThePullRequest(t *testing.T) {
 		t.Errorf("exit %d, sheet (-want +got):\n%s", code, diff)
 	}
 	labels, _ := kitRun(t, dir, "review", "--base", "base", "--labels")
-	if labels != "+needs-you\n" {
+	if labels != "+human-review\n" {
 		t.Errorf("labels:\n%s", labels)
 	}
 	out, _ = kitRun(t, changeOf(t, trialCase{name: "no change"}), "review", "--base", "base")
@@ -87,8 +87,8 @@ func TestKitReviewSaysWhereTheOwnersApprovalStands(t *testing.T) {
 		args            []string
 		approval, label string
 	}{
-		{nil, "waiting\n", "+needs-you\n"},
-		{[]string{"--approved"}, "approved\n", "-needs-you\n"},
+		{nil, "waiting\n", "+human-review\n"},
+		{[]string{"--approved"}, "approved\n", "-human-review\n"},
 	} {
 		approval, _ := kitRun(t, dir, append([]string{"review", "--base", "base", "--approval"}, c.args...)...)
 		labels, _ := kitRun(t, dir, append([]string{"review", "--base", "base", "--labels"}, c.args...)...)

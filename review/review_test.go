@@ -16,8 +16,8 @@ func TestASheetWithNothingForTheOwnerSaysTheChangeMergesByItself(t *testing.T) {
 	if got := s.Markdown("v1.2.3"); got != want {
 		t.Errorf("Markdown() = %q, want %q", got, want)
 	}
-	if s.Labels()["needs-you"] {
-		t.Error("an empty sheet earns needs-you")
+	if s.Labels()["human-review"] {
+		t.Error("an empty sheet earns human-review")
 	}
 }
 
@@ -42,8 +42,8 @@ func TestASheetListsTheSpecFirstThenWhatElseNeedsApproval(t *testing.T) {
 	if strings.Index(got, "The spec") > strings.Index(got, "Also yours") {
 		t.Errorf("the spec comes after the rest:\n%s", got)
 	}
-	if !s.Labels()["needs-you"] {
-		t.Error("a sheet waiting for the owner lacks needs-you")
+	if !s.Labels()["human-review"] {
+		t.Error("a sheet waiting for the owner lacks human-review")
 	}
 }
 
@@ -51,17 +51,17 @@ func TestASheetListsTheSpecFirstThenWhatElseNeedsApproval(t *testing.T) {
 // they approved, it goes.
 func TestTheStatusAndTheLabelFollowTheOwnersApproval(t *testing.T) {
 	for _, c := range []struct {
-		state    review.State
-		says     string
-		needsYou bool
+		state       review.State
+		says        string
+		humanReview bool
 	}{
 		{review.NothingToApprove, "Nothing for you: the kit merges it once they pass.", false},
 		{review.Waiting, "**Waiting for you:**", true},
 		{review.Approved, "You approved what is yours: the kit merges it once they pass.", false},
 	} {
 		s := review.Sheet{State: c.state}
-		if !strings.Contains(s.Status(), c.says) || s.Labels()["needs-you"] != c.needsYou {
-			t.Errorf("%s: status %q, needs-you %v", c.state, s.Status(), s.Labels()["needs-you"])
+		if !strings.Contains(s.Status(), c.says) || s.Labels()["human-review"] != c.humanReview {
+			t.Errorf("%s: status %q, human-review %v", c.state, s.Status(), s.Labels()["human-review"])
 		}
 	}
 }

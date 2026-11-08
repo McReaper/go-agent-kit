@@ -87,5 +87,5 @@ func (s Sheet) Empty() bool {
 // sheet earns it: the caller adds the ones that are true and removes the
 // others.
 func (s Sheet) Labels() map[string]bool {
-	return map[string]bool{"needs-you": s.State == Waiting}
+	return map[string]bool{"human-review": s.State == Waiting}
 }
