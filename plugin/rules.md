@@ -5,6 +5,7 @@ Commands (`rumblestrip` runs the version the repository pins):
 - `rumblestrip spec`: each built scenario of `features/` passes alone, and fails once a value its `Then` steps expect is altered.
 - `rumblestrip mutate`: the tests must kill the mutants of the lines you changed.
 - `rumblestrip review`: the sheet the owner reads: the spec's changes and what else is theirs to approve.
+- `rumblestrip pr create`: opens the current branch's pull request, stacked on its base's when that isn't the default branch.
 
 Rules no check explains:
 - The owner reads the spec, `features/*.feature`, and nothing else. The spec comes first, in its own pull request; the feature is built on top. Load the `rumblestrip:new-feature` skill for any feature, the `rumblestrip:new-module` skill for a new module, `rumblestrip:secrets` for a secret.

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/McReaper/rumblestrip-go/archtest"
+	"github.com/McReaper/rumblestrip-go/pr"
 	"github.com/McReaper/rumblestrip-go/sweep"
 )
 
@@ -154,7 +155,7 @@ func gates(o Options) []gate {
 		gate{Gate{"guard", "guard", "Guard", "No check is switched off: no //nolint, no skipped test, no build tag that hides a file."}, guardGate})
 	gs = append(gs, fileGates()...)
 	if o.Title != "" {
-		gs = append(gs, gate{Gate{"title", "title", "Title", "The pull request's title is a conventional commit of " + strconv.Itoa(MaxTitle) + " characters at most."}, titleGate})
+		gs = append(gs, gate{Gate{"title", "title", "Title", "The pull request's title is a conventional commit of " + strconv.Itoa(pr.MaxTitle) + " characters at most."}, titleGate})
 	}
 	return gs
 }

@@ -316,7 +316,7 @@ jobs:
             fi
             sleep 5
           done
-          echo "::error title=Not in a stack::pull request #$PR is on $BASE_PR but in no stack: make it one with the pull request of $BASE_PR, bottom first: gh api -X POST repos/$REPO/stacks -H 'X-GitHub-Api-Version: 2026-03-10' -F 'pull_requests[]=<the pull request of $BASE_PR>' -F 'pull_requests[]=$PR'"
+          echo "::error title=Not in a stack::pull request #$PR is on $BASE_PR but in no stack: run rumblestrip pr stack on its branch, which stacks it on the pull request of $BASE_PR"
           {
             echo "### ❌ Not in a stack"
             echo
