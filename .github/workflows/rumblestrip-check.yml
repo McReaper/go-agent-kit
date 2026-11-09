@@ -160,13 +160,7 @@ jobs:
           summary="$RUNNER_TEMP/rumblestrip-summary"
           mkdir -p "$summary"
           case $GATE in
-            mutate)
-              wants="The tests catch a change to each line the pull request added."
-              printf 'Mutation\t%s\n' "$wants" > "$summary/mutate.row"
-              if ! rumblestrip mutate --base "origin/$BASE"; then
-                printf '### ❌ Mutation\n\nIt wants: %s The tests missed some, for the agent to fix: its job'"'"'s log lists them.\n\n' "$(printf '%s' "$wants" | sed 's/^T/t/')" > "$summary/mutate.md"
-                exit 1
-              fi ;;
+            mutate) rumblestrip mutate --base "origin/$BASE" --github --summary "$summary" ;;
             title) rumblestrip check --only title --title "$TITLE" --github --summary "$summary" ;;
             *) rumblestrip check --only "$GATE" --base "origin/$BASE" --github --summary "$summary" ;;
           esac

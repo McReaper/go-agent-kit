@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/McReaper/rumblestrip-go/check"
 	"github.com/McReaper/rumblestrip-go/mutate"
 	"github.com/spf13/cobra"
 )
@@ -15,8 +16,10 @@ import (
 var errScoreRange = errors.New("--min is a share, from 0 to 1")
 
 type mutateOptions struct {
-	base string
-	min  float64
+	base    string
+	min     float64
+	github  bool
+	summary string
 }
 
 func mutateCommand(out io.Writer) *cobra.Command {
@@ -24,6 +27,8 @@ func mutateCommand(out io.Writer) *cobra.Command {
 	cmd := leaf("mutate", "Mutate the lines a change touched; fail when the tests kill too few mutants", func(cmd *cobra.Command) error { return runMutate(cmd.Context(), out, o) })
 	cmd.Flags().StringVar(&o.base, "base", "origin/main", "the branch the change goes into")
 	cmd.Flags().Float64Var(&o.min, "min", 0.8, "the share of the mutants the tests must kill")
+	cmd.Flags().BoolVar(&o.github, "github", false, "also annotate the lines whose mutants lived (GitHub Actions)")
+	cmd.Flags().StringVar(&o.summary, "summary", "", "with --github, leave the check's row of the run's summary in this directory, and its section when it fails")
 	return cmd
 }
 
@@ -39,6 +44,11 @@ func runMutate(ctx context.Context, out io.Writer, o mutateOptions) error {
 	if err != nil {
 		return fmt.Errorf("mutate: %w", err)
 	}
+	if o.github {
+		if err := reportGitHub(out, o.summary, []check.Result{mutationResult(r, o)}); err != nil {
+			return err
+		}
+	}
 	if _, err := io.WriteString(out, mutateReport(r, o)); err != nil {
 		return fmt.Errorf("print the mutants: %w", err)
 	}
@@ -46,6 +56,29 @@ func runMutate(ctx context.Context, out io.Writer, o mutateOptions) error {
 		return errFindings
 	}
 	return nil
+}
+
+// WHY: on GitHub, mutation is one more check: a lived mutant is a finding
+// at its line, which the owner reads as the change the tests missed.
+func mutationResult(r mutate.Report, o mutateOptions) check.Result {
+	res := check.Result{
+		ID: "mutate", Gate: "mutate", Title: "Mutation",
+		Purpose: fmt.Sprintf("The tests catch the changes made to the lines the pull request added: %.0f%% of them at least.", 100*o.min),
+	}
+	if r.Score >= o.min {
+		return res
+	}
+	for _, m := range r.Mutants {
+		if m.Killed {
+			continue
+		}
+		change := "removes this code"
+		if m.Wrote != "" {
+			change = "makes it " + "`" + m.Wrote + "`"
+		}
+		res.Findings = append(res.Findings, fmt.Sprintf("%s:%d: the tests still pass when a change %s (%s)", m.File, m.Line, change, m.Mutator))
+	}
+	return res
 }
 
 func mutateReport(r mutate.Report, o mutateOptions) string {
