@@ -51,8 +51,9 @@ func TestKitReviewListsWhatTheOwnerMustRead(t *testing.T) {
 }
 
 // WHY: the proofs' build of rumblestrip stamps the sheet's footer with a version
-// from the checkout, which moves with every commit.
-var footerVersion = regexp.MustCompile(`\) v[^ <]+</sub>`)
+// from the checkout, which moves with every commit: a tag, a tag with
+// +dirty, or, on a clean tree, the short commit a pseudo-version becomes.
+var footerVersion = regexp.MustCompile(`\) [^ <]+</sub>`)
 
 func TestKitReviewWritesTheSheetForThePullRequest(t *testing.T) {
 	dir := changeOf(t, caseNamed(t, "t2-review-sheet"))
