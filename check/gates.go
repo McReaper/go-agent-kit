@@ -5,15 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/McReaper/rumblestrip-go/analyzers/all"
 	"github.com/McReaper/rumblestrip-go/archtest"
 	"github.com/McReaper/rumblestrip-go/guard"
 	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 	"github.com/McReaper/rumblestrip-go/lint"
+	"github.com/McReaper/rumblestrip-go/pr"
 	"github.com/McReaper/rumblestrip-go/spec"
 	"github.com/McReaper/rumblestrip-go/sweep"
 	"golang.org/x/tools/go/analysis/checker"
@@ -126,22 +125,8 @@ func guardGate(ctx context.Context, o Options) Result {
 	return r
 }
 
-// MaxTitle is the longest pull request title: GitHub cuts a longer one in
-// its lists, and the title becomes the commit's subject on the default
-// branch.
-const MaxTitle = 72
-
-var conventional = regexp.MustCompile(`^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|spec)(\([a-z0-9][a-z0-9/._-]*\))?!?: \S`)
-
 func titleGate(_ context.Context, o Options) Result {
-	var lines []string
-	if n := utf8.RuneCountInString(o.Title); n > MaxTitle {
-		lines = append(lines, fmt.Sprintf("title: the title has %d characters, the limit is %d: say less, the description holds the rest", n, MaxTitle))
-	}
-	if !conventional.MatchString(o.Title) {
-		lines = append(lines, "title: the title is no conventional commit: write type(scope): what changes, the type one of feat, fix, docs, refactor, perf, test, build, ci, chore, revert, style, or spec for a spec's pull request")
-	}
-	return Result{Findings: lines}
+	return Result{Findings: pr.TitleProblems(o.Title)}
 }
 
 func nonEmpty(text []byte) []string {

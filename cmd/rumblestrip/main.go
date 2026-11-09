@@ -3,6 +3,7 @@
 //	rumblestrip guard --base origin/main [--ci [--approved] [--approved-trees dir]] [--json]
 //	rumblestrip check [--base origin/main] [--only id,...] [--title "..."] [--github]
 //	rumblestrip sweep [--json]
+//	rumblestrip pr create [--base <branch>] --title "..." [--body-file f]; rumblestrip pr stack
 //	rumblestrip mutate [--base origin/main] [--min 0.8]
 //	rumblestrip review [--base origin/main] [--approved] [--approved-trees dir] [--labels | --json | --approval]
 //	rumblestrip spec [--json]
@@ -40,7 +41,7 @@ func main() {
 
 func root(out io.Writer) *cobra.Command {
 	r := &cobra.Command{Use: "rumblestrip", Short: "Rumblestrip's checks: the rails AI-written Go stays on", SilenceUsage: true, SilenceErrors: true}
-	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand(), specCommand(out), secretsCommand(out), initCommand(out))
+	r.AddCommand(checkCommand(out), guardCommand(out), sweepCommand(out), mutateCommand(out), reviewCommand(out), appCommand(out), hookCommand(), specCommand(out), secretsCommand(out), initCommand(out), prCommand(out))
 	return r
 }
 

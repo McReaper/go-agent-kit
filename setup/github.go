@@ -4,26 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/McReaper/rumblestrip-go/internal/platform/ghapi"
 	"github.com/McReaper/rumblestrip-go/internal/platform/ghapp"
 	"github.com/McReaper/rumblestrip-go/internal/platform/run"
 )
 
 // Request is one call to GitHub's REST API.
-type Request struct {
-	Method string
-	Path   string
-	Body   []byte
-}
+type Request = ghapi.Request
 
-// API calls GitHub's REST API as the owner.
-type API interface {
-	Call(ctx context.Context, r Request) ([]byte, error)
-}
+// API calls GitHub's REST API, here as the owner.
+type API = ghapi.API
 
 // Secret is one of a repository's secrets, for Actions or for Dependabot.
 type Secret struct {
@@ -39,8 +32,11 @@ type Owner interface {
 	SetSecret(ctx context.Context, s Secret) error
 }
 
-// GH calls GitHub's API through gh, as whoever gh is logged in as.
-type GH struct{}
+// GH calls GitHub's API through gh, as whoever gh is logged in as, and sets
+// a repository's secrets.
+type GH struct {
+	ghapi.GH
+}
 
 // SetSecret runs gh secret set with the value on its standard input, so
 // that no command line carries it.
@@ -57,31 +53,6 @@ func (GH) SetSecret(ctx context.Context, s Secret) error {
 		return fmt.Errorf("gh secret set %s --app %s: %s", s.Name, s.For, strings.TrimSpace(string(res.Stderr)))
 	}
 	return nil
-}
-
-// Call runs gh api with r.
-func (GH) Call(ctx context.Context, r Request) (out []byte, err error) {
-	argv := []string{"gh", "api", "--method", r.Method, r.Path}
-	if r.Body != nil {
-		f, err := os.CreateTemp("", "rumblestrip-init-*.json")
-		if err != nil {
-			return nil, fmt.Errorf("rumblestrip init: %w", err)
-		}
-		defer func() { err = errors.Join(err, os.Remove(f.Name())) }()
-		_, werr := f.Write(r.Body)
-		if err := errors.Join(werr, f.Close()); err != nil {
-			return nil, fmt.Errorf("rumblestrip init: %w", err)
-		}
-		argv = append(argv, "--input", f.Name())
-	}
-	res, err := run.Command(ctx, ".", argv...)
-	if err != nil {
-		return nil, err
-	}
-	if res.Code != 0 {
-		return nil, fmt.Errorf("gh api %s %s: %s", r.Method, r.Path, strings.TrimSpace(string(res.Stderr)+string(res.Stdout)))
-	}
-	return res.Stdout, nil
 }
 
 // Protect makes Rumblestrip the arbiter of repo ("owner/name"): the default
@@ -102,18 +73,18 @@ func Protect(ctx context.Context, api API, repo string) ([]string, error) {
 		done = append(done, line)
 	}
 	settings := []byte(`{"delete_branch_on_merge": true, "allow_squash_merge": true}`)
-	if _, err := api.Call(ctx, Request{"PATCH", "repos/" + repo, settings}); err != nil {
+	if _, err := api.Call(ctx, Request{Method: "PATCH", Path: "repos/" + repo, Body: settings}); err != nil {
 		return done, err
 	}
 	done = append(done, "merged branches deleted, squash merges allowed")
-	if _, err := api.Call(ctx, Request{"PUT", "repos/" + repo + "/immutable-releases", nil}); err != nil {
+	if _, err := api.Call(ctx, Request{Method: "PUT", Path: "repos/" + repo + "/immutable-releases"}); err != nil {
 		return done, err
 	}
 	return append(done, "releases immutable"), nil
 }
 
 func rulesets(ctx context.Context, api API, repo string) (map[string]int64, error) {
-	out, err := api.Call(ctx, Request{"GET", "repos/" + repo + "/rulesets", nil})
+	out, err := api.Call(ctx, Request{Method: "GET", Path: "repos/" + repo + "/rulesets"})
 	if err != nil {
 		return nil, err
 	}
@@ -148,10 +119,10 @@ func applyRuleset(ctx context.Context, api API, c rulesetCall) (string, error) {
 	if err := json.Unmarshal(body, &r); err != nil {
 		return "", fmt.Errorf("rumblestrip init: %s: %w", c.file, err)
 	}
-	req := Request{"POST", "repos/" + c.repo + "/rulesets", body}
+	req := Request{Method: "POST", Path: "repos/" + c.repo + "/rulesets", Body: body}
 	verb := "created"
 	if id, ok := c.existing[r.Name]; ok {
-		req = Request{"PUT", fmt.Sprintf("repos/%s/rulesets/%d", c.repo, id), body}
+		req = Request{Method: "PUT", Path: fmt.Sprintf("repos/%s/rulesets/%d", c.repo, id), Body: body}
 		verb = "updated to Rumblestrip's"
 	}
 	if _, err := api.Call(ctx, req); err != nil {

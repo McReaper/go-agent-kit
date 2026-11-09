@@ -16,17 +16,11 @@ On a branch from the default branch, `spec/<feature>`, add or change scenarios i
 - every `Then` says what it expects with a value, a quoted text or a number: `Then it is refused with "the limit is 80"`. Rumblestrip alters each value and checks the scenario then fails; a `Then` with no value is refused;
 - a new scenario is tagged `@wip`: approved, not built yet. The spec's test leaves it out.
 
-Open the pull request with the spec alone, titled `spec(<module>): <the behaviour, in the user's words>`. Its description says in one line what the feature is for. If the request leaves something open, a limit or what is refused, write the scenario you would choose and say so there: the owner decides. Write `@wip` in backticks there, as any `@name`: GitHub notifies the account a bare one names. Once they approve it, the pull request merges by itself.
+Push the branch, then open the pull request with the spec alone: `rumblestrip pr create --title "spec(<module>): <the behaviour, in the user's words>" --body-file <file>`. It refuses a title the check would refuse. The description says in one line what the feature is for. If the request leaves something open, a limit or what is refused, write the scenario you would choose and say so there: the owner decides. Write `@wip` in backticks there, as any `@name`: GitHub notifies the account a bare one names. Once they approve it, the pull request merges by itself.
 
 ## 2. Build it on top
 
-Branch from the spec branch, `feat/<feature>`, and open its pull request on the spec branch while the spec waits, titled `feat(<module>): …` as the spec's. Right after, make the two pull requests one stack, the spec's first:
-
-```sh
-gh api -X POST 'repos/{owner}/{repo}/stacks' -H 'X-GitHub-Api-Version: 2026-03-10' -F 'pull_requests[]=<spec number>' -F 'pull_requests[]=<build number>'
-```
-
-The check fails a pull request on another branch that is in no stack. Once the spec merges, GitHub rebases the build onto the default branch, and its check runs again.
+Branch from the spec branch, `feat/<feature>`, push it, and open its pull request on the spec branch while the spec waits: `rumblestrip pr create --base spec/<feature> --title "feat(<module>): …" --body-file <file>`. It stacks it on the spec's pull request in the same go: the check fails a pull request on another branch that is in no stack. One opened otherwise gets stacked with `rumblestrip pr stack`, on its branch. Once the spec merges, GitHub rebases the build onto the default branch, and its check runs again.
 
 - Remove the `@wip` tag of each scenario you build: that is free. Any other change to the spec is a spec change the owner approves again.
 - Write the steps in `features/*_test.go`, like the ones there: one method per step, bound by a pattern that takes any value (`"([^"]*)"`, `(\d+)`), driving the built program from the command line or over MCP.
