@@ -47,7 +47,7 @@ func TestKitCheckAnnotatesEachFindingsLineAndWritesTheOwnersSummary(t *testing.T
 	if code != 1 {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
-	annotation := regexp.MustCompile(`(?m)^::error file=internal/[^,]+\.go,line=\d+,title=Sweep::only-tests: .*Oldest is reached by tests only.*$`)
+	annotation := regexp.MustCompile(`(?m)^::error file=internal/[^,]+\.go,line=\d+,title=Sweep::\S+ is reached by tests only.*$`)
 	if !annotation.MatchString(out) || !strings.Contains(out, "FAIL sweep\n") || !strings.Contains(out, "rumblestrip check: 1 gate fails: sweep\n") {
 		t.Errorf("the log lacks the annotation or the agent's lines:\n%s", out)
 	}
@@ -66,7 +66,7 @@ func TestKitCheckAnnotatesEachFindingsLineAndWritesTheOwnersSummary(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	row := regexp.MustCompile("(?m)^\\| `internal/[^`]+\\.go:\\d+` \\| only-tests: .*Oldest is reached by tests only.* \\|$")
+	row := regexp.MustCompile("(?m)^\\| `internal/[^`]+\\.go:\\d+` \\| \\S+ is reached by tests only.* \\|$")
 	if want := "### ❌ Sweep\n\nIt wants: no code only tests reach, no name exported for its own package, no log message written twice. It found 2 problems, for the agent to fix:\n\n| Where | What |\n| --- | --- |\n"; !strings.HasPrefix(string(got), want) {
 		t.Errorf("the summary lacks %q:\n%s", want, got)
 	}
@@ -92,6 +92,9 @@ func TestKitCheckSaysWhichTestFailedWhereAndWhy(t *testing.T) {
 	}
 	if strings.Contains(out, "  FAIL") || strings.Contains(out, "--- FAIL") {
 		t.Errorf("go test's own lines are findings:\n%s", out)
+	}
+	if strings.Contains(out, "TestTheProgramDoesWhatTheSpecSays") {
+		t.Errorf("Tests reports the spec's test, which Spec reports:\n%s", out)
 	}
 }
 

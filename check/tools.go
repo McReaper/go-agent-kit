@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/McReaper/rumblestrip-go/internal/platform/run"
+	"github.com/McReaper/rumblestrip-go/spec"
 )
 
 // WHY: each tool says "found something" with its own exit code (1 for
@@ -58,11 +59,18 @@ func vulnGate(ctx context.Context, o Options) Result {
 }
 
 func testGate(ctx context.Context, o Options) Result {
+	pkgs, err := testedPackages(ctx, o.Dir)
+	if err != nil {
+		return failed(err)
+	}
+	if len(pkgs) == 0 {
+		return Result{}
+	}
 	argv := []string{"go", "test", "-json", "-count=1"}
 	if o.Race {
 		argv = append(argv, "-race")
 	}
-	out, err := run.Command(ctx, o.Dir, append(argv, "./...")...)
+	out, err := run.Command(ctx, o.Dir, append(argv, pkgs...)...)
 	switch {
 	case err != nil:
 		return failed(err)
@@ -75,6 +83,29 @@ func testGate(ctx context.Context, o Options) Result {
 		return Result{Findings: fs}
 	}
 	return failed(fmt.Errorf("go test failed and named no test: %s", strings.TrimSpace(string(out.Stderr))))
+}
+
+// WHY: the spec's own test runs every scenario together; the spec gate
+// runs each one alone, and says why one fails. Run here too, a scenario
+// that fails would be reported twice, once as a test of the spec's package.
+func testedPackages(ctx context.Context, dir string) ([]string, error) {
+	out, err := run.Command(ctx, dir, "go", "list", "-f", "{{.ImportPath}} {{.Dir}}", "./...")
+	if err != nil {
+		return nil, err
+	}
+	if out.Code != 0 {
+		return nil, fmt.Errorf("go list: %s", strings.TrimSpace(string(out.Stderr)))
+	}
+	specDir := filepath.Join(dir, spec.Dir)
+	var pkgs []string
+	for l := range strings.Lines(string(out.Stdout)) {
+		path, pkgDir, ok := strings.Cut(strings.TrimSpace(l), " ")
+		if !ok || pkgDir == specDir || strings.HasPrefix(pkgDir, specDir+string(filepath.Separator)) {
+			continue
+		}
+		pkgs = append(pkgs, path)
+	}
+	return pkgs, nil
 }
 
 func keep(lines []string, prefixes ...string) []string {

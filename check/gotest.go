@@ -44,7 +44,7 @@ func (r *testRun) read(e gotest.Event) {
 		r.output[key] = append(r.output[key], strings.TrimRight(e.Output, "\n"))
 	case "build-output":
 		if m := buildError.FindStringSubmatch(strings.TrimRight(e.Output, "\n")); m != nil {
-			r.built = append(r.built, fmt.Sprintf("%s:%s: build: %s", m[1], m[2], m[3]))
+			r.built = append(r.built, fmt.Sprintf("%s:%s: build: %s", filepath.ToSlash(m[1]), m[2], m[3]))
 		}
 	case "fail":
 		r.failed = append(r.failed, e)
@@ -55,7 +55,9 @@ func (r *testRun) findings() []string {
 	out := slices.Clone(r.built)
 	for _, e := range r.failed {
 		lines := r.messages(e)
-		if len(lines) == 0 && !r.hasFailedChild(e) {
+		// WHY: a package that doesn't build fails with nothing to say; the
+		// compiler's errors, above, say why.
+		if len(lines) == 0 && !r.hasFailedChild(e) && (e.Test != "" || len(r.built) == 0) {
 			lines = []string{r.unexplained(e)}
 		}
 		out = append(out, lines...)
@@ -77,7 +79,7 @@ func (r *testRun) messages(e gotest.Event) []string {
 		if _, err := os.Stat(filepath.Join(r.dir, filepath.FromSlash(file))); err == nil {
 			out = append(out, fmt.Sprintf("%s:%s: %s: %s", file, m[2], e.Test, m[3]))
 		} else {
-			out = append(out, fmt.Sprintf("%s: %s: %s:%s: %s", r.packageDir(e.Package), e.Test, m[1], m[2], m[3]))
+			out = append(out, fmt.Sprintf("%s: %s: %s", r.packageDir(e.Package), e.Test, m[3]))
 		}
 	}
 	return out

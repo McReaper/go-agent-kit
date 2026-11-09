@@ -149,7 +149,7 @@ func gates(o Options) []gate {
 		gate{Gate{"deadcode", "deadcode", "Dead code", "No function the program never calls."}, deadcodeGate},
 		gate{Gate{"nilaway", "nilaway", "Nil safety", "No nil value reaches a place that uses it."}, nilawayGate},
 		gate{Gate{"govulncheck", "govulncheck", "Known vulnerabilities", "The code calls no function with a known vulnerability."}, vulnGate},
-		gate{Gate{"go-test", "go test", "Tests", "Every test passes."}, testGate},
+		gate{Gate{"go-test", "go test", "Tests", "Every test passes, but the spec's: Spec runs those."}, testGate},
 		gate{Gate{"spec", "spec", "Spec", "Each built scenario passes, and fails once a value it expects is altered."}, specGate},
 		gate{Gate{"guard", "guard", "Guard", "No check is switched off: no //nolint, no skipped test, no build tag that hides a file."}, guardGate})
 	gs = append(gs, fileGates()...)

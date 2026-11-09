@@ -98,17 +98,47 @@ func annotation(title, finding string) (string, bool) {
 	if m == nil {
 		return "", false
 	}
-	return "::error file=" + escapeProperty(m[1]) + ",line=" + m[2] + ",title=" + escapeProperty(title) + "::" + escapeData(shorten(m[3])) + "\n", true
+	return "::error file=" + escapeProperty(m[1]) + ",line=" + m[2] + ",title=" + escapeProperty(title) + "::" + escapeData(shorten(forPeople(m[3]))) + "\n", true
+}
+
+var (
+	ruleFirst = regexp.MustCompile(`^[a-z][a-z0-9-]*: (?:[A-Z]\d*: )?`)
+	subtest   = regexp.MustCompile(`\bTest\w+(?:/[^\s:]+)+`)
+)
+
+// WHY: the log's line leads with the rule and the criterion, for the agent
+// to look up; a person reads the sentence. Go writes a subtest's name with
+// underscores for spaces: a person reads the words.
+func forPeople(s string) string {
+	s = ruleFirst.ReplaceAllString(s, "")
+	return subtest.ReplaceAllStringFunc(s, func(name string) string {
+		parts := strings.Split(name, "/")
+		for i := 1; i < len(parts); i++ {
+			parts[i] = strings.ReplaceAll(parts[i], "_", " ")
+		}
+		return strings.Join(parts, " › ")
+	})
 }
 
 // WHY: a test's message can quote a whole program's output; the summary and
 // the annotation say enough to know what broke, and the log keeps it all.
+// The cut is in the middle: a message says what happened first and what
+// was wanted last.
 func shorten(s string) string {
 	s = oneLine(s)
-	if utf8.RuneCountInString(s) <= maxMessage {
+	runes := []rune(s)
+	if len(runes) <= maxMessage {
 		return s
 	}
-	return string([]rune(s)[:maxMessage]) + "…"
+	half := maxMessage / 2
+	head, tail := string(runes[:half]), string(runes[len(runes)-half:])
+	if i := strings.LastIndex(head, " "); i > 0 {
+		head = head[:i]
+	}
+	if i := strings.Index(tail, " "); i >= 0 {
+		tail = tail[i+1:]
+	}
+	return head + " … " + tail
 }
 
 func escapeData(s string) string {
@@ -143,13 +173,24 @@ func writeRows(b *strings.Builder, findings []string) {
 			fmt.Fprintf(b, "\nAnd %d more, in the job's log.\n", len(findings)-maxRows)
 			break
 		}
-		where, what := "", f
-		if m := findingAt.FindStringSubmatch(f); m != nil {
-			where, what = "`"+m[1]+":"+m[2]+"`", m[3]
-		}
-		fmt.Fprintf(b, "| %s | %s |\n", where, cell(what))
+		where, what := place(f)
+		fmt.Fprintf(b, "| %s | %s |\n", where, cell(forPeople(what)))
 	}
 	b.WriteString("\n")
+}
+
+// WHY: a finding names a file and a line, or, when what failed lies outside
+// the module (a test library's helper), the package it failed in.
+func place(f string) (where, what string) {
+	if m := findingAt.FindStringSubmatch(f); m != nil {
+		return "`" + m[1] + ":" + m[2] + "`", m[3]
+	}
+	if dir, rest, ok := strings.Cut(f, ": "); ok && !strings.ContainsAny(dir, " \t") {
+		if fi, err := os.Stat(dir); err == nil && fi.IsDir() {
+			return "`" + dir + "`", rest
+		}
+	}
+	return "", f
 }
 
 func cell(s string) string {
