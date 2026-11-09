@@ -230,7 +230,7 @@ func TestTheCheckJobNamesTheGatesThatFailedAndSaysWhatComesNext(t *testing.T) {
 		{"stacked", green, "success success success", "none", "spec/x", 0, "✅ Every check passes. It merges once the pull request below it in the stack has."},
 		{
 			"a gate fails", `success\tRumblestrip version\thttps://x/0\nfailure\tTests\thttps://x/1\nsuccess\tSpec\thttps://x/2\n`, "success failure success", "none", "main", 1,
-			"❌ 1 check fails: [Tests](https://x/1). The agent fixes them; the checks run again on its next push.",
+			"❌ 1 check fails: [Tests](https://x/1). The agent fixes it; the checks run again on its next push.",
 		},
 		{
 			"two fail", `success\tRumblestrip version\thttps://x/0\nfailure\tTests\thttps://x/1\ncancelled\tSpec\thttps://x/2\n`, "success failure success", "waiting", "main", 1,

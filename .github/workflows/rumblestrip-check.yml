@@ -257,7 +257,7 @@ jobs:
           review --labels | while read -r label; do
             name=${label#?}
             case $label in
-              +*) gh label create "$name" --repo "$REPO" --force > /dev/null
+              +*) gh label create "$name" --repo "$REPO" --force --color FBCA04 --description "Waiting for the owner's approval: Rumblestrip's comment says what to read" > /dev/null
                   gh pr edit "$PR" --repo "$REPO" --add-label "$name" > /dev/null ;;
               -*) gh pr edit "$PR" --repo "$REPO" --remove-label "$name" > /dev/null 2>&1 || true ;;
             esac
@@ -336,8 +336,8 @@ jobs:
           names=$(failed 0)
           if [ -n "$names" ]; then
             count=$(printf '%s' "$names" | awk -F ', ' '{print NF}')
-            if [ "$count" -eq 1 ]; then what="1 check fails"; else what="$count checks fail"; fi
-            status="❌ $what: $(failed 1). The agent fixes them; the checks run again on its next push."
+            if [ "$count" -eq 1 ]; then what="1 check fails"; them=it; else what="$count checks fail"; them=them; fi
+            status="❌ $what: $(failed 1). The agent fixes $them; the checks run again on its next push."
             if [ "$APPROVAL" = waiting ]; then status="$status Meanwhile, what is yours to approve is below."; fi
           elif [ "$NEEDS" != "success success success" ]; then
             what="a job of Rumblestrip did not finish"

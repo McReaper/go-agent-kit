@@ -58,8 +58,8 @@ func (s Sheet) Markdown(version string) string {
 	}
 	if len(s.Approval) > 0 {
 		b.WriteString("\n**Also yours to approve:**\n\n")
-		for _, it := range s.Approval {
-			fmt.Fprintf(&b, "- %s (`%s`)\n", it.Text, where(it))
+		for _, g := range grouped(s.Approval) {
+			fmt.Fprintf(&b, "- %s (%s)\n", g.text, strings.Join(g.places, ", "))
 		}
 	}
 	if !s.Empty() {
@@ -67,6 +67,28 @@ func (s Sheet) Markdown(version string) string {
 	}
 	fmt.Fprintf(&b, "\n<sub>%s</sub>\n", strings.TrimSpace("[Rumblestrip]("+Repository+") "+version))
 	return b.String()
+}
+
+type group struct {
+	text   string
+	places []string
+}
+
+// WHY: one change touches several files of a kind, the two workflows of a
+// pin: the owner reads what it is once, then where.
+func grouped(items []Item) []group {
+	var out []group
+	at := map[string]int{}
+	for _, it := range items {
+		i, ok := at[it.Text]
+		if !ok {
+			i = len(out)
+			at[it.Text] = i
+			out = append(out, group{text: it.Text})
+		}
+		out[i].places = append(out[i].places, "`"+where(it)+"`")
+	}
+	return out
 }
 
 func where(it Item) string {

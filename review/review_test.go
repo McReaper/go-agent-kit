@@ -47,6 +47,22 @@ func TestASheetListsTheSpecFirstThenWhatElseNeedsApproval(t *testing.T) {
 	}
 }
 
+func TestTheSheetSaysAKindOfChangeOnceWithEachOfItsFiles(t *testing.T) {
+	s := review.Sheet{
+		Approval: []review.Item{
+			{File: ".github/workflows/rumblestrip.yml", Text: "the CI or the code owners changed"},
+			{File: "go.mod", Line: 9, Text: "a new dependency, example.com/x"},
+			{File: ".github/workflows/rumblestrip-approval.yml", Text: "the CI or the code owners changed"},
+		},
+		State: review.Waiting,
+	}
+	got := s.Markdown("")
+	want := "- the CI or the code owners changed (`.github/workflows/rumblestrip.yml`, `.github/workflows/rumblestrip-approval.yml`)\n- a new dependency, example.com/x (`go.mod:9`)\n"
+	if !strings.Contains(got, want) {
+		t.Errorf("the sheet lacks %q:\n%s", want, got)
+	}
+}
+
 // WHY: the label tells the owner which pull requests wait for them; once
 // they approved, it goes.
 func TestTheStatusAndTheLabelFollowTheOwnersApproval(t *testing.T) {
