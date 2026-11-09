@@ -93,6 +93,9 @@ func TestKitCheckSaysWhichTestFailedWhereAndWhy(t *testing.T) {
 	if strings.Contains(out, "  FAIL") || strings.Contains(out, "--- FAIL") {
 		t.Errorf("go test's own lines are findings:\n%s", out)
 	}
+	if strings.Contains(out, "TestTheProgramDoesWhatTheSpecSays") {
+		t.Errorf("Tests reports the spec's test, which Spec reports:\n%s", out)
+	}
 }
 
 // WHY: the title becomes the commit's subject on the default branch and

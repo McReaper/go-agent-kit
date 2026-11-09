@@ -131,7 +131,14 @@ func shorten(s string) string {
 		return s
 	}
 	half := maxMessage / 2
-	return string(runes[:half]) + " … " + string(runes[len(runes)-half:])
+	head, tail := string(runes[:half]), string(runes[len(runes)-half:])
+	if i := strings.LastIndex(head, " "); i > 0 {
+		head = head[:i]
+	}
+	if i := strings.Index(tail, " "); i >= 0 {
+		tail = tail[i+1:]
+	}
+	return head + " … " + tail
 }
 
 func escapeData(s string) string {
