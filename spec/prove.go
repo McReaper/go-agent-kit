@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -51,17 +52,26 @@ func Prove(ctx context.Context, dir string) (out []Finding, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(work)) }()
-	bin, err := buildSpec(ctx, work)
-	if err != nil {
+	verdict, err := runAll(ctx, work, jobs)
+	return append(out, verdict...), err
+}
+
+// WHY: one build of the spec's test serves every job; a build that fails is
+// the change's to fix, reported in place of what the jobs would prove.
+func runAll(ctx context.Context, work string, jobs []job) ([]Finding, error) {
+	bin, broken, err := buildSpec(ctx, work)
+	switch {
+	case err != nil:
 		return nil, err
-	}
-	if bin == "" {
-		return append(out, Finding{
+	case len(broken) > 0:
+		return broken, nil
+	case bin == "":
+		return []Finding{{
 			"spec-untested", Dir, 0,
 			"T2: features/ holds the spec but no test that runs it: add the godog test that runs every feature file of the directory",
-		}), nil
+		}}, nil
 	}
-	return append(out, verdicts(jobs, runner{work, bin}.all(ctx, jobs))...), nil
+	return verdicts(jobs, runner{work, bin}.all(ctx, jobs)), nil
 }
 
 // WHY: a job runs one scenario, as written (step -1), or with the value one
@@ -102,23 +112,43 @@ type outcome struct {
 	err       error
 }
 
-func buildSpec(ctx context.Context, work string) (string, error) {
+var compileError = regexp.MustCompile(`(?m)^(\S+\.go):(\d+):(?:\d+:)? (.+)$`)
+
+// WHY: a spec whose steps don't compile is the change's to fix, not a gate
+// that could not run: its compiler errors are findings, at their lines.
+func buildSpec(ctx context.Context, work string) (string, []Finding, error) {
 	bin := filepath.Join(work, "rumblestrip-spec.test")
 	if runtime.GOOS == "windows" {
 		bin += ".exe"
 	}
 	out, err := run.Command(ctx, work, "go", "test", "-c", "-o", bin, "./"+Dir)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	// WHY: with no Go file left in features/, go test has no package to build.
 	if out.Code != 0 && !strings.Contains(string(out.Stderr), "no Go files") {
-		return "", fmt.Errorf("build the spec's test: %s%s", out.Stdout, out.Stderr)
+		return "", compileFindings(string(out.Stdout) + string(out.Stderr)), nil
 	}
 	if _, err := os.Stat(bin); errors.Is(err, fs.ErrNotExist) {
-		return "", nil
+		return "", nil, nil
 	}
-	return bin, nil
+	return bin, nil, nil
+}
+
+func compileFindings(text string) []Finding {
+	var out []Finding
+	for _, m := range compileError.FindAllStringSubmatch(text, -1) {
+		line, err := strconv.Atoi(m[2])
+		if err != nil {
+			continue
+		}
+		out = append(out, Finding{"spec-build", filepath.ToSlash(m[1]), line, "T2: the spec's steps don't compile: " + m[3] + ": fix the code, which Tests reports too"})
+	}
+	if len(out) == 0 {
+		first, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
+		out = append(out, Finding{"spec-build", Dir, 0, "T2: the spec's steps don't compile: " + first})
+	}
+	return out
 }
 
 // WHY: each run gets a directory of its own beside features/, holding
@@ -232,7 +262,7 @@ func aloneMessage(name, reason string) string {
 	if reason == "" {
 		reason = "godog named no failed step"
 	}
-	return fmt.Sprintf("T2: %q fails: %s. Make the program do what it says; if it passes with the other scenarios, make it set up all it needs, since Rumblestrip runs each alone", name, reason)
+	return fmt.Sprintf("T2: %q fails: %s. Make the program do what it says, or the scenario set up all it needs: Rumblestrip runs each one alone", name, reason)
 }
 
 // Lines writes findings the way Rumblestrip prints them, file:line: rule: message.

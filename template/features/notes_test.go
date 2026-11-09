@@ -91,9 +91,12 @@ func (w *world) listShows(ctx context.Context, title string) error {
 	return listHas([]byte(w.last.stdout), title)
 }
 
+// WHY: the error reaches the owner's summary: what was wanted first, then
+// the first line of what the program said, not its whole stderr.
 func (w *world) refusedWith(message string) error {
 	if w.last.code != 1 || !strings.Contains(w.last.stderr, message) {
-		return fmt.Errorf("exit %d, stderr %q: want a refusal saying %q", w.last.code, w.last.stderr, message)
+		said, _, _ := strings.Cut(strings.TrimSpace(w.last.stderr), "\n")
+		return fmt.Errorf("want a refusal saying %q; it said %q (exit %d)", message, said, w.last.code)
 	}
 	return nil
 }
